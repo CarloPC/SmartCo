@@ -1,0 +1,381 @@
+import { useNavigate } from 'react-router-dom'
+import { Heart, Package, Calendar, Users, AlertCircle, Plus, TrendingUp, TrendingDown, Activity, BarChart3 } from 'lucide-react'
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import toledoImage from '../assets/Toledo.jpg'
+import { useTheme } from '../context/ThemeContext'
+
+const healthAlerts = [
+  { id: 1, type: 'Emergency', message: 'Medical emergency reported in Purok 4', time: '2 mins ago', urgent: true },
+  { id: 2, type: 'Checkup', message: 'Senior citizen checkup completed - 15 residents', time: '1 hour ago', urgent: false }
+]
+
+// Mock data for charts
+const healthTrendsData = [
+  { date: 'Jan 18', avgBP: 118, avgTemp: 36.6, checkups: 12 },
+  { date: 'Jan 19', avgBP: 120, avgTemp: 36.7, checkups: 15 },
+  { date: 'Jan 20', avgBP: 119, avgTemp: 36.5, checkups: 18 },
+  { date: 'Jan 21', avgBP: 121, avgTemp: 36.8, checkups: 14 },
+  { date: 'Jan 22', avgBP: 117, avgTemp: 36.6, checkups: 20 },
+  { date: 'Jan 23', avgBP: 119, avgTemp: 36.7, checkups: 22 },
+  { date: 'Jan 24', avgBP: 118, avgTemp: 36.5, checkups: 17 }
+]
+
+const foodAidData = [
+  { purok: 'Purok 1', families: 24, delivered: 24 },
+  { purok: 'Purok 2', families: 18, delivered: 18 },
+  { purok: 'Purok 3', families: 31, delivered: 21 },
+  { purok: 'Purok 4', families: 28, delivered: 10 },
+  { purok: 'Purok 5', families: 22, delivered: 0 }
+]
+
+const eventAttendanceData = [
+  { category: 'Sports', expected: 50, actual: 48 },
+  { category: 'Health', expected: 60, actual: 45 },
+  { category: 'Social', expected: 80, actual: 72 },
+  { category: 'Educational', expected: 40, actual: 38 }
+]
+
+const HomePage = () => {
+  const navigate = useNavigate()
+  const { isDarkMode } = useTheme()
+
+  // Custom tooltip styles
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className={`${
+          isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
+        } border rounded-lg shadow-lg p-3`}>
+          <p className={`text-sm font-semibold mb-1 ${
+            isDarkMode ? 'text-gray-200' : 'text-gray-800'
+          }`}>{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} className="text-xs" style={{ color: entry.color }}>
+              {entry.name}: {entry.value}
+            </p>
+          ))}
+        </div>
+      )
+    }
+    return null
+  }
+
+  return (
+    <div className="min-h-screen relative">
+      {/* Background Image with Overlay */}
+      <div 
+        className="fixed inset-0 bg-cover bg-center -z-10"
+        style={{ backgroundImage: `url(${toledoImage})` }}
+      >
+        <div className={`absolute inset-0 ${
+          isDarkMode 
+            ? 'bg-gradient-to-br from-gray-950/95 via-blue-950/95 to-slate-950/95' 
+            : 'bg-gradient-to-br from-blue-900/85 via-blue-800/85 to-indigo-900/85'
+        }`}></div>
+      </div>
+
+      <div className="p-4 space-y-4 pb-24">
+        {/* Welcome Header */}
+        <div className={`${
+          isDarkMode 
+            ? 'bg-gradient-to-r from-blue-900/90 to-indigo-950/90 border-gray-700/50' 
+            : 'bg-gradient-to-r from-blue-500/90 to-indigo-600/90 border-white/20'
+        } backdrop-blur-sm rounded-xl p-6 text-white shadow-xl border`}>
+          <h2 className="text-2xl font-bold mb-1">Welcome to SmartCo</h2>
+          <p className={`text-sm ${isDarkMode ? 'text-blue-200' : 'text-blue-100'}`}>
+            Barangay Analytics Dashboard
+          </p>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-gradient-to-br from-blue-500/90 to-blue-600/90 backdrop-blur-sm rounded-xl p-4 text-white shadow-xl border border-white/20">
+            <div className="flex items-center justify-between mb-2">
+              <Heart className="w-7 h-7 opacity-90" />
+              <div className="flex items-center space-x-1 text-xs bg-white/20 rounded-full px-2 py-1">
+                <TrendingUp className="w-3 h-3" />
+                <span>+12%</span>
+              </div>
+            </div>
+            <div className="text-2xl font-bold">127</div>
+            <div className="text-xs opacity-90">Health Records</div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-green-500/90 to-green-600/90 backdrop-blur-sm rounded-xl p-4 text-white shadow-xl border border-white/20">
+            <div className="flex items-center justify-between mb-2">
+              <Package className="w-7 h-7 opacity-90" />
+              <div className="flex items-center space-x-1 text-xs bg-white/20 rounded-full px-2 py-1">
+                <TrendingUp className="w-3 h-3" />
+                <span>+8%</span>
+              </div>
+            </div>
+            <div className="text-2xl font-bold">73</div>
+            <div className="text-xs opacity-90">Aid Distributed</div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-purple-500/90 to-purple-600/90 backdrop-blur-sm rounded-xl p-4 text-white shadow-xl border border-white/20">
+            <div className="flex items-center justify-between mb-2">
+              <Calendar className="w-7 h-7 opacity-90" />
+              <div className="flex items-center space-x-1 text-xs bg-white/20 rounded-full px-2 py-1">
+                <TrendingDown className="w-3 h-3" />
+                <span>-3</span>
+              </div>
+            </div>
+            <div className="text-2xl font-bold">8</div>
+            <div className="text-xs opacity-90">Upcoming Events</div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-orange-500/90 to-orange-600/90 backdrop-blur-sm rounded-xl p-4 text-white shadow-xl border border-white/20">
+            <div className="flex items-center justify-between mb-2">
+              <Users className="w-7 h-7 opacity-90" />
+              <div className="flex items-center space-x-1 text-xs bg-white/20 rounded-full px-2 py-1">
+                <TrendingUp className="w-3 h-3" />
+                <span>+24</span>
+              </div>
+            </div>
+            <div className="text-2xl font-bold">342</div>
+            <div className="text-xs opacity-90">Active Users</div>
+          </div>
+        </div>
+
+        {/* Health Trends Chart */}
+        <div className={`${
+          isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'
+        } backdrop-blur-lg rounded-xl shadow-xl border p-4`}>
+          <div className="flex items-center space-x-2 mb-4">
+            <Activity className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <h3 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+              Health Trends (Past 7 Days)
+            </h3>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={healthTrendsData}>
+              <CartesianGrid 
+                strokeDasharray="3 3" 
+                stroke={isDarkMode ? '#374151' : '#e5e7eb'} 
+              />
+              <XAxis 
+                dataKey="date" 
+                tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }}
+                stroke={isDarkMode ? '#4b5563' : '#d1d5db'}
+              />
+              <YAxis 
+                tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }}
+                stroke={isDarkMode ? '#4b5563' : '#d1d5db'}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                wrapperStyle={{ fontSize: '12px' }}
+                iconType="line"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="checkups" 
+                stroke="#3b82f6" 
+                strokeWidth={2}
+                name="Checkups"
+                dot={{ fill: '#3b82f6', r: 3 }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="avgBP" 
+                stroke="#ef4444" 
+                strokeWidth={2}
+                name="Avg BP (Systolic)"
+                dot={{ fill: '#ef4444', r: 3 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Food Aid Distribution Chart */}
+        <div className={`${
+          isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'
+        } backdrop-blur-lg rounded-xl shadow-xl border p-4`}>
+          <div className="flex items-center space-x-2 mb-4">
+            <Package className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+            <h3 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+              Food Aid Distribution by Purok
+            </h3>
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={foodAidData}>
+              <CartesianGrid 
+                strokeDasharray="3 3" 
+                stroke={isDarkMode ? '#374151' : '#e5e7eb'} 
+              />
+              <XAxis 
+                dataKey="purok" 
+                tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }}
+                stroke={isDarkMode ? '#4b5563' : '#d1d5db'}
+              />
+              <YAxis 
+                tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }}
+                stroke={isDarkMode ? '#4b5563' : '#d1d5db'}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                wrapperStyle={{ fontSize: '12px' }}
+                iconType="rect"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="families" 
+                stroke="#10b981" 
+                fill="#10b981"
+                fillOpacity={0.3}
+                name="Total Families"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="delivered" 
+                stroke="#059669" 
+                fill="#059669"
+                fillOpacity={0.6}
+                name="Delivered"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+          <div className={`mt-3 p-2 rounded-lg text-xs ${
+            isDarkMode ? 'bg-green-950/30 text-green-400' : 'bg-green-50 text-green-700'
+          }`}>
+            <span className="font-semibold">Progress:</span> 73 of 123 families served (59.3%)
+          </div>
+        </div>
+
+        {/* Event Attendance Chart */}
+        <div className={`${
+          isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'
+        } backdrop-blur-lg rounded-xl shadow-xl border p-4`}>
+          <div className="flex items-center space-x-2 mb-4">
+            <BarChart3 className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+            <h3 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+              Event Attendance by Category
+            </h3>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={eventAttendanceData}>
+              <CartesianGrid 
+                strokeDasharray="3 3" 
+                stroke={isDarkMode ? '#374151' : '#e5e7eb'} 
+              />
+              <XAxis 
+                dataKey="category" 
+                tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }}
+                stroke={isDarkMode ? '#4b5563' : '#d1d5db'}
+              />
+              <YAxis 
+                tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }}
+                stroke={isDarkMode ? '#4b5563' : '#d1d5db'}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                wrapperStyle={{ fontSize: '12px' }}
+                iconType="rect"
+              />
+              <Bar 
+                dataKey="expected" 
+                fill="#a855f7" 
+                name="Expected"
+                radius={[8, 8, 0, 0]}
+              />
+              <Bar 
+                dataKey="actual" 
+                fill="#7c3aed" 
+                name="Actual"
+                radius={[8, 8, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className={`mt-3 p-2 rounded-lg text-xs ${
+            isDarkMode ? 'bg-purple-950/30 text-purple-400' : 'bg-purple-50 text-purple-700'
+          }`}>
+            <span className="font-semibold">Overall Attendance Rate:</span> 88.7% (203 of 230 expected)
+          </div>
+        </div>
+
+        {/* Recent Alerts */}
+        <div className={`${
+          isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'
+        } backdrop-blur-lg rounded-xl shadow-xl border p-4`}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Recent Alerts</h3>
+            <button className={`text-sm font-medium ${
+              isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+            }`}>View All</button>
+          </div>
+          <div className="space-y-3">
+            {healthAlerts.map(alert => (
+              <div key={alert.id} className={`flex items-start space-x-3 p-3 rounded-lg ${
+                alert.urgent 
+                  ? isDarkMode ? 'bg-red-950/50 border border-red-900/50' : 'bg-red-50 border border-red-200'
+                  : isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50'
+              }`}>
+                <AlertCircle className={`w-5 h-5 mt-0.5 ${alert.urgent ? 'text-red-500' : isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{alert.message}</p>
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{alert.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className={`${
+          isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'
+        } backdrop-blur-lg rounded-xl shadow-xl border p-4`}>
+          <h3 className={`font-semibold mb-4 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Quick Actions</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={() => navigate('/health/record')}
+              className={`flex items-center justify-center space-x-2 rounded-lg p-4 transition shadow-sm ${
+                isDarkMode 
+                  ? 'bg-blue-900/50 hover:bg-blue-800/70 text-blue-300' 
+                  : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+              }`}
+            >
+              <Plus className="w-5 h-5" />
+              <span className="font-medium text-sm">Record Checkup</span>
+            </button>
+            <button 
+              onClick={() => navigate('/food-aid/optimize')}
+              className={`flex items-center justify-center space-x-2 rounded-lg p-4 transition shadow-sm ${
+                isDarkMode 
+                  ? 'bg-green-900/50 hover:bg-green-800/70 text-green-300' 
+                  : 'bg-green-50 hover:bg-green-100 text-green-700'
+              }`}
+            >
+              <Plus className="w-5 h-5" />
+              <span className="font-medium text-sm">Schedule Aid</span>
+            </button>
+            <button 
+              onClick={() => navigate('/events/create')}
+              className={`flex items-center justify-center space-x-2 rounded-lg p-4 transition shadow-sm ${
+                isDarkMode 
+                  ? 'bg-purple-900/50 hover:bg-purple-800/70 text-purple-300' 
+                  : 'bg-purple-50 hover:bg-purple-100 text-purple-700'
+              }`}
+            >
+              <Plus className="w-5 h-5" />
+              <span className="font-medium text-sm">Create Event</span>
+            </button>
+            <button 
+              onClick={() => navigate('/health')}
+              className={`flex items-center justify-center space-x-2 rounded-lg p-4 transition shadow-sm ${
+                isDarkMode 
+                  ? 'bg-red-900/50 hover:bg-red-800/70 text-red-300' 
+                  : 'bg-red-50 hover:bg-red-100 text-red-700'
+              }`}
+            >
+              <AlertCircle className="w-5 h-5" />
+              <span className="font-medium text-sm">Report Emergency</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default HomePage
