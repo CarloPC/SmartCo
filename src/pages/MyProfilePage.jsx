@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit2, Save, X, Trash2, Plus, User, Mail, Phone, MapPin, Briefcase } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
+import { useTheme } from '../context/ThemeContext'
 
 const MyProfilePage = () => {
   const navigate = useNavigate()
+  const { isDarkMode } = useTheme()
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   
@@ -52,7 +54,7 @@ const MyProfilePage = () => {
         className="fixed inset-0 bg-cover bg-center -z-10"
         style={{ backgroundImage: `url(${toledoImage})` }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/85 via-blue-800/85 to-indigo-900/85"></div>
+        <div className={`absolute inset-0 bg-gradient-to-br ${isDarkMode ? 'from-gray-950/90 via-slate-900/90 to-gray-900/90' : 'from-blue-900/85 via-blue-800/85 to-indigo-900/85'}`}></div>
       </div>
 
       <div className="p-4 space-y-4">
@@ -60,7 +62,7 @@ const MyProfilePage = () => {
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition"
+            className={`p-2 backdrop-blur-sm rounded-lg transition ${isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-white/20 hover:bg-white/30'}`}
           >
             <ArrowLeft className="w-6 h-6 text-white" />
           </button>
@@ -69,7 +71,7 @@ const MyProfilePage = () => {
         </div>
 
         {/* Profile Card */}
-        <div className="bg-white/95 backdrop-blur-lg rounded-xl shadow-xl border border-white/30 p-6">
+        <div className={`backdrop-blur-lg rounded-xl shadow-xl p-6 ${isDarkMode ? 'bg-gray-800/95 border border-gray-700/50' : 'bg-white/95 border border-white/30'}`}>
           {/* Avatar Section */}
           <div className="flex flex-col items-center mb-6">
             <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-4xl mb-3 shadow-lg">
@@ -87,7 +89,7 @@ const MyProfilePage = () => {
           <div className="space-y-4">
             {/* Name */}
             <div>
-              <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <label className={`flex items-center space-x-2 text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 <User className="w-4 h-4" />
                 <span>Full Name</span>
               </label>
@@ -96,16 +98,16 @@ const MyProfilePage = () => {
                   type="text"
                   value={editedData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 />
               ) : (
-                <p className="text-gray-800 font-medium px-4 py-3 bg-gray-50 rounded-lg">{userData.name}</p>
+                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.name}</p>
               )}
             </div>
 
             {/* Email */}
             <div>
-              <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <label className={`flex items-center space-x-2 text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 <Mail className="w-4 h-4" />
                 <span>Email Address</span>
               </label>
@@ -114,16 +116,16 @@ const MyProfilePage = () => {
                   type="email"
                   value={editedData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 />
               ) : (
-                <p className="text-gray-800 font-medium px-4 py-3 bg-gray-50 rounded-lg">{userData.email}</p>
+                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.email}</p>
               )}
             </div>
 
             {/* Phone */}
             <div>
-              <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <label className={`flex items-center space-x-2 text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 <Phone className="w-4 h-4" />
                 <span>Phone Number</span>
               </label>
@@ -132,16 +134,16 @@ const MyProfilePage = () => {
                   type="tel"
                   value={editedData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 />
               ) : (
-                <p className="text-gray-800 font-medium px-4 py-3 bg-gray-50 rounded-lg">{userData.phone}</p>
+                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.phone}</p>
               )}
             </div>
 
             {/* Role */}
             <div>
-              <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <label className={`flex items-center space-x-2 text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 <Briefcase className="w-4 h-4" />
                 <span>Role</span>
               </label>
@@ -149,7 +151,7 @@ const MyProfilePage = () => {
                 <select
                   value={editedData.role}
                   onChange={(e) => handleInputChange('role', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
                   <option>Barangay Official</option>
                   <option>Health Worker</option>
@@ -157,13 +159,13 @@ const MyProfilePage = () => {
                   <option>Resident</option>
                 </select>
               ) : (
-                <p className="text-gray-800 font-medium px-4 py-3 bg-gray-50 rounded-lg">{userData.role}</p>
+                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.role}</p>
               )}
             </div>
 
             {/* Purok */}
             <div>
-              <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <label className={`flex items-center space-x-2 text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 <MapPin className="w-4 h-4" />
                 <span>Purok</span>
               </label>
@@ -171,7 +173,7 @@ const MyProfilePage = () => {
                 <select
                   value={editedData.purok}
                   onChange={(e) => handleInputChange('purok', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
                   <option>Purok 1</option>
                   <option>Purok 2</option>
@@ -180,13 +182,13 @@ const MyProfilePage = () => {
                   <option>Purok 5</option>
                 </select>
               ) : (
-                <p className="text-gray-800 font-medium px-4 py-3 bg-gray-50 rounded-lg">{userData.purok}</p>
+                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.purok}</p>
               )}
             </div>
 
             {/* Address */}
             <div>
-              <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+              <label className={`flex items-center space-x-2 text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 <MapPin className="w-4 h-4" />
                 <span>Address</span>
               </label>
@@ -195,17 +197,17 @@ const MyProfilePage = () => {
                   value={editedData.address}
                   onChange={(e) => handleInputChange('address', e.target.value)}
                   rows="2"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 />
               ) : (
-                <p className="text-gray-800 font-medium px-4 py-3 bg-gray-50 rounded-lg">{userData.address}</p>
+                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.address}</p>
               )}
             </div>
 
             {/* Date Joined */}
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Member Since</label>
-              <p className="text-gray-800 font-medium px-4 py-3 bg-gray-50 rounded-lg">
+              <label className={`text-sm font-medium mb-2 block ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Member Since</label>
+              <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>
                 {new Date(userData.dateJoined).toLocaleDateString('en-US', { 
                   year: 'numeric', 
                   month: 'long', 
@@ -228,7 +230,7 @@ const MyProfilePage = () => {
                 </button>
                 <button
                   onClick={handleCancel}
-                  className="w-full flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl transition"
+                  className={`w-full flex items-center justify-center space-x-2 font-semibold py-3 rounded-xl transition ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
                 >
                   <X className="w-5 h-5" />
                   <span>Cancel</span>
@@ -245,7 +247,7 @@ const MyProfilePage = () => {
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full flex items-center justify-center space-x-2 bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-3 rounded-xl transition"
+                  className={`w-full flex items-center justify-center space-x-2 font-semibold py-3 rounded-xl transition ${isDarkMode ? 'bg-red-900/50 hover:bg-red-900/70 text-red-300' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}
                 >
                   <Trash2 className="w-5 h-5" />
                   <span>Delete Account</span>
@@ -259,13 +261,13 @@ const MyProfilePage = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+          <div className={`rounded-2xl p-6 max-w-sm w-full shadow-2xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
             <div className="text-center mb-4">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="w-8 h-8 text-red-600" />
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isDarkMode ? 'bg-red-900/50' : 'bg-red-100'}`}>
+                <Trash2 className={`w-8 h-8 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Account?</h3>
-              <p className="text-gray-600">
+              <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Delete Account?</h3>
+              <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
                 Are you sure you want to delete your account? This action cannot be undone.
               </p>
             </div>
@@ -278,7 +280,7 @@ const MyProfilePage = () => {
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl transition"
+                className={`w-full font-semibold py-3 rounded-xl transition ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
               >
                 Cancel
               </button>
