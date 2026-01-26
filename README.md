@@ -1,5 +1,5 @@
 # Download or Clone
-
+## This is just all FrontEnd, No database/ Backend All FRONTEND
 ## Get started
 
 1. Install dependencies
@@ -13,6 +13,8 @@
    ```bash
     npm run dev
    ```
+
+
 
 # React + Vite
 
