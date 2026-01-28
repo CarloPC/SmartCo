@@ -1,132 +1,182 @@
-import storageService from './storageService'
-
-// Simulate API delay
-const simulateDelay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms))
-
-// Generate a simple token
-const generateToken = () => {
-  return 'token_' + Math.random().toString(36).substring(2) + Date.now().toString(36)
-}
+import { 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential
+} from 'firebase/auth'
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore'
+import { auth, db } from '../config/firebase'
 
 class AuthService {
+  // Login with Firebase Auth
   async login(email, password) {
-    await simulateDelay()
-
-    const users = storageService.getUsers()
-    const user = users.find(u => u.email === email)
-
-    if (!user) {
-      throw new Error('User not found')
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      const user = userCredential.user
+      
+      // Get additional user data from Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
+      const userData = userDoc.data()
+      
+      return {
+        token: await user.getIdToken(),
+        user: {
+          id: user.uid,
+          email: user.email,
+          fullName: userData?.fullName || '',
+          phone: userData?.phone || '',
+          role: userData?.role || '',
+          purok: userData?.purok || '',
+          createdAt: userData?.createdAt || new Date().toISOString()
+        }
+      }
+    } catch (error) {
+      throw new Error(this.getErrorMessage(error.code))
     }
-
-    if (user.password !== password) {
-      throw new Error('Invalid password')
-    }
-
-    // Generate token
-    const token = generateToken()
-    const userData = {
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      purok: user.purok,
-      createdAt: user.createdAt
-    }
-
-    // Store token and user data
-    storageService.setAuthToken(token)
-    storageService.setUserData(userData)
-
-    return { token, user: userData }
   }
 
+  // Register with Firebase Auth + Firestore
   async register(userData) {
-    await simulateDelay()
+    try {
+      // Create auth user
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        userData.email,
+        userData.password
+      )
+      const user = userCredential.user
 
-    const users = storageService.getUsers()
-    
-    // Check if user already exists
-    const existingUser = users.find(u => u.email === userData.email)
-    if (existingUser) {
-      throw new Error('User with this email already exists')
+      // Update display name
+      await updateProfile(user, {
+        displayName: userData.fullName
+      })
+
+      // Save additional data to Firestore
+      const userDataToSave = {
+        fullName: userData.fullName,
+        email: userData.email,
+        phone: userData.phone,
+        role: userData.role,
+        purok: userData.purok,
+        createdAt: new Date().toISOString()
+      }
+
+      await setDoc(doc(db, 'users', user.uid), userDataToSave)
+
+      return { 
+        success: true, 
+        user: {
+          id: user.uid,
+          ...userDataToSave
+        }
+      }
+    } catch (error) {
+      throw new Error(this.getErrorMessage(error.code))
     }
-
-    // Create new user
-    const newUser = {
-      id: 'user_' + Date.now(),
-      ...userData,
-      createdAt: new Date().toISOString()
-    }
-
-    users.push(newUser)
-    storageService.setUsers(users)
-
-    return { success: true, user: newUser }
   }
 
-  logout() {
-    storageService.removeAuthToken()
-    storageService.removeUserData()
-    return { success: true }
+  // Logout
+  async logout() {
+    try {
+      await signOut(auth)
+      return { success: true }
+    } catch (error) {
+      throw new Error('Failed to logout')
+    }
   }
 
+  // Get current user
   async getCurrentUser() {
-    const token = storageService.getAuthToken()
-    if (!token) {
-      return null
-    }
-
-    const userData = storageService.getUserData()
-    return userData
+    return new Promise((resolve, reject) => {
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        unsubscribe()
+        if (user) {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.uid))
+            const userData = userDoc.data()
+            resolve({
+              id: user.uid,
+              email: user.email,
+              fullName: userData?.fullName || '',
+              phone: userData?.phone || '',
+              role: userData?.role || '',
+              purok: userData?.purok || '',
+              createdAt: userData?.createdAt || new Date().toISOString()
+            })
+          } catch (error) {
+            console.error('Error fetching user data:', error)
+            resolve(null)
+          }
+        } else {
+          resolve(null)
+        }
+      }, reject)
+    })
   }
 
+  // Check if authenticated
   isAuthenticated() {
-    const token = storageService.getAuthToken()
-    return !!token
+    return !!auth.currentUser
   }
 
+  // Update profile
   async updateProfile(userId, updates) {
-    await simulateDelay()
-
-    const users = storageService.getUsers()
-    const userIndex = users.findIndex(u => u.id === userId)
-
-    if (userIndex === -1) {
-      throw new Error('User not found')
+    try {
+      await updateDoc(doc(db, 'users', userId), updates)
+      
+      // Update display name in auth if fullName changed
+      if (updates.fullName && auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: updates.fullName
+        })
+      }
+      
+      return { success: true, user: updates }
+    } catch (error) {
+      throw new Error('Failed to update profile')
     }
-
-    users[userIndex] = { ...users[userIndex], ...updates }
-    storageService.setUsers(users)
-
-    // Update current user data if it's the same user
-    const currentUser = storageService.getUserData()
-    if (currentUser && currentUser.id === userId) {
-      storageService.setUserData({ ...currentUser, ...updates })
-    }
-
-    return { success: true, user: users[userIndex] }
   }
 
+  // Change password
   async changePassword(userId, currentPassword, newPassword) {
-    await simulateDelay()
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
 
-    const users = storageService.getUsers()
-    const user = users.find(u => u.id === userId)
-
-    if (!user) {
-      throw new Error('User not found')
+      const credential = EmailAuthProvider.credential(user.email, currentPassword)
+      
+      // Re-authenticate
+      await reauthenticateWithCredential(user, credential)
+      
+      // Update password
+      await updatePassword(user, newPassword)
+      return { success: true }
+    } catch (error) {
+      if (error.code === 'auth/wrong-password') {
+        throw new Error('Current password is incorrect')
+      }
+      throw new Error(this.getErrorMessage(error.code))
     }
+  }
 
-    if (user.password !== currentPassword) {
-      throw new Error('Current password is incorrect')
+  // Helper: Convert Firebase error codes to user-friendly messages
+  getErrorMessage(code) {
+    const messages = {
+      'auth/user-not-found': 'User not found',
+      'auth/wrong-password': 'Invalid password',
+      'auth/email-already-in-use': 'User with this email already exists',
+      'auth/weak-password': 'Password should be at least 6 characters',
+      'auth/invalid-email': 'Invalid email address',
+      'auth/too-many-requests': 'Too many attempts. Try again later',
+      'auth/invalid-credential': 'Invalid email or password'
     }
-
-    user.password = newPassword
-    storageService.setUsers(users)
-
-    return { success: true }
+    return messages[code] || 'An error occurred. Please try again.'
   }
 }
 

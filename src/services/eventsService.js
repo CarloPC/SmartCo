@@ -1,152 +1,176 @@
-import storageService from './storageService'
-
-const simulateDelay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms))
+import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, orderBy, arrayUnion } from 'firebase/firestore'
+import { db, auth } from '../config/firebase'
+import notificationService from './notificationService'
 
 class EventsService {
   async getEvents() {
-    await simulateDelay()
-    return storageService.getEvents()
+    try {
+      const q = query(collection(db, 'events'), orderBy('date', 'desc'))
+      const snapshot = await getDocs(q)
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    } catch (error) {
+      console.error('Error fetching events:', error)
+      return []
+    }
   }
 
   async getEventById(id) {
-    await simulateDelay()
-    const events = storageService.getEvents()
-    return events.find(event => event.id === id)
+    try {
+      const docRef = doc(db, 'events', id)
+      const docSnap = await getDoc(docRef)
+      
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() }
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching event:', error)
+      return null
+    }
   }
 
   async createEvent(eventData) {
-    await simulateDelay()
+    try {
+      const userId = auth.currentUser?.uid
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
 
-    const events = storageService.getEvents()
-    const newEvent = {
-      id: 'event_' + Date.now(),
-      ...eventData,
-      status: 'upcoming',
-      attendees: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      const newEvent = {
+        ...eventData,
+        status: 'upcoming',
+        attendees: [],
+        createdBy: userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      const docRef = await addDoc(collection(db, 'events'), newEvent)
+      const event = { id: docRef.id, ...newEvent }
+
+      // Create notification
+      await this._createEventNotification(event, 'created')
+
+      return { success: true, event }
+    } catch (error) {
+      console.error('Error creating event:', error)
+      throw new Error('Failed to create event')
     }
-
-    events.push(newEvent)
-    storageService.setEvents(events)
-
-    // Create notification
-    this._createEventNotification(newEvent, 'created')
-
-    return { success: true, event: newEvent }
   }
 
   async updateEvent(id, updates) {
-    await simulateDelay()
+    try {
+      const docRef = doc(db, 'events', id)
+      await updateDoc(docRef, {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      })
 
-    const events = storageService.getEvents()
-    const eventIndex = events.findIndex(event => event.id === id)
-
-    if (eventIndex === -1) {
+      const updatedDoc = await getDoc(docRef)
+      return { success: true, event: { id: updatedDoc.id, ...updatedDoc.data() } }
+    } catch (error) {
+      console.error('Error updating event:', error)
       throw new Error('Event not found')
     }
-
-    events[eventIndex] = {
-      ...events[eventIndex],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    }
-
-    storageService.setEvents(events)
-    return { success: true, event: events[eventIndex] }
   }
 
   async deleteEvent(id) {
-    await simulateDelay()
-
-    const events = storageService.getEvents()
-    const filteredEvents = events.filter(event => event.id !== id)
-
-    if (events.length === filteredEvents.length) {
+    try {
+      await deleteDoc(doc(db, 'events', id))
+      return { success: true }
+    } catch (error) {
+      console.error('Error deleting event:', error)
       throw new Error('Event not found')
     }
-
-    storageService.setEvents(filteredEvents)
-    return { success: true }
   }
 
   async registerAttendee(eventId, userId) {
-    await simulateDelay()
+    try {
+      const docRef = doc(db, 'events', eventId)
+      const docSnap = await getDoc(docRef)
 
-    const events = storageService.getEvents()
-    const event = events.find(e => e.id === eventId)
+      if (!docSnap.exists()) {
+        throw new Error('Event not found')
+      }
 
-    if (!event) {
-      throw new Error('Event not found')
+      const event = docSnap.data()
+      if (event.attendees && event.attendees.includes(userId)) {
+        throw new Error('User already registered for this event')
+      }
+
+      await updateDoc(docRef, {
+        attendees: arrayUnion(userId)
+      })
+
+      const updatedDoc = await getDoc(docRef)
+      return { success: true, event: { id: updatedDoc.id, ...updatedDoc.data() } }
+    } catch (error) {
+      console.error('Error registering attendee:', error)
+      throw error
     }
-
-    if (!event.attendees) {
-      event.attendees = []
-    }
-
-    if (event.attendees.includes(userId)) {
-      throw new Error('User already registered for this event')
-    }
-
-    event.attendees.push(userId)
-    storageService.setEvents(events)
-
-    return { success: true, event }
   }
 
   async getUpcomingEvents() {
-    await simulateDelay()
+    try {
+      const snapshot = await getDocs(collection(db, 'events'))
+      const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const now = new Date()
 
-    const events = storageService.getEvents()
-    const now = new Date()
-
-    return events.filter(event => {
-      const eventDate = new Date(event.date)
-      return eventDate >= now && event.status === 'upcoming'
-    }).sort((a, b) => new Date(a.date) - new Date(b.date))
+      return events.filter(event => {
+        const eventDate = new Date(event.date)
+        return eventDate >= now && event.status === 'upcoming'
+      }).sort((a, b) => new Date(a.date) - new Date(b.date))
+    } catch (error) {
+      console.error('Error fetching upcoming events:', error)
+      return []
+    }
   }
 
   async getEventStats() {
-    await simulateDelay()
+    try {
+      const snapshot = await getDocs(collection(db, 'events'))
+      const events = snapshot.docs.map(doc => doc.data())
+      
+      const upcoming = events.filter(e => e.status === 'upcoming').length
+      const completed = events.filter(e => e.status === 'completed').length
+      const cancelled = events.filter(e => e.status === 'cancelled').length
 
-    const events = storageService.getEvents()
-    
-    const upcoming = events.filter(e => e.status === 'upcoming').length
-    const completed = events.filter(e => e.status === 'completed').length
-    const cancelled = events.filter(e => e.status === 'cancelled').length
-
-    return {
-      total: events.length,
-      upcoming,
-      completed,
-      cancelled
+      return {
+        total: events.length,
+        upcoming,
+        completed,
+        cancelled
+      }
+    } catch (error) {
+      console.error('Error fetching event stats:', error)
+      return { total: 0, upcoming: 0, completed: 0, cancelled: 0 }
     }
   }
 
-  _createEventNotification(event, action) {
-    const notifications = storageService.getNotifications()
-    
-    let message = ''
-    if (action === 'created') {
-      message = `New event created: ${event.title} on ${event.date}`
-    } else if (action === 'updated') {
-      message = `Event updated: ${event.title}`
-    } else if (action === 'cancelled') {
-      message = `Event cancelled: ${event.title}`
-    }
+  async _createEventNotification(event, action) {
+    try {
+      const userId = auth.currentUser?.uid
+      if (!userId) return
 
-    const notification = {
-      id: 'notif_' + Date.now(),
-      type: 'info',
-      category: 'events',
-      message,
-      relatedId: event.id,
-      createdAt: new Date().toISOString(),
-      read: false
-    }
+      let message = ''
+      if (action === 'created') {
+        message = `New event created: ${event.title} on ${event.date}`
+      } else if (action === 'updated') {
+        message = `Event updated: ${event.title}`
+      } else if (action === 'cancelled') {
+        message = `Event cancelled: ${event.title}`
+      }
 
-    notifications.unshift(notification)
-    storageService.setNotifications(notifications)
+      await notificationService.createNotification({
+        userId,
+        type: 'info',
+        category: 'events',
+        message,
+        relatedId: event.id
+      })
+    } catch (error) {
+      console.error('Error creating event notification:', error)
+    }
   }
 }
 
