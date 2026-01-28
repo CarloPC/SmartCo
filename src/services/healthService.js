@@ -70,6 +70,7 @@ class HealthService {
       const newRecord = {
         ...recordData,
         userId,
+        approvalStatus: 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
@@ -220,7 +221,8 @@ class HealthService {
           message: assessment?.vitalsSummary || 'Health checkup completed',
           createdAt: record.createdAt,
           urgent,
-          recordedBy: record.recordedBy || 'Health Worker'
+          recordedBy: record.recordedBy || 'Health Worker',
+          approvalStatus: record.approvalStatus || 'approved'
         }
       })
     } catch (error) {

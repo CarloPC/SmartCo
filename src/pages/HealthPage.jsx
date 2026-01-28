@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertCircle, Plus, Activity, Loader2, RefreshCw } from 'lucide-react'
+import { AlertCircle, Plus, Activity, Loader2, RefreshCw, CheckCircle, Clock, XCircle } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import healthService from '../services/healthService'
@@ -179,6 +179,30 @@ const HealthPage = () => {
                             }`}>
                               {alert.type}
                             </span>
+                            {alert.approvalStatus === 'pending' && (
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
+                                isDarkMode ? 'bg-orange-950/50 text-orange-400' : 'bg-orange-100 text-orange-700'
+                              }`}>
+                                <Clock className="w-3 h-3" />
+                                <span>Pending</span>
+                              </span>
+                            )}
+                            {alert.approvalStatus === 'approved' && (
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
+                                isDarkMode ? 'bg-green-950/50 text-green-400' : 'bg-green-100 text-green-700'
+                              }`}>
+                                <CheckCircle className="w-3 h-3" />
+                                <span>Approved</span>
+                              </span>
+                            )}
+                            {alert.approvalStatus === 'rejected' && (
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
+                                isDarkMode ? 'bg-red-950/50 text-red-400' : 'bg-red-100 text-red-700'
+                              }`}>
+                                <XCircle className="w-3 h-3" />
+                                <span>Rejected</span>
+                              </span>
+                            )}
                           </div>
                           <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                             {alert.message}

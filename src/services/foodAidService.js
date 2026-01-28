@@ -1,11 +1,21 @@
-import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
 
 class FoodAidService {
   async getFoodAidSchedules() {
     try {
-      const snapshot = await getDocs(collection(db, 'foodAid'))
+      const userId = auth.currentUser?.uid
+      if (!userId) {
+        console.log('No authenticated user for food aid schedules')
+        return []
+      }
+
+      const q = query(
+        collection(db, 'foodAid'),
+        where('createdBy', '==', userId)
+      )
+      const snapshot = await getDocs(q)
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
     } catch (error) {
       console.error('Error fetching food aid schedules:', error)
@@ -39,6 +49,7 @@ class FoodAidService {
         ...scheduleData,
         status: 'scheduled',
         deliveredFamilies: 0,
+        approvalStatus: 'pending',
         createdBy: userId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -117,7 +128,25 @@ class FoodAidService {
 
   async getFoodAidStats() {
     try {
-      const snapshot = await getDocs(collection(db, 'foodAid'))
+      const userId = auth.currentUser?.uid
+      if (!userId) {
+        console.log('No authenticated user for food aid stats')
+        return {
+          total: 0,
+          totalFamilies: 0,
+          deliveredFamilies: 0,
+          progress: 0,
+          pending: 0,
+          inProgress: 0,
+          completed: 0
+        }
+      }
+
+      const q = query(
+        collection(db, 'foodAid'),
+        where('createdBy', '==', userId)
+      )
+      const snapshot = await getDocs(q)
       const foodAid = snapshot.docs.map(doc => doc.data())
       
       const totalFamilies = foodAid.reduce((sum, item) => sum + (item.totalFamilies || 0), 0)
@@ -151,7 +180,17 @@ class FoodAidService {
 
   async getDistributionByPurok() {
     try {
-      const snapshot = await getDocs(collection(db, 'foodAid'))
+      const userId = auth.currentUser?.uid
+      if (!userId) {
+        console.log('No authenticated user for distribution by purok')
+        return []
+      }
+
+      const q = query(
+        collection(db, 'foodAid'),
+        where('createdBy', '==', userId)
+      )
+      const snapshot = await getDocs(q)
       const foodAid = snapshot.docs.map(doc => doc.data())
       const purokData = {}
 

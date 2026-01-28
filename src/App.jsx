@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/AdminRoute'
 import WelcomePage from './pages/WelcomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -17,6 +18,9 @@ import SettingsPage from './pages/SettingsPage'
 import PrivacySecurityPage from './pages/PrivacySecurityPage'
 import HelpSupportPage from './pages/HelpSupportPage'
 import AboutPage from './pages/AboutPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
+import AdminApprovalsPage from './pages/AdminApprovalsPage'
+import AdminUsersPage from './pages/AdminUsersPage'
 
 function App() {
   return (
@@ -106,6 +110,48 @@ function App() {
         <Route path="/privacy-security" element={<ProtectedRoute><PrivacySecurityPage /></ProtectedRoute>} />
         <Route path="/help-support" element={<ProtectedRoute><HelpSupportPage /></ProtectedRoute>} />
         <Route path="/about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
+
+        {/* Admin Routes - Only accessible by admin and barangay officials */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <Layout>
+                <AdminDashboardPage />
+              </Layout>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminRoute>
+              <Layout>
+                <AdminDashboardPage />
+              </Layout>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/approvals"
+          element={
+            <AdminRoute>
+              <Layout>
+                <AdminApprovalsPage />
+              </Layout>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <Layout>
+                <AdminUsersPage />
+              </Layout>
+            </AdminRoute>
+          }
+        />
 
         {/* Redirect to welcome if no match */}
         <Route path="*" element={<Navigate to="/" replace />} />

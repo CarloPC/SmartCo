@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Calendar, Heart, Package, Bell, X, AlertCircle } from 'lucide-react'
+import { Home, Calendar, Heart, Package, Bell, X, AlertCircle, Shield } from 'lucide-react'
 import NotificationDropdown from './NotificationDropdown'
 import ProfileSidebar from './ProfileSidebar'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import adminService from '../services/adminService'
 
 const Layout = ({ children }) => {
   const [showNotifications, setShowNotifications] = useState(false)
@@ -72,10 +73,10 @@ const Layout = ({ children }) => {
       <div className={`${
         isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
       } border-t shadow-lg fixed bottom-0 left-0 right-0 max-w-md mx-auto`}>
-        <div className="flex items-center justify-around py-3">
+        <div className={`flex items-center ${adminService.isAdmin(user) ? 'justify-between' : 'justify-around'} py-3 px-2`}>
           <Link
             to="/home"
-            className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-lg transition ${
+            className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition ${
               isActive('/home') 
                 ? isDarkMode ? 'text-blue-400' : 'text-blue-600' 
                 : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
@@ -86,7 +87,7 @@ const Layout = ({ children }) => {
           </Link>
           <Link
             to="/health"
-            className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-lg transition ${
+            className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition ${
               isActive('/health') 
                 ? isDarkMode ? 'text-blue-400' : 'text-blue-600' 
                 : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
@@ -97,7 +98,7 @@ const Layout = ({ children }) => {
           </Link>
           <Link
             to="/food-aid"
-            className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-lg transition ${
+            className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition ${
               isActive('/food-aid') 
                 ? isDarkMode ? 'text-blue-400' : 'text-blue-600' 
                 : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
@@ -108,7 +109,7 @@ const Layout = ({ children }) => {
           </Link>
           <Link
             to="/events"
-            className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-lg transition ${
+            className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition ${
               isActive('/events') 
                 ? isDarkMode ? 'text-blue-400' : 'text-blue-600' 
                 : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
@@ -117,6 +118,19 @@ const Layout = ({ children }) => {
             <Calendar className="w-6 h-6" />
             <span className="text-xs font-medium">Events</span>
           </Link>
+          {adminService.isAdmin(user) && (
+            <Link
+              to="/admin"
+              className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg transition ${
+                location.pathname.startsWith('/admin')
+                  ? isDarkMode ? 'text-purple-400' : 'text-purple-600' 
+                  : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Shield className="w-6 h-6" />
+              <span className="text-xs font-medium">Admin</span>
+            </Link>
+          )}
         </div>
       </div>
     </div>

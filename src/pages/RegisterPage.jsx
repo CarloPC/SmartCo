@@ -188,10 +188,9 @@ const RegisterPage = () => {
                 required
               >
                 <option value="">Select your role</option>
-                <option value="official">Barangay Official</option>
-                <option value="health">Health Worker</option>
-                <option value="volunteer">Volunteer</option>
                 <option value="resident">Resident</option>
+                <option value="barangay_official">Barangay Official</option>
+                <option value="admin">Administrator</option>
               </select>
             </div>
 

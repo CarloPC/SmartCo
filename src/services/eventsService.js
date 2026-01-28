@@ -1,13 +1,40 @@
-import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, orderBy, arrayUnion } from 'firebase/firestore'
+import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, orderBy, arrayUnion, where } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
 
 class EventsService {
   async getEvents() {
     try {
-      const q = query(collection(db, 'events'), orderBy('date', 'desc'))
-      const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const userId = auth.currentUser?.uid
+      if (!userId) {
+        console.log('No authenticated user for events')
+        return []
+      }
+
+      let snapshot
+      try {
+        // Try with orderBy first (requires composite index)
+        const q = query(
+          collection(db, 'events'),
+          where('createdBy', '==', userId),
+          orderBy('date', 'desc')
+        )
+        snapshot = await getDocs(q)
+      } catch (error) {
+        console.log('orderBy failed, trying without it:', error.message)
+        // If orderBy fails (no index), fetch without it and sort in memory
+        const q = query(
+          collection(db, 'events'),
+          where('createdBy', '==', userId)
+        )
+        snapshot = await getDocs(q)
+      }
+
+      const events = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+
+      return events
     } catch (error) {
       console.error('Error fetching events:', error)
       return []
@@ -40,6 +67,7 @@ class EventsService {
         ...eventData,
         status: 'upcoming',
         attendees: [],
+        approvalStatus: 'pending',
         createdBy: userId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -112,7 +140,17 @@ class EventsService {
 
   async getUpcomingEvents() {
     try {
-      const snapshot = await getDocs(collection(db, 'events'))
+      const userId = auth.currentUser?.uid
+      if (!userId) {
+        console.log('No authenticated user for upcoming events')
+        return []
+      }
+
+      const q = query(
+        collection(db, 'events'),
+        where('createdBy', '==', userId)
+      )
+      const snapshot = await getDocs(q)
       const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       const now = new Date()
 
@@ -128,7 +166,17 @@ class EventsService {
 
   async getEventStats() {
     try {
-      const snapshot = await getDocs(collection(db, 'events'))
+      const userId = auth.currentUser?.uid
+      if (!userId) {
+        console.log('No authenticated user for event stats')
+        return { total: 0, upcoming: 0, completed: 0, cancelled: 0 }
+      }
+
+      const q = query(
+        collection(db, 'events'),
+        where('createdBy', '==', userId)
+      )
+      const snapshot = await getDocs(q)
       const events = snapshot.docs.map(doc => doc.data())
       
       const upcoming = events.filter(e => e.status === 'upcoming').length

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Clock, Users, TrendingUp, Package, Loader2 } from 'lucide-react'
+import { Clock, Users, TrendingUp, Package, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import foodAidService from '../services/foodAidService'
@@ -124,8 +124,36 @@ const FoodAidPage = () => {
                     isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'
                   } backdrop-blur-lg rounded-lg shadow-xl border p-4`}>
                     <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{schedule.purok}</h4>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h4 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                            {schedule.purok}
+                          </h4>
+                          {schedule.approvalStatus === 'pending' && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
+                              isDarkMode ? 'bg-orange-950/50 text-orange-400' : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              <Clock className="w-3 h-3" />
+                              <span>Pending</span>
+                            </span>
+                          )}
+                          {schedule.approvalStatus === 'approved' && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
+                              isDarkMode ? 'bg-green-950/50 text-green-400' : 'bg-green-100 text-green-700'
+                            }`}>
+                              <CheckCircle className="w-3 h-3" />
+                              <span>Approved</span>
+                            </span>
+                          )}
+                          {schedule.approvalStatus === 'rejected' && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
+                              isDarkMode ? 'bg-red-950/50 text-red-400' : 'bg-red-100 text-red-700'
+                            }`}>
+                              <XCircle className="w-3 h-3" />
+                              <span>Rejected</span>
+                            </span>
+                          )}
+                        </div>
                         <div className={`flex items-center space-x-4 mt-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                           <div className="flex items-center space-x-1">
                             <Clock className="w-4 h-4" />

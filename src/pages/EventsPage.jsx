@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, MapPin, Users, Plus, Loader2 } from 'lucide-react'
+import { Calendar, MapPin, Users, Plus, Loader2, CheckCircle, Clock, XCircle } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import eventsService from '../services/eventsService'
@@ -17,11 +17,18 @@ const EventsPage = () => {
       try {
         setIsLoading(true)
         
-        // Fetch upcoming events
-        const events = await eventsService.getUpcomingEvents()
+        // Fetch all user events (not just upcoming)
+        const allEvents = await eventsService.getEvents()
+        
+        // Filter for upcoming events (future dates)
+        const now = new Date()
+        const upcoming = allEvents.filter(event => {
+          const eventDate = new Date(event.date)
+          return eventDate >= now
+        }).sort((a, b) => new Date(a.date) - new Date(b.date))
         
         // Format events with participant count from attendees array
-        const formattedEvents = events.map(event => ({
+        const formattedEvents = upcoming.map(event => ({
           ...event,
           location: event.venue,
           participants: event.attendees?.length || event.expectedAttendees || 0
@@ -84,7 +91,35 @@ const EventsPage = () => {
               } backdrop-blur-lg rounded-lg shadow-xl border p-4 hover:shadow-2xl transition`}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
-                    <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{event.title}</h4>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h4 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                        {event.title}
+                      </h4>
+                      {event.approvalStatus === 'pending' && (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
+                          isDarkMode ? 'bg-orange-950/50 text-orange-400' : 'bg-orange-100 text-orange-700'
+                        }`}>
+                          <Clock className="w-3 h-3" />
+                          <span>Pending</span>
+                        </span>
+                      )}
+                      {event.approvalStatus === 'approved' && (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
+                          isDarkMode ? 'bg-green-950/50 text-green-400' : 'bg-green-100 text-green-700'
+                        }`}>
+                          <CheckCircle className="w-3 h-3" />
+                          <span>Approved</span>
+                        </span>
+                      )}
+                      {event.approvalStatus === 'rejected' && (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1 ${
+                          isDarkMode ? 'bg-red-950/50 text-red-400' : 'bg-red-100 text-red-700'
+                        }`}>
+                          <XCircle className="w-3 h-3" />
+                          <span>Rejected</span>
+                        </span>
+                      )}
+                    </div>
                     <div className="space-y-1">
                       <div className={`flex items-center space-x-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                         <Calendar className="w-4 h-4" />
@@ -100,9 +135,6 @@ const EventsPage = () => {
                       </div>
                     </div>
                   </div>
-                  <button className={`font-medium text-sm ${
-                    isDarkMode ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-700'
-                  }`}>Manage</button>
                 </div>
                 <div className="flex space-x-2">
                   <button className={`flex-1 font-medium py-2 rounded-lg text-sm transition ${
