@@ -94,16 +94,6 @@ const WelcomePage = () => {
           </button>
         </div>
 
-        {/* Demo Credentials */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 mt-6 border border-white/20">
-          <p className="text-white text-xs font-semibold mb-2 text-center">Demo Accounts:</p>
-          <div className="space-y-1 text-xs text-blue-100">
-            <p>📧 juan@smartco.ph | 🔑 password123</p>
-            <p>📧 maria@smartco.ph | 🔑 password123</p>
-            <p>📧 pedro@smartco.ph | 🔑 password123</p>
-          </div>
-        </div>
-
         {/* Footer */}
         <p className="text-center text-blue-100 text-sm mt-6">
           © 2026 SmartCo. All rights reserved.
