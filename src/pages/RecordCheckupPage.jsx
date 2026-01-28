@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Sparkles, Heart, Activity, Thermometer, Scale, Droplets, FileText, TrendingUp, ArrowLeft, Loader2, AlertCircle, CheckCircle, Calendar } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
+import healthService from '../services/healthService'
 
 const RecordCheckupPage = () => {
   const { isDarkMode } = useTheme()
   const navigate = useNavigate()
+  const { user } = useAuth()
   
   const [formData, setFormData] = useState({
     bloodPressureSystolic: '',
@@ -264,9 +267,26 @@ const RecordCheckupPage = () => {
     setIsAnalyzing(false)
   }
 
-  const handleSaveCheckup = () => {
-    alert('Health checkup record saved successfully!')
-    navigate('/health')
+  const handleSaveCheckup = async () => {
+    try {
+      // Save the health record with all the data
+      const recordData = {
+        userId: user?.id,
+        userName: user?.fullName,
+        userPurok: user?.purok,
+        formData,
+        healthAssessment,
+        recordedBy: user?.fullName
+      }
+
+      await healthService.createHealthRecord(recordData)
+      
+      alert('Health checkup record saved successfully!')
+      navigate('/health')
+    } catch (error) {
+      console.error('Error saving health record:', error)
+      alert('Failed to save health record. Please try again.')
+    }
   }
 
   const handleScheduleAppointment = () => {

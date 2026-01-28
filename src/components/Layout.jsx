@@ -4,12 +4,14 @@ import { Home, Calendar, Heart, Package, Bell, X, AlertCircle } from 'lucide-rea
 import NotificationDropdown from './NotificationDropdown'
 import ProfileSidebar from './ProfileSidebar'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 
 const Layout = ({ children }) => {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileSidebar, setShowProfileSidebar] = useState(false)
   const location = useLocation()
   const { isDarkMode } = useTheme()
+  const { user } = useAuth()
 
   const isActive = (path) => location.pathname === path
 
@@ -33,7 +35,9 @@ const Layout = ({ children }) => {
                 isDarkMode ? 'bg-blue-800' : 'bg-white'
               } rounded-full flex items-center justify-center hover:scale-105 transition-transform duration-200`}
             >
-              <span className={`${isDarkMode ? 'text-blue-200' : 'text-blue-600'} font-bold text-lg`}>S</span>
+              <span className={`${isDarkMode ? 'text-blue-200' : 'text-blue-600'} font-bold text-lg`}>
+                {user?.fullName?.charAt(0).toUpperCase() || 'U'}
+              </span>
             </button>
             <div>
               <h1 className="font-bold text-lg">SmartCo</h1>

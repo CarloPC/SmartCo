@@ -1,16 +1,19 @@
 import { useNavigate } from 'react-router-dom'
 import { X, User, Settings, Bell, Shield, LogOut, ChevronRight, Moon, Sun, HelpCircle, Info } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 
 const ProfileSidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate()
   const { isDarkMode, toggleTheme } = useTheme()
-  // Mock user data - replace with actual user data later
+  const { user, logout } = useAuth()
+  
+  // Use actual user data from auth context
   const userData = {
-    name: 'Juan Dela Cruz',
-    email: 'juan.delacruz@smartco.ph',
-    role: 'Barangay Official',
-    purok: 'Purok 3',
+    name: user?.fullName || 'User',
+    email: user?.email || '',
+    role: user?.role || 'Resident',
+    purok: user?.purok || '',
     avatar: null
   }
 
@@ -35,7 +38,8 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
-      // In real app, clear session/tokens
+      logout()
+      onClose()
       navigate('/')
     }
   }

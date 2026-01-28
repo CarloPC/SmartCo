@@ -1,12 +1,17 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, Loader2, CheckCircle } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
+import { useAuth } from '../context/AuthContext'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
+  const { register } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -18,16 +23,48 @@ const RegisterPage = () => {
     acceptTerms: false
   })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // TODO: Add registration logic here
+    setError('')
+    setSuccess(false)
+
+    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match!')
+      setError('Passwords do not match!')
       return
     }
-    console.log('Registration attempt:', formData)
-    // Navigate to login after successful registration
-    navigate('/login')
+
+    // Validate password strength
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const result = await register({
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        role: formData.role,
+        purok: formData.purok,
+        password: formData.password
+      })
+
+      if (result.success) {
+        setSuccess(true)
+        setTimeout(() => {
+          navigate('/login')
+        }, 2000)
+      } else {
+        setError(result.error || 'Registration failed. Please try again.')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleChange = (e) => {
@@ -74,6 +111,19 @@ const RegisterPage = () => {
         {/* Register Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-h-[600px] overflow-y-auto">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Register</h2>
+          
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              <p className="text-sm text-green-600">Registration successful! Redirecting to login...</p>
+            </div>
+          )}
           
           <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Full Name */}
@@ -230,9 +280,22 @@ const RegisterPage = () => {
             {/* Register Button */}
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition shadow-lg"
+              disabled={loading || success}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
-              Create Account
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Creating account...</span>
+                </>
+              ) : success ? (
+                <>
+                  <CheckCircle className="w-5 h-5" />
+                  <span>Account created!</span>
+                </>
+              ) : (
+                <span>Create Account</span>
+              )}
             </button>
           </form>
 

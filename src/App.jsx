@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
 import WelcomePage from './pages/WelcomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -30,67 +31,81 @@ function App() {
         <Route
           path="/home"
           element={
-            <Layout>
-              <HomePage />
-            </Layout>
+            <ProtectedRoute>
+              <Layout>
+                <HomePage />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/health"
           element={
-            <Layout>
-              <HealthPage />
-            </Layout>
+            <ProtectedRoute>
+              <Layout>
+                <HealthPage />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/health/record"
           element={
-            <Layout>
-              <RecordCheckupPage />
-            </Layout>
+            <ProtectedRoute>
+              <Layout>
+                <RecordCheckupPage />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/food-aid"
           element={
-            <Layout>
-              <FoodAidPage />
-            </Layout>
+            <ProtectedRoute>
+              <Layout>
+                <FoodAidPage />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/food-aid/optimize"
           element={
-            <Layout>
-              <OptimizeSchedulePage />
-            </Layout>
+            <ProtectedRoute>
+              <Layout>
+                <OptimizeSchedulePage />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/events"
           element={
-            <Layout>
-              <EventsPage />
-            </Layout>
+            <ProtectedRoute>
+              <Layout>
+                <EventsPage />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/events/create"
           element={
-            <Layout>
-              <CreateEventPage />
-            </Layout>
+            <ProtectedRoute>
+              <Layout>
+                <CreateEventPage />
+              </Layout>
+            </ProtectedRoute>
           }
         />
 
         {/* Profile & Settings Routes */}
-        <Route path="/profile" element={<MyProfilePage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/privacy-security" element={<PrivacySecurityPage />} />
-        <Route path="/help-support" element={<HelpSupportPage />} />
-        <Route path="/about" element={<AboutPage />} />
+        <Route path="/profile" element={<ProtectedRoute><MyProfilePage /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+        <Route path="/privacy-security" element={<ProtectedRoute><PrivacySecurityPage /></ProtectedRoute>} />
+        <Route path="/help-support" element={<ProtectedRoute><HelpSupportPage /></ProtectedRoute>} />
+        <Route path="/about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
 
         {/* Redirect to welcome if no match */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Sparkles, Calendar, Clock, MapPin, Users, FileText, Tag, TrendingUp, ArrowLeft, Loader2, AlertCircle, CloudSun } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
+import eventsService from '../services/eventsService'
 
 const EVENT_CATEGORIES = ['Sports', 'Health', 'Community Service', 'Social', 'Educational']
 const DURATION_OPTIONS = ['30 minutes', '1 hour', '2 hours', '3 hours', '4 hours', 'Half day', 'Full day']
@@ -10,6 +12,7 @@ const DURATION_OPTIONS = ['30 minutes', '1 hour', '2 hours', '3 hours', '4 hours
 const CreateEventPage = () => {
   const { isDarkMode } = useTheme()
   const navigate = useNavigate()
+  const { user } = useAuth()
   
   const [formData, setFormData] = useState({
     title: '',
@@ -86,10 +89,25 @@ const CreateEventPage = () => {
     setIsAnalyzing(false)
   }
 
-  const handleCreateEvent = () => {
-    // In production, this would save to backend
-    alert('Event created successfully!')
-    navigate('/events')
+  const handleCreateEvent = async () => {
+    try {
+      // Save the event with AI recommendations
+      const eventData = {
+        ...formData,
+        expectedAttendees: parseInt(formData.expectedAttendees) || 0,
+        aiRecommendation,
+        createdBy: user?.fullName,
+        createdById: user?.id
+      }
+
+      await eventsService.createEvent(eventData)
+      
+      alert('Event created successfully!')
+      navigate('/events')
+    } catch (error) {
+      console.error('Error creating event:', error)
+      alert('Failed to create event. Please try again.')
+    }
   }
 
   const formatTime = (time) => {

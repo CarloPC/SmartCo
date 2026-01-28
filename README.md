@@ -1,18 +1,50 @@
-# Download or Clone
-## This is just all FrontEnd, No database/ Backend All FRONTEND
-## Get started
+# SmartCo - Barangay Management System
 
-1. Install dependencies
+> **AI-Powered Community Management for Modern Barangays**
 
+## 🌟 Features
+
+- ✅ **Authentication System** - Secure login/register with protected routes
+- ✅ **Health Management** - AI-powered health checkup analysis and recommendations
+- ✅ **Event Management** - AI-optimized event scheduling with weather forecasts
+- ✅ **Food Aid Distribution** - Smart scheduling and route optimization
+- ✅ **Analytics Dashboard** - Real-time charts and statistics
+- ✅ **Dark Mode** - Beautiful dark/light theme support
+- ✅ **Responsive Design** - Works on all devices
+- ✅ **Data Persistence** - All data saved locally (ready for backend integration)
+
+## 🚀 Quick Start
+
+1. **Install dependencies**
    ```bash
    npm install 
    ```
 
-2. Start the app
-
+2. **Start the app**
    ```bash
-    npm run dev
+   npm run dev
    ```
+
+3. **Login with demo account**
+   - Email: `juan@smartco.ph`
+   - Password: `password123`
+
+## 📝 Demo Accounts
+
+| Email | Password | Role |
+|-------|----------|------|
+| juan@smartco.ph | password123 | Barangay Official |
+| maria@smartco.ph | password123 | Health Worker |
+| pedro@smartco.ph | password123 | Volunteer |
+
+## 📖 Documentation
+
+See [BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md) for detailed documentation on:
+- Authentication system
+- Data services
+- API integration guide
+- Security considerations
+- How to connect to real backend
 
 
 
