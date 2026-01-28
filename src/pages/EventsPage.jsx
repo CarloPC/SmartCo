@@ -1,17 +1,42 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, MapPin, Users, Plus } from 'lucide-react'
+import { Calendar, MapPin, Users, Plus, Loader2 } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
-
-const upcomingEvents = [
-  { id: 1, title: 'Basketball Tournament', date: '2026-01-18', location: 'Barangay Court', participants: 32 },
-  { id: 2, title: 'Health Check-up Drive', date: '2026-01-20', location: 'Barangay Hall', participants: 45 },
-  { id: 3, title: 'Community Clean-up', date: '2026-01-25', location: 'All Puroks', participants: 78 }
-]
+import eventsService from '../services/eventsService'
 
 const EventsPage = () => {
   const { isDarkMode } = useTheme()
   const navigate = useNavigate()
+  
+  const [upcomingEvents, setUpcomingEvents] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setIsLoading(true)
+        
+        // Fetch upcoming events
+        const events = await eventsService.getUpcomingEvents()
+        
+        // Format events with participant count from attendees array
+        const formattedEvents = events.map(event => ({
+          ...event,
+          location: event.venue,
+          participants: event.attendees?.length || event.expectedAttendees || 0
+        }))
+        
+        setUpcomingEvents(formattedEvents)
+      } catch (error) {
+        console.error('Error fetching events:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchEvents()
+  }, [])
 
   return (
     <div className="min-h-screen relative">
@@ -40,52 +65,76 @@ const EventsPage = () => {
           <p className={isDarkMode ? 'text-purple-200' : 'text-purple-100'}>Manage sports and community activities</p>
         </div>
 
-        <div className="space-y-3">
-          {upcomingEvents.map(event => (
-            <div key={event.id} className={`${
-              isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'
-            } backdrop-blur-lg rounded-lg shadow-xl border p-4 hover:shadow-2xl transition`}>
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{event.title}</h4>
-                  <div className="space-y-1">
-                    <div className={`flex items-center space-x-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      <Calendar className="w-4 h-4" />
-                      <span>{event.date}</span>
-                    </div>
-                    <div className={`flex items-center space-x-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      <MapPin className="w-4 h-4" />
-                      <span>{event.location}</span>
-                    </div>
-                    <div className={`flex items-center space-x-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      <Users className="w-4 h-4" />
-                      <span>{event.participants} participants</span>
+        {isLoading ? (
+          <div className={`${
+            isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'
+          } backdrop-blur-lg rounded-lg p-8 border text-center shadow-lg`}>
+            <Loader2 className={`w-8 h-8 animate-spin mx-auto ${
+              isDarkMode ? 'text-purple-400' : 'text-purple-500'
+            }`} />
+            <p className={`mt-3 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              Loading events...
+            </p>
+          </div>
+        ) : upcomingEvents.length > 0 ? (
+          <div className="space-y-3">
+            {upcomingEvents.map(event => (
+              <div key={event.id} className={`${
+                isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'
+              } backdrop-blur-lg rounded-lg shadow-xl border p-4 hover:shadow-2xl transition`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{event.title}</h4>
+                    <div className="space-y-1">
+                      <div className={`flex items-center space-x-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <Calendar className="w-4 h-4" />
+                        <span>{event.date}</span>
+                      </div>
+                      <div className={`flex items-center space-x-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <MapPin className="w-4 h-4" />
+                        <span>{event.location}</span>
+                      </div>
+                      <div className={`flex items-center space-x-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <Users className="w-4 h-4" />
+                        <span>{event.participants} participants</span>
+                      </div>
                     </div>
                   </div>
+                  <button className={`font-medium text-sm ${
+                    isDarkMode ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-700'
+                  }`}>Manage</button>
                 </div>
-                <button className={`font-medium text-sm ${
-                  isDarkMode ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-700'
-                }`}>Manage</button>
+                <div className="flex space-x-2">
+                  <button className={`flex-1 font-medium py-2 rounded-lg text-sm transition ${
+                    isDarkMode 
+                      ? 'bg-purple-950/50 hover:bg-purple-900/70 text-purple-300' 
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-700'
+                  }`}>
+                    View Details
+                  </button>
+                  <button className={`flex-1 font-medium py-2 rounded-lg text-sm transition ${
+                    isDarkMode 
+                      ? 'bg-gray-800 hover:bg-gray-700 text-gray-300' 
+                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                  }`}>
+                    Notify
+                  </button>
+                </div>
               </div>
-              <div className="flex space-x-2">
-                <button className={`flex-1 font-medium py-2 rounded-lg text-sm transition ${
-                  isDarkMode 
-                    ? 'bg-purple-950/50 hover:bg-purple-900/70 text-purple-300' 
-                    : 'bg-purple-50 hover:bg-purple-100 text-purple-700'
-                }`}>
-                  View Details
-                </button>
-                <button className={`flex-1 font-medium py-2 rounded-lg text-sm transition ${
-                  isDarkMode 
-                    ? 'bg-gray-800 hover:bg-gray-700 text-gray-300' 
-                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                }`}>
-                  Notify
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`${
+            isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'
+          } backdrop-blur-lg rounded-lg shadow-xl border p-6 text-center`}>
+            <Calendar className={`w-12 h-12 mx-auto mb-3 ${
+              isDarkMode ? 'text-gray-600' : 'text-gray-400'
+            }`} />
+            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              No upcoming events
+            </p>
+          </div>
+        )}
 
         <button 
           onClick={() => navigate('/events/create')}

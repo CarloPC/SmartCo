@@ -270,8 +270,8 @@ const RecordCheckupPage = () => {
   const handleSaveCheckup = async () => {
     try {
       // Save the health record with all the data
+      // Don't pass userId - the service will add it from auth.currentUser
       const recordData = {
-        userId: user?.id,
         userName: user?.fullName,
         userPurok: user?.purok,
         formData,
@@ -279,7 +279,9 @@ const RecordCheckupPage = () => {
         recordedBy: user?.fullName
       }
 
-      await healthService.createHealthRecord(recordData)
+      console.log('Saving health record with data:', recordData)
+      const result = await healthService.createHealthRecord(recordData)
+      console.log('Health record saved successfully:', result)
       
       alert('Health checkup record saved successfully!')
       navigate('/health')

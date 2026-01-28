@@ -3,12 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { Sparkles, Calendar, Users, MapPin, TrendingUp, ArrowLeft, Loader2 } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
+import foodAidService from '../services/foodAidService'
 
 const PUROKS = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5']
 
 const OptimizeSchedulePage = () => {
   const { isDarkMode } = useTheme()
   const navigate = useNavigate()
+  const { user } = useAuth()
   
   const [formData, setFormData] = useState({
     selectedPuroks: [],
@@ -71,10 +74,35 @@ const OptimizeSchedulePage = () => {
     setIsAnalyzing(false)
   }
 
-  const handleSaveSchedule = () => {
-    // In production, this would save to backend
-    alert('Schedule saved successfully!')
-    navigate('/food-aid')
+  const handleSaveSchedule = async () => {
+    try {
+      if (!analysisResult) {
+        alert('Please analyze the schedule first')
+        return
+      }
+
+      // Save all schedules to Firebase
+      const savePromises = analysisResult.schedules.map(schedule => 
+        foodAidService.createFoodAidSchedule({
+          purok: schedule.purok,
+          date: schedule.date,
+          timeSlot: schedule.timeSlot,
+          totalFamilies: schedule.families,
+          route: schedule.route,
+          efficiencyScore: schedule.efficiencyScore,
+          notes: formData.notes,
+          createdByName: user?.fullName
+        })
+      )
+
+      await Promise.all(savePromises)
+      
+      alert('Optimized schedule saved successfully!')
+      navigate('/food-aid')
+    } catch (error) {
+      console.error('Error saving schedule:', error)
+      alert('Failed to save schedule. Please try again.')
+    }
   }
 
   return (

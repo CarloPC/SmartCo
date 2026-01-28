@@ -1,34 +1,62 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit2, Save, X, Trash2, Plus, User, Mail, Phone, MapPin, Briefcase } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Trash2, User, Mail, Phone, MapPin, Briefcase, Loader } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
+import authService from '../services/authService'
 
 const MyProfilePage = () => {
   const navigate = useNavigate()
   const { isDarkMode } = useTheme()
+  const { user, updateUser, logout } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   
-  // Mock user data - in real app, fetch from backend
-  const [userData, setUserData] = useState({
-    id: 1,
-    name: 'Juan Dela Cruz',
-    email: 'juan.delacruz@smartco.ph',
-    phone: '+63 912 345 6789',
-    role: 'Barangay Official',
-    purok: 'Purok 3',
-    address: 'Toledo City, Cebu',
-    dateJoined: '2026-01-01'
-  })
+  // User data from Firebase
+  const [userData, setUserData] = useState(null)
+  const [editedData, setEditedData] = useState(null)
 
-  const [editedData, setEditedData] = useState({ ...userData })
+  // Fetch user data on mount
+  useEffect(() => {
+    if (user) {
+      setUserData(user)
+      setEditedData(user)
+    }
+  }, [user])
 
-  const handleSave = () => {
-    // In real app, send PUT request to backend
-    setUserData(editedData)
-    setIsEditing(false)
-    alert('Profile updated successfully!')
+  const handleSave = async () => {
+    if (!userData || !editedData) return
+
+    try {
+      setSaving(true)
+
+      // Prepare updates (exclude fields that shouldn't change)
+      const updates = {
+        fullName: editedData.fullName,
+        phone: editedData.phone,
+        role: editedData.role,
+        purok: editedData.purok
+      }
+
+      // Update in Firebase
+      await authService.updateProfile(userData.id, updates)
+
+      // Update local state and context
+      const updatedUser = { ...userData, ...updates }
+      setUserData(updatedUser)
+      updateUser(updates)
+      setIsEditing(false)
+
+      alert('✅ Profile updated successfully!')
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      alert('❌ Failed to update profile: ' + error.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleCancel = () => {
@@ -36,15 +64,32 @@ const MyProfilePage = () => {
     setIsEditing(false)
   }
 
-  const handleDelete = () => {
-    // In real app, send DELETE request to backend
-    alert('Account deleted successfully!')
-    // Navigate to login or welcome page
-    navigate('/')
+  const handleDelete = async () => {
+    // Note: Deleting Firebase Auth users requires re-authentication
+    // For now, just logout and show message
+    alert('⚠️ Account deletion requires contacting administrator.')
+    setShowDeleteConfirm(false)
+    
+    // Optional: Implement full deletion with re-authentication
+    // await authService.deleteAccount()
+    // logout()
+    // navigate('/')
   }
 
   const handleInputChange = (field, value) => {
     setEditedData({ ...editedData, [field]: value })
+  }
+
+  // Show loading state while fetching user data
+  if (!userData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="text-white">Loading profile...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -75,19 +120,13 @@ const MyProfilePage = () => {
           {/* Avatar Section */}
           <div className="flex flex-col items-center mb-6">
             <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-4xl mb-3 shadow-lg">
-              {userData.name.charAt(0)}
+              {userData.fullName?.charAt(0) || 'U'}
             </div>
-            {isEditing && (
-              <button className="text-blue-600 text-sm font-medium hover:text-blue-700 flex items-center space-x-1">
-                <Plus className="w-4 h-4" />
-                <span>Change Photo</span>
-              </button>
-            )}
           </div>
 
           {/* Profile Information */}
           <div className="space-y-4">
-            {/* Name */}
+            {/* Full Name */}
             <div>
               <label className={`flex items-center space-x-2 text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 <User className="w-4 h-4" />
@@ -96,31 +135,28 @@ const MyProfilePage = () => {
               {isEditing ? (
                 <input
                   type="text"
-                  value={editedData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  value={editedData.fullName}
+                  onChange={(e) => handleInputChange('fullName', e.target.value)}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                  placeholder="Enter your full name"
                 />
               ) : (
-                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.name}</p>
+                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>
+                  {userData.fullName || 'Not set'}
+                </p>
               )}
             </div>
 
-            {/* Email */}
+            {/* Email (Read-only) */}
             <div>
               <label className={`flex items-center space-x-2 text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 <Mail className="w-4 h-4" />
                 <span>Email Address</span>
               </label>
-              {isEditing ? (
-                <input
-                  type="email"
-                  value={editedData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-              ) : (
-                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.email}</p>
-              )}
+              <div className={`font-medium px-4 py-3 rounded-lg flex items-center justify-between ${isDarkMode ? 'text-gray-400 bg-gray-700/30' : 'text-gray-600 bg-gray-100'}`}>
+                <span>{userData.email}</span>
+                <span className="text-xs opacity-60">Cannot be changed</span>
+              </div>
             </div>
 
             {/* Phone */}
@@ -135,9 +171,12 @@ const MyProfilePage = () => {
                   value={editedData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                  placeholder="+63 XXX XXX XXXX"
                 />
               ) : (
-                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.phone}</p>
+                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>
+                  {userData.phone || 'Not set'}
+                </p>
               )}
             </div>
 
@@ -153,13 +192,19 @@ const MyProfilePage = () => {
                   onChange={(e) => handleInputChange('role', e.target.value)}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
-                  <option>Barangay Official</option>
-                  <option>Health Worker</option>
-                  <option>Volunteer</option>
-                  <option>Resident</option>
+                  <option value="official">Barangay Official</option>
+                  <option value="health">Health Worker</option>
+                  <option value="volunteer">Volunteer</option>
+                  <option value="resident">Resident</option>
                 </select>
               ) : (
-                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.role}</p>
+                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>
+                  {userData.role === 'official' && 'Barangay Official'}
+                  {userData.role === 'health' && 'Health Worker'}
+                  {userData.role === 'volunteer' && 'Volunteer'}
+                  {userData.role === 'resident' && 'Resident'}
+                  {!userData.role && 'Not set'}
+                </p>
               )}
             </div>
 
@@ -175,44 +220,30 @@ const MyProfilePage = () => {
                   onChange={(e) => handleInputChange('purok', e.target.value)}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 >
-                  <option>Purok 1</option>
-                  <option>Purok 2</option>
-                  <option>Purok 3</option>
-                  <option>Purok 4</option>
-                  <option>Purok 5</option>
+                  <option value="Purok 1">Purok 1</option>
+                  <option value="Purok 2">Purok 2</option>
+                  <option value="Purok 3">Purok 3</option>
+                  <option value="Purok 4">Purok 4</option>
+                  <option value="Purok 5">Purok 5</option>
                 </select>
               ) : (
-                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.purok}</p>
+                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>
+                  {userData.purok || 'Not set'}
+                </p>
               )}
             </div>
 
-            {/* Address */}
+            {/* Member Since */}
             <div>
-              <label className={`flex items-center space-x-2 text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                <MapPin className="w-4 h-4" />
-                <span>Address</span>
+              <label className={`text-sm font-medium mb-2 block ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Member Since
               </label>
-              {isEditing ? (
-                <textarea
-                  value={editedData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  rows="2"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                />
-              ) : (
-                <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>{userData.address}</p>
-              )}
-            </div>
-
-            {/* Date Joined */}
-            <div>
-              <label className={`text-sm font-medium mb-2 block ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Member Since</label>
               <p className={`font-medium px-4 py-3 rounded-lg ${isDarkMode ? 'text-gray-200 bg-gray-700/50' : 'text-gray-800 bg-gray-50'}`}>
-                {new Date(userData.dateJoined).toLocaleDateString('en-US', { 
+                {userData.createdAt ? new Date(userData.createdAt).toLocaleDateString('en-US', { 
                   year: 'numeric', 
                   month: 'long', 
                   day: 'numeric' 
-                })}
+                }) : 'Unknown'}
               </p>
             </div>
           </div>
@@ -223,13 +254,24 @@ const MyProfilePage = () => {
               <>
                 <button
                   onClick={handleSave}
-                  className="w-full flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-xl transition shadow-lg"
+                  disabled={saving}
+                  className="w-full flex items-center justify-center space-x-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition shadow-lg"
                 >
-                  <Save className="w-5 h-5" />
-                  <span>Save Changes</span>
+                  {saving ? (
+                    <>
+                      <Loader className="w-5 h-5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={handleCancel}
+                  disabled={saving}
                   className={`w-full flex items-center justify-center space-x-2 font-semibold py-3 rounded-xl transition ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
                 >
                   <X className="w-5 h-5" />

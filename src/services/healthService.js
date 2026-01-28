@@ -7,17 +7,35 @@ class HealthService {
     try {
       const userId = auth.currentUser?.uid
       if (!userId) {
+        console.log('No authenticated user for health records')
         return []
       }
 
-      const q = query(
-        collection(db, 'healthRecords'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
-      )
+      let snapshot
+      try {
+        // Try with orderBy first (requires composite index)
+        const q = query(
+          collection(db, 'healthRecords'),
+          where('userId', '==', userId),
+          orderBy('createdAt', 'desc')
+        )
+        snapshot = await getDocs(q)
+      } catch (error) {
+        console.log('orderBy failed, trying without it:', error.message)
+        // If orderBy fails (no index), fetch without it and sort in memory
+        const q = query(
+          collection(db, 'healthRecords'),
+          where('userId', '==', userId)
+        )
+        snapshot = await getDocs(q)
+      }
 
-      const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const records = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      
+      console.log('Total health records:', records.length)
+      return records
     } catch (error) {
       console.error('Error fetching health records:', error)
       return []
@@ -42,7 +60,10 @@ class HealthService {
   async createHealthRecord(recordData) {
     try {
       const userId = auth.currentUser?.uid
+      console.log('Creating health record for userId:', userId)
+      
       if (!userId) {
+        console.error('No authenticated user found')
         throw new Error('User not authenticated')
       }
 
@@ -53,8 +74,12 @@ class HealthService {
         updatedAt: new Date().toISOString()
       }
 
+      console.log('Health record to be saved:', { ...newRecord, formData: 'hidden for brevity' })
+
       const docRef = await addDoc(collection(db, 'healthRecords'), newRecord)
       const record = { id: docRef.id, ...newRecord }
+
+      console.log('Health record saved with ID:', docRef.id)
 
       // Create a notification for the new health record
       await this._createHealthNotification(record)
@@ -96,6 +121,7 @@ class HealthService {
     try {
       const userId = auth.currentUser?.uid
       if (!userId) {
+        console.log('No authenticated user found')
         return { total: 0, today: 0, thisWeek: 0, emergencies: 0 }
       }
 
@@ -106,6 +132,8 @@ class HealthService {
 
       const snapshot = await getDocs(q)
       const records = snapshot.docs.map(doc => doc.data())
+      
+      console.log('Health records found:', records.length)
       
       // Calculate stats
       const today = new Date()
@@ -136,6 +164,68 @@ class HealthService {
     } catch (error) {
       console.error('Error fetching health stats:', error)
       return { total: 0, today: 0, thisWeek: 0, emergencies: 0 }
+    }
+  }
+
+  async getRecentHealthAlerts(limit = 5) {
+    try {
+      const userId = auth.currentUser?.uid
+      if (!userId) {
+        console.log('No authenticated user for health alerts')
+        return []
+      }
+
+      let snapshot
+      try {
+        // Try with orderBy first (requires composite index)
+        const q = query(
+          collection(db, 'healthRecords'),
+          where('userId', '==', userId),
+          orderBy('createdAt', 'desc')
+        )
+        snapshot = await getDocs(q)
+      } catch (error) {
+        console.log('orderBy failed, trying without it:', error.message)
+        // If orderBy fails (no index), fetch without it and sort in memory
+        const q = query(
+          collection(db, 'healthRecords'),
+          where('userId', '==', userId)
+        )
+        snapshot = await getDocs(q)
+      }
+
+      const records = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, limit)
+      
+      console.log('Health alerts found:', records.length)
+
+      return records.map(record => {
+        const assessment = record.healthAssessment
+        let type = 'Checkup'
+        let urgent = false
+
+        if (assessment?.overallStatus === 'critical') {
+          type = 'Emergency'
+          urgent = true
+        } else if (assessment?.overallStatus === 'concerning') {
+          type = 'Alert'
+          urgent = false
+        }
+
+        return {
+          id: record.id,
+          type,
+          message: assessment?.vitalsSummary || 'Health checkup completed',
+          createdAt: record.createdAt,
+          urgent,
+          recordedBy: record.recordedBy || 'Health Worker'
+        }
+      })
+    } catch (error) {
+      console.error('Error fetching recent health alerts:', error)
+      return []
     }
   }
 
