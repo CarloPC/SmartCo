@@ -25,18 +25,6 @@
    npm run dev
    ```
 
-3. **Login with demo account**
-   - Email: `juan@smartco.ph`
-   - Password: `password123`
-
-## 📝 Demo Accounts
-
-| Email | Password | Role |
-|-------|----------|------|
-| juan@smartco.ph | password123 | Barangay Official |
-| maria@smartco.ph | password123 | Health Worker |
-| pedro@smartco.ph | password123 | Volunteer |
-
 ## 📖 Documentation
 
 See [BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md) for detailed documentation on:
