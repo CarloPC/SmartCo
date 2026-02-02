@@ -1,5 +1,6 @@
 import { collection, getDocs, getDoc, doc, updateDoc, query, where, orderBy } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
+import notificationService from './notificationService'
 
 class AdminService {
   // Check if current user is admin or barangay official
@@ -126,7 +127,18 @@ class AdminService {
         throw new Error('User not authenticated')
       }
 
+      // Get the health record to find the user
       const docRef = doc(db, 'healthRecords', recordId)
+      const recordSnap = await getDoc(docRef)
+      
+      if (!recordSnap.exists()) {
+        throw new Error('Health record not found')
+      }
+
+      const record = recordSnap.data()
+      console.log('📋 [AdminService] Approving health record:', { recordId, record })
+      
+      // Update the record
       await updateDoc(docRef, {
         approvalStatus: 'approved',
         approvedBy: userId,
@@ -134,9 +146,25 @@ class AdminService {
         updatedAt: new Date().toISOString()
       })
 
+      // Create notification for the user
+      if (record.userId) {
+        console.log('🔔 [AdminService] Creating approval notification for user:', record.userId)
+        const result = await notificationService.createNotification({
+          userId: record.userId,
+          type: 'success',
+          category: 'health',
+          message: 'Your health record has been approved by the barangay official.',
+          relatedId: recordId,
+          relatedType: 'healthRecord'
+        })
+        console.log('✅ [AdminService] Notification created:', result)
+      } else {
+        console.warn('⚠️ [AdminService] No userId found in health record')
+      }
+
       return { success: true }
     } catch (error) {
-      console.error('Error approving health record:', error)
+      console.error('❌ [AdminService] Error approving health record:', error)
       throw new Error('Failed to approve health record')
     }
   }
@@ -149,7 +177,18 @@ class AdminService {
         throw new Error('User not authenticated')
       }
 
+      // Get the health record to find the user
       const docRef = doc(db, 'healthRecords', recordId)
+      const recordSnap = await getDoc(docRef)
+      
+      if (!recordSnap.exists()) {
+        throw new Error('Health record not found')
+      }
+
+      const record = recordSnap.data()
+      console.log('📋 [AdminService] Rejecting health record:', { recordId, record, reason })
+
+      // Update the record
       await updateDoc(docRef, {
         approvalStatus: 'rejected',
         rejectedBy: userId,
@@ -158,9 +197,29 @@ class AdminService {
         updatedAt: new Date().toISOString()
       })
 
+      // Create notification for the user
+      if (record.userId) {
+        const message = reason 
+          ? `Your health record has been rejected. Reason: ${reason}`
+          : 'Your health record has been rejected by the barangay official.'
+        
+        console.log('🔔 [AdminService] Creating rejection notification for user:', record.userId)
+        const result = await notificationService.createNotification({
+          userId: record.userId,
+          type: 'error',
+          category: 'health',
+          message,
+          relatedId: recordId,
+          relatedType: 'healthRecord'
+        })
+        console.log('✅ [AdminService] Notification created:', result)
+      } else {
+        console.warn('⚠️ [AdminService] No userId found in health record')
+      }
+
       return { success: true }
     } catch (error) {
-      console.error('Error rejecting health record:', error)
+      console.error('❌ [AdminService] Error rejecting health record:', error)
       throw new Error('Failed to reject health record')
     }
   }
@@ -199,7 +258,18 @@ class AdminService {
         throw new Error('User not authenticated')
       }
 
+      // Get the food aid schedule to find the user
       const docRef = doc(db, 'foodAid', scheduleId)
+      const scheduleSnap = await getDoc(docRef)
+      
+      if (!scheduleSnap.exists()) {
+        throw new Error('Food aid schedule not found')
+      }
+
+      const schedule = scheduleSnap.data()
+      console.log('📋 [AdminService] Approving food aid schedule:', { scheduleId, schedule })
+
+      // Update the schedule
       await updateDoc(docRef, {
         approvalStatus: 'approved',
         approvedBy: userId,
@@ -207,9 +277,26 @@ class AdminService {
         updatedAt: new Date().toISOString()
       })
 
+      // Create notification for the user (foodAid uses 'createdBy' field)
+      const targetUserId = schedule.userId || schedule.createdBy
+      if (targetUserId) {
+        console.log('🔔 [AdminService] Creating approval notification for user:', targetUserId)
+        const result = await notificationService.createNotification({
+          userId: targetUserId,
+          type: 'success',
+          category: 'food_aid',
+          message: `Your food aid schedule for ${schedule.purok || 'your area'} has been approved.`,
+          relatedId: scheduleId,
+          relatedType: 'foodAid'
+        })
+        console.log('✅ [AdminService] Notification created:', result)
+      } else {
+        console.warn('⚠️ [AdminService] No userId/createdBy found in schedule')
+      }
+
       return { success: true }
     } catch (error) {
-      console.error('Error approving food aid schedule:', error)
+      console.error('❌ [AdminService] Error approving food aid schedule:', error)
       throw new Error('Failed to approve food aid schedule')
     }
   }
@@ -222,7 +309,18 @@ class AdminService {
         throw new Error('User not authenticated')
       }
 
+      // Get the food aid schedule to find the user
       const docRef = doc(db, 'foodAid', scheduleId)
+      const scheduleSnap = await getDoc(docRef)
+      
+      if (!scheduleSnap.exists()) {
+        throw new Error('Food aid schedule not found')
+      }
+
+      const schedule = scheduleSnap.data()
+      console.log('📋 [AdminService] Rejecting food aid schedule:', { scheduleId, schedule, reason })
+
+      // Update the schedule
       await updateDoc(docRef, {
         approvalStatus: 'rejected',
         rejectedBy: userId,
@@ -231,9 +329,30 @@ class AdminService {
         updatedAt: new Date().toISOString()
       })
 
+      // Create notification for the user (foodAid uses 'createdBy' field)
+      const targetUserId = schedule.userId || schedule.createdBy
+      if (targetUserId) {
+        const message = reason 
+          ? `Your food aid schedule for ${schedule.purok || 'your area'} has been rejected. Reason: ${reason}`
+          : `Your food aid schedule for ${schedule.purok || 'your area'} has been rejected.`
+        
+        console.log('🔔 [AdminService] Creating rejection notification for user:', targetUserId)
+        const result = await notificationService.createNotification({
+          userId: targetUserId,
+          type: 'error',
+          category: 'food_aid',
+          message,
+          relatedId: scheduleId,
+          relatedType: 'foodAid'
+        })
+        console.log('✅ [AdminService] Notification created:', result)
+      } else {
+        console.warn('⚠️ [AdminService] No userId/createdBy found in schedule')
+      }
+
       return { success: true }
     } catch (error) {
-      console.error('Error rejecting food aid schedule:', error)
+      console.error('❌ [AdminService] Error rejecting food aid schedule:', error)
       throw new Error('Failed to reject food aid schedule')
     }
   }
@@ -291,7 +410,18 @@ class AdminService {
         throw new Error('User not authenticated')
       }
 
+      // Get the event to find the user
       const docRef = doc(db, 'events', eventId)
+      const eventSnap = await getDoc(docRef)
+      
+      if (!eventSnap.exists()) {
+        throw new Error('Event not found')
+      }
+
+      const event = eventSnap.data()
+      console.log('📋 [AdminService] Approving event:', { eventId, event })
+
+      // Update the event
       await updateDoc(docRef, {
         approvalStatus: 'approved',
         approvedBy: userId,
@@ -299,9 +429,26 @@ class AdminService {
         updatedAt: new Date().toISOString()
       })
 
+      // Create notification for the user (events use 'createdBy' field)
+      const targetUserId = event.userId || event.createdBy
+      if (targetUserId) {
+        console.log('🔔 [AdminService] Creating approval notification for user:', targetUserId)
+        const result = await notificationService.createNotification({
+          userId: targetUserId,
+          type: 'success',
+          category: 'events',
+          message: `Your event "${event.title || 'Event'}" has been approved and scheduled.`,
+          relatedId: eventId,
+          relatedType: 'event'
+        })
+        console.log('✅ [AdminService] Notification created:', result)
+      } else {
+        console.warn('⚠️ [AdminService] No userId/createdBy found in event')
+      }
+
       return { success: true }
     } catch (error) {
-      console.error('Error approving event:', error)
+      console.error('❌ [AdminService] Error approving event:', error)
       throw new Error('Failed to approve event')
     }
   }
@@ -314,7 +461,18 @@ class AdminService {
         throw new Error('User not authenticated')
       }
 
+      // Get the event to find the user
       const docRef = doc(db, 'events', eventId)
+      const eventSnap = await getDoc(docRef)
+      
+      if (!eventSnap.exists()) {
+        throw new Error('Event not found')
+      }
+
+      const event = eventSnap.data()
+      console.log('📋 [AdminService] Rejecting event:', { eventId, event, reason })
+
+      // Update the event
       await updateDoc(docRef, {
         approvalStatus: 'rejected',
         rejectedBy: userId,
@@ -323,9 +481,30 @@ class AdminService {
         updatedAt: new Date().toISOString()
       })
 
+      // Create notification for the user (events use 'createdBy' field)
+      const targetUserId = event.userId || event.createdBy
+      if (targetUserId) {
+        const message = reason 
+          ? `Your event "${event.title || 'Event'}" has been rejected. Reason: ${reason}`
+          : `Your event "${event.title || 'Event'}" has been rejected.`
+        
+        console.log('🔔 [AdminService] Creating rejection notification for user:', targetUserId)
+        const result = await notificationService.createNotification({
+          userId: targetUserId,
+          type: 'error',
+          category: 'events',
+          message,
+          relatedId: eventId,
+          relatedType: 'event'
+        })
+        console.log('✅ [AdminService] Notification created:', result)
+      } else {
+        console.warn('⚠️ [AdminService] No userId/createdBy found in event')
+      }
+
       return { success: true }
     } catch (error) {
-      console.error('Error rejecting event:', error)
+      console.error('❌ [AdminService] Error rejecting event:', error)
       throw new Error('Failed to reject event')
     }
   }

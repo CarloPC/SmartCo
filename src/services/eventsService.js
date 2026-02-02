@@ -98,14 +98,8 @@ class EventsService {
 
       console.log('✅ [createEvent] Event created successfully, ID:', docRef.id)
 
-      // Create notification
-      try {
-        await this._createEventNotification(event, 'created')
-        console.log('✅ [createEvent] Notification created')
-      } catch (notifError) {
-        console.warn('⚠️ [createEvent] Failed to create notification:', notifError)
-        // Don't fail the whole operation if notification fails
-      }
+      // NOTE: Self-notifications removed - users don't need to be notified about their own event creations
+      // Admin notifications will be sent when the event is approved/rejected
 
       return { success: true, event }
     } catch (error) {

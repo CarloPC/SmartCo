@@ -116,17 +116,29 @@ class NotificationService {
 
   async createNotification(notificationData) {
     try {
+      console.log('🔔 [NotificationService] Creating notification with data:', notificationData)
+      
       const newNotification = {
         ...notificationData,
         createdAt: new Date().toISOString(),
         read: false
       }
 
+      console.log('📝 [NotificationService] Notification object to be saved:', newNotification)
+      
       const docRef = await addDoc(collection(db, 'notifications'), newNotification)
+      
+      console.log('✅ [NotificationService] Notification created successfully with ID:', docRef.id)
+      
       return { success: true, notification: { id: docRef.id, ...newNotification } }
     } catch (error) {
-      console.error('Error creating notification:', error)
-      return { success: false }
+      console.error('❌ [NotificationService] Error creating notification:', error)
+      console.error('❌ [NotificationService] Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      })
+      return { success: false, error: error.message }
     }
   }
 }

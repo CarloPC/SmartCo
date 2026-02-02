@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Home, Calendar, Heart, Package, Bell, X, AlertCircle, Shield } from 'lucide-react'
 import NotificationDropdown from './NotificationDropdown'
@@ -6,15 +6,44 @@ import ProfileSidebar from './ProfileSidebar'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import adminService from '../services/adminService'
+import notificationService from '../services/notificationService'
 
 const Layout = ({ children }) => {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileSidebar, setShowProfileSidebar] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const location = useLocation()
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
 
   const isActive = (path) => location.pathname === path
+
+  // Fetch unread count
+  useEffect(() => {
+    fetchUnreadCount()
+    
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  const fetchUnreadCount = async () => {
+    try {
+      const count = await notificationService.getUnreadCount()
+      setUnreadCount(count)
+    } catch (error) {
+      console.error('Error fetching unread count:', error)
+    }
+  }
+
+  const handleNotificationToggle = () => {
+    setShowNotifications(!showNotifications)
+    // Refresh unread count when closing dropdown
+    if (showNotifications) {
+      fetchUnreadCount()
+    }
+  }
 
   return (
     <div className={`max-w-md mx-auto ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'} min-h-screen flex flex-col`}>
@@ -46,15 +75,19 @@ const Layout = ({ children }) => {
             </div>
           </div>
           <button 
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={handleNotificationToggle}
             className={`relative p-2 ${
               isDarkMode ? 'hover:bg-blue-800' : 'hover:bg-blue-500'
             } rounded-lg transition`}
           >
             <Bell className="w-6 h-6" />
-            <span className={`absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 ${
-              isDarkMode ? 'border-blue-900' : 'border-blue-600'
-            }`}></span>
+            {unreadCount > 0 && (
+              <span className={`absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 ${
+                isDarkMode ? 'border-blue-900' : 'border-blue-600'
+              } flex items-center justify-center text-white text-[10px] font-bold px-1`}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
