@@ -13,12 +13,17 @@ const EventsPage = () => {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    console.log('🔄 [EventsPage] Component mounted, fetching events...')
+    
     const fetchEvents = async () => {
       try {
         setIsLoading(true)
         
+        console.log('📋 [EventsPage] Calling eventsService.getEvents()')
         // Fetch all user events (not just upcoming)
         const allEvents = await eventsService.getEvents()
+        
+        console.log(`📋 [EventsPage] Received ${allEvents.length} events from service`)
         
         // Filter for upcoming events (future dates)
         const now = new Date()
@@ -26,6 +31,8 @@ const EventsPage = () => {
           const eventDate = new Date(event.date)
           return eventDate >= now
         }).sort((a, b) => new Date(a.date) - new Date(b.date))
+        
+        console.log(`📋 [EventsPage] Filtered to ${upcoming.length} upcoming events`)
         
         // Format events with participant count from attendees array
         const formattedEvents = upcoming.map(event => ({
@@ -35,8 +42,9 @@ const EventsPage = () => {
         }))
         
         setUpcomingEvents(formattedEvents)
+        console.log('✅ [EventsPage] Events state updated')
       } catch (error) {
-        console.error('Error fetching events:', error)
+        console.error('❌ [EventsPage] Error fetching events:', error)
       } finally {
         setIsLoading(false)
       }

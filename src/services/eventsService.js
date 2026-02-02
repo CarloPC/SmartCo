@@ -7,9 +7,11 @@ class EventsService {
     try {
       const userId = auth.currentUser?.uid
       if (!userId) {
-        console.log('No authenticated user for events')
+        console.log('❌ [getEvents] No authenticated user')
         return []
       }
+
+      console.log('📋 [getEvents] Fetching events for user:', userId)
 
       let snapshot
       try {
@@ -20,23 +22,35 @@ class EventsService {
           orderBy('date', 'desc')
         )
         snapshot = await getDocs(q)
+        console.log(`✅ [getEvents] Query successful (with orderBy), found ${snapshot.docs.length} events`)
       } catch (error) {
-        console.log('orderBy failed, trying without it:', error.message)
+        console.log('⚠️ [getEvents] orderBy failed, trying without it:', error.message)
         // If orderBy fails (no index), fetch without it and sort in memory
         const q = query(
           collection(db, 'events'),
           where('createdBy', '==', userId)
         )
         snapshot = await getDocs(q)
+        console.log(`✅ [getEvents] Query successful (without orderBy), found ${snapshot.docs.length} events`)
       }
 
       const events = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .map(doc => {
+          const data = doc.data()
+          console.log(`📄 Event ID: ${doc.id}, Title: ${data.title}, CreatedBy: ${data.createdBy}`)
+          return { id: doc.id, ...data }
+        })
         .sort((a, b) => new Date(b.date) - new Date(a.date))
 
+      console.log(`✅ [getEvents] Returning ${events.length} events total`)
       return events
     } catch (error) {
-      console.error('Error fetching events:', error)
+      console.error('❌ [getEvents] Error fetching events:', error)
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      })
       return []
     }
   }
@@ -60,29 +74,48 @@ class EventsService {
     try {
       const userId = auth.currentUser?.uid
       if (!userId) {
+        console.error('❌ [createEvent] No authenticated user')
         throw new Error('User not authenticated')
       }
+
+      console.log('📝 [createEvent] Creating event for user:', userId)
+      console.log('📝 [createEvent] Event title:', eventData.title)
 
       const newEvent = {
         ...eventData,
         status: 'upcoming',
         attendees: [],
         approvalStatus: 'pending',
-        createdBy: userId,
+        createdBy: userId,  // This is the Firebase Auth UID
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
 
+      console.log('📝 [createEvent] Event data prepared, createdBy:', newEvent.createdBy)
+
       const docRef = await addDoc(collection(db, 'events'), newEvent)
       const event = { id: docRef.id, ...newEvent }
 
+      console.log('✅ [createEvent] Event created successfully, ID:', docRef.id)
+
       // Create notification
-      await this._createEventNotification(event, 'created')
+      try {
+        await this._createEventNotification(event, 'created')
+        console.log('✅ [createEvent] Notification created')
+      } catch (notifError) {
+        console.warn('⚠️ [createEvent] Failed to create notification:', notifError)
+        // Don't fail the whole operation if notification fails
+      }
 
       return { success: true, event }
     } catch (error) {
-      console.error('Error creating event:', error)
-      throw new Error('Failed to create event')
+      console.error('❌ [createEvent] Error creating event:', error)
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      })
+      throw new Error('Failed to create event: ' + error.message)
     }
   }
 

@@ -514,14 +514,15 @@ const CreateEventPage = () => {
         overallStatus: aiRecommendation.overallStatus,
         
         // Recommendations
-        recommendations: recommendationsList,
+        recommendations: recommendationsList
         
-        // Creator info
-        createdBy: user?.fullName || 'Unknown',
-        createdById: user?.id
+        // NOTE: createdBy will be automatically set by eventsService.createEvent()
+        // to the Firebase Auth UID (auth.currentUser?.uid)
       }
 
-      await eventsService.createEvent(eventData)
+      console.log('Creating event with data:', { ...eventData, createdBy: '(will be set by service)' })
+      const result = await eventsService.createEvent(eventData)
+      console.log('Event created successfully:', result)
       
       alert(`✅ Event created successfully!\n\nSuccess Probability: ${aiRecommendation.successProbability}%\nPredicted Attendance: ${aiRecommendation.attendancePrediction.predicted} people`)
       navigate('/events')
