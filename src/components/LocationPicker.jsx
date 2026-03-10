@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { MapPin, Navigation, AlertCircle, CheckCircle2, Loader2, RotateCcw } from 'lucide-react'
+import { MapPin, Navigation, AlertCircle, CheckCircle2, Loader2, RotateCcw, Truck } from 'lucide-react'
+import { haversineDistance, estimateTravelTime } from '../utils/locationUtils'
 
 // Fix Leaflet default icon broken by Vite bundler
-const pinIcon = L.icon({
+const _pinIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
@@ -15,38 +16,82 @@ const pinIcon = L.icon({
   shadowSize: [41, 41],
 })
 
-// Custom red icon for emergencies
-const emergencyIcon = L.divIcon({
-  html: `<div style="
-    width:32px;height:32px;
-    background:linear-gradient(135deg,#dc2626,#ea580c);
-    border-radius:50% 50% 50% 0;
-    transform:rotate(-45deg);
-    border:3px solid #fff;
-    box-shadow:0 2px 8px rgba(0,0,0,0.4);
-  "></div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
+// Pin 1: Origin / Distribution Hub (blue with home icon)
+const HUB_ICON = L.divIcon({
+  html: `
+    <div style="position:relative;width:36px;height:52px">
+      <div style="
+        width:36px;height:36px;
+        background:linear-gradient(135deg,#3b82f6,#2563eb);
+        border:3px solid white;border-radius:50%;
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 0 0 4px rgba(59,130,246,0.25),0 4px 14px rgba(59,130,246,0.5);
+      ">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <div style="
+        position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);
+        background:#2563eb;color:white;
+        font-size:8px;font-weight:800;padding:2px 5px;border-radius:4px;
+        white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.25);
+      ">📦 ORIGIN</div>
+    </div>
+  `,
   className: '',
+  iconSize: [36, 52],
+  iconAnchor: [18, 18],
 })
 
-// Internal component: listens for map clicks to move the marker
+// Pin 2: Delivery Destination (green teardrop)
+const DEST_ICON = L.divIcon({
+  html: `
+    <div style="position:relative;width:36px;height:52px">
+      <div style="
+        width:32px;height:32px;
+        background:linear-gradient(135deg,#10b981,#059669);
+        border-radius:50% 50% 50% 0;
+        transform:rotate(-45deg);
+        border:3px solid white;
+        box-shadow:0 4px 14px rgba(16,185,129,0.5);
+      "></div>
+      <div style="
+        position:absolute;top:-18px;left:50%;transform:translateX(-50%);
+        background:#059669;color:white;
+        font-size:8px;font-weight:800;padding:2px 5px;border-radius:4px;
+        white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.25);
+      ">📍 DEST</div>
+    </div>
+  `,
+  className: '',
+  iconSize: [32, 52],
+  iconAnchor: [16, 32],
+})
+
+// Auto-fit map bounds to show all pins
+function MapBoundsAutoFit({ positions }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!positions || positions.length === 0) return
+    if (positions.length === 1) {
+      map.setView(positions[0], 15)
+    } else {
+      map.fitBounds(positions, { padding: [50, 50] })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(positions), map])
+  return null
+}
+
+// Listens for map clicks to drop/move the destination pin
 const MapClickHandler = ({ onMapClick }) => {
   useMapEvents({
     click(e) {
       onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng })
     },
   })
-  return null
-}
-
-// Internal component: re-centers map when coords change externally
-const MapAutoCenter = ({ coords, mapRef }) => {
-  useEffect(() => {
-    if (mapRef.current && coords) {
-      mapRef.current.setView([coords.lat, coords.lng], 17)
-    }
-  }, [coords, mapRef])
   return null
 }
 
@@ -60,33 +105,34 @@ const GEO_STATES = {
 /**
  * LocationPicker
  * Props:
- *  - value: { lat, lng } | null
- *  - onChange: (coords: { lat, lng } | null) => void
+ *  - value: { lat, lng } | null          ← destination pin
+ *  - onChange: (coords | null) => void
  *  - isDarkMode: boolean
+ *  - originPin: { lat, lng, name? } | null  ← optional Pin 1 (e.g. Distribution Hub)
+ *  - originLabel: string                 ← label for Pin 1
  */
-const LocationPicker = ({ value, onChange, isDarkMode }) => {
+const LocationPicker = ({ value, onChange, isDarkMode, originPin, originLabel }) => {
   const [geoState, setGeoState] = useState(GEO_STATES.IDLE)
   const [mapRef] = useState(() => ({ current: null }))
 
-  const card = `${isDarkMode
-    ? 'bg-gray-900/95 border-gray-700/50'
-    : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border`
+  // Route info: compute when both origin and destination pins are set
+  const routeInfo = (originPin && value)
+    ? (() => {
+        const distKm = haversineDistance(originPin.lat, originPin.lng, value.lat, value.lng)
+        const travelMin = estimateTravelTime(distKm, 'mixed') // conservative default
+        return { distKm: distKm.toFixed(2), travelMin }
+      })()
+    : null
 
   const requestLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setGeoState(GEO_STATES.DENIED)
-      return
-    }
+    if (!navigator.geolocation) { setGeoState(GEO_STATES.DENIED); return }
     setGeoState(GEO_STATES.REQUESTING)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-        onChange(coords)
+        onChange({ lat: pos.coords.latitude, lng: pos.coords.longitude })
         setGeoState(GEO_STATES.GRANTED)
       },
-      () => {
-        setGeoState(GEO_STATES.DENIED)
-      },
+      () => setGeoState(GEO_STATES.DENIED),
       { enableHighAccuracy: true, timeout: 12000 }
     )
   }, [onChange])
@@ -101,23 +147,27 @@ const LocationPicker = ({ value, onChange, isDarkMode }) => {
     if (geoState === GEO_STATES.IDLE) setGeoState(GEO_STATES.GRANTED)
   }, [onChange, geoState])
 
-  const handleReset = () => {
-    onChange(null)
-    setGeoState(GEO_STATES.IDLE)
-  }
+  const handleReset = () => { onChange(null); setGeoState(GEO_STATES.IDLE) }
 
-  // Default center: Toledo City, Cebu, Philippines
-  const defaultCenter = [10.3770, 123.6410]
-  const mapCenter = value ? [value.lat, value.lng] : defaultCenter
+  // Build positions list for auto-fit bounds
+  const boundsPositions = [
+    ...(originPin ? [[originPin.lat, originPin.lng]] : []),
+    ...(value     ? [[value.lat,     value.lng    ]] : []),
+  ]
+
+  // Default map center: origin hub if available, else Toledo City
+  const defaultCenter = originPin ? [originPin.lat, originPin.lng] : [10.3770, 123.6410]
+  const mapCenter     = value ? [value.lat, value.lng] : defaultCenter
 
   return (
     <div className="space-y-3">
+
       {/* Header row */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <label className={`text-sm font-semibold flex items-center space-x-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-          <MapPin className="w-4 h-4 text-red-500" />
-          <span>Pinpoint Exact Location</span>
-          <span className={`text-xs font-normal ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>(optional but recommended)</span>
+          <MapPin className="w-4 h-4 text-green-500" />
+          <span>Pin the Delivery Destination</span>
+          <span className={`text-xs font-normal ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>(recommended)</span>
         </label>
         {value && (
           <button
@@ -131,16 +181,48 @@ const LocationPicker = ({ value, onChange, isDarkMode }) => {
         )}
       </div>
 
-      {/* Get Location Button */}
-      {geoState === GEO_STATES.IDLE && (
-        <div className={`${isDarkMode ? 'bg-gray-800/60 border-gray-700' : 'bg-gray-50 border-gray-200'} border rounded-xl p-4 text-center space-y-3`}>
-          <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            Click the button to use your device's GPS, or click anywhere on the map below to drop a pin manually.
+      {/* Dual-pin legend — only shown when originPin is provided */}
+      {originPin && (
+        <div className={`flex flex-wrap items-center gap-x-5 gap-y-1.5 px-3 py-2.5 rounded-xl text-xs border ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+          <div className="flex items-center space-x-1.5">
+            <div className="w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white shadow flex-shrink-0" />
+            <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
+              <span className="font-bold">Pin 1 (Origin):</span> {originLabel || 'Distribution Hub'}
+            </span>
           </div>
+          <div className="flex items-center space-x-1.5">
+            <div className="w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white shadow flex-shrink-0" />
+            <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
+              <span className="font-bold">Pin 2 (Destination):</span> {value ? 'Set ✓' : 'Click map to set'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Route distance badge — visible when both pins are set */}
+      {routeInfo && (
+        <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl border ${isDarkMode ? 'bg-blue-950/40 border-blue-800/40' : 'bg-blue-50 border-blue-200'}`}>
+          <div className={`flex items-center space-x-2 text-xs ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+            <Truck className="w-4 h-4 flex-shrink-0" />
+            <span className="font-medium">Estimated route from origin to destination</span>
+          </div>
+          <div className={`flex items-center gap-3 text-xs font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+            <span>🛣 {routeInfo.distKm} km</span>
+            <span className="font-normal opacity-80">~{routeInfo.travelMin} min</span>
+          </div>
+        </div>
+      )}
+
+      {/* GPS button (idle state) */}
+      {geoState === GEO_STATES.IDLE && (
+        <div className={`${isDarkMode ? 'bg-gray-800/60 border-gray-700' : 'bg-gray-50 border-gray-200'} border rounded-xl p-3 text-center space-y-2`}>
+          <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            Use GPS to auto-set your location as the destination, or click anywhere on the map.
+          </p>
           <button
             type="button"
             onClick={requestLocation}
-            className="inline-flex items-center space-x-2 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition shadow-md"
+            className="inline-flex items-center space-x-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition shadow-md"
           >
             <Navigation className="w-4 h-4" />
             <span>Use My Location (GPS)</span>
@@ -149,7 +231,7 @@ const LocationPicker = ({ value, onChange, isDarkMode }) => {
       )}
 
       {geoState === GEO_STATES.REQUESTING && (
-        <div className={`${isDarkMode ? 'bg-blue-950/30 border-blue-800/50' : 'bg-blue-50 border-blue-200'} border rounded-xl p-4 flex items-center space-x-3`}>
+        <div className={`${isDarkMode ? 'bg-blue-950/30 border-blue-800/50' : 'bg-blue-50 border-blue-200'} border rounded-xl p-3 flex items-center space-x-3`}>
           <Loader2 className="w-5 h-5 animate-spin text-blue-500 flex-shrink-0" />
           <div>
             <p className={`text-sm font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>Requesting location…</p>
@@ -159,12 +241,12 @@ const LocationPicker = ({ value, onChange, isDarkMode }) => {
       )}
 
       {geoState === GEO_STATES.DENIED && (
-        <div className={`${isDarkMode ? 'bg-red-950/30 border-red-800/50' : 'bg-red-50 border-red-200'} border rounded-xl p-4 flex items-start space-x-3`}>
+        <div className={`${isDarkMode ? 'bg-red-950/30 border-red-800/50' : 'bg-red-50 border-red-200'} border rounded-xl p-3 flex items-start space-x-3`}>
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className={`text-sm font-semibold ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>Location access denied</p>
             <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`}>
-              You can still drop a pin manually by clicking on the map below.
+              Click on the map below to drop a destination pin manually.
             </p>
           </div>
           <button
@@ -177,12 +259,12 @@ const LocationPicker = ({ value, onChange, isDarkMode }) => {
         </div>
       )}
 
-      {/* Coordinates display */}
+      {/* Destination coordinates display */}
       {value && (
         <div className={`${isDarkMode ? 'bg-green-950/30 border-green-800/50' : 'bg-green-50 border-green-200'} border rounded-xl px-4 py-2.5 flex items-center justify-between flex-wrap gap-2`}>
           <div className="flex items-center space-x-2">
             <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-            <span className={`text-xs font-semibold ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>Pin set</span>
+            <span className={`text-xs font-semibold ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>Destination pin set</span>
           </div>
           <code className={`text-xs font-mono ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
             {value.lat.toFixed(6)}, {value.lng.toFixed(6)}
@@ -193,16 +275,19 @@ const LocationPicker = ({ value, onChange, isDarkMode }) => {
             rel="noreferrer"
             className={`text-xs underline ${isDarkMode ? 'text-green-400 hover:text-green-300' : 'text-green-700 hover:text-green-900'}`}
           >
-            Open in Google Maps ↗
+            Open in Maps ↗
           </a>
         </div>
       )}
 
-      {/* Interactive Map — always visible so user can click to drop pin */}
-      <div className="rounded-xl overflow-hidden border-2 border-red-500/30 shadow-lg" style={{ height: 300 }}>
+      {/* Interactive map — always visible */}
+      <div
+        className="rounded-xl overflow-hidden shadow-lg"
+        style={{ height: 300, border: '2px solid rgba(16,185,129,0.35)' }}
+      >
         <MapContainer
           center={mapCenter}
-          zoom={value ? 17 : 14}
+          zoom={value ? 14 : 13}
           style={{ height: '100%', width: '100%' }}
           whenCreated={(map) => { mapRef.current = map }}
         >
@@ -211,18 +296,44 @@ const LocationPicker = ({ value, onChange, isDarkMode }) => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <MapClickHandler onMapClick={handleMapClick} />
+
+          {/* Auto-fit to show both pins */}
+          {boundsPositions.length > 0 && (
+            <MapBoundsAutoFit positions={boundsPositions} />
+          )}
+
+          {/* Pin 1: Origin hub (blue) — fixed */}
+          {originPin && (
+            <Marker position={[originPin.lat, originPin.lng]} icon={HUB_ICON} />
+          )}
+
+          {/* Route polyline — dashed blue line from origin to destination */}
+          {originPin && value && (
+            <Polyline
+              positions={[[originPin.lat, originPin.lng], [value.lat, value.lng]]}
+              color="#3b82f6"
+              weight={3}
+              dashArray="10, 8"
+              opacity={0.85}
+            />
+          )}
+
+          {/* Pin 2: Destination (green) — draggable */}
           {value && (
             <Marker
               position={[value.lat, value.lng]}
-              icon={emergencyIcon}
+              icon={DEST_ICON}
               draggable={true}
               eventHandlers={{ dragend: handleMarkerDrag }}
             />
           )}
         </MapContainer>
       </div>
+
       <p className={`text-xs text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-        📍 Click on the map to drop a pin, or drag the pin to adjust the location.
+        {originPin
+          ? '🔵 Blue = Distribution Hub (origin)  ·  🟢 Green = Delivery destination. Click map or drag pin to adjust.'
+          : '📍 Click on the map to drop a pin, or drag the pin to adjust the location.'}
       </p>
     </div>
   )

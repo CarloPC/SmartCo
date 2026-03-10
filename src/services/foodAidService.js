@@ -3,6 +3,90 @@ import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
 
 class FoodAidService {
+  // ── Public: all schedules visible to every authenticated user ─────────────
+  async getAllFoodAidSchedules() {
+    try {
+      const snapshot = await getDocs(collection(db, 'foodAid'))
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    } catch (error) {
+      console.error('Error fetching all food aid schedules:', error)
+      return []
+    }
+  }
+
+  // ── Admin / Barangay Official: post a public distribution event ────────────
+  async postDistribution(distributionData) {
+    try {
+      const userId = auth.currentUser?.uid
+      if (!userId) throw new Error('User not authenticated')
+
+      const newDist = {
+        ...distributionData,
+        status:         'scheduled',
+        approvalStatus: 'approved',
+        deliveredFamilies: 0,
+        isPublicPost:   true,
+        createdBy:      userId,
+        createdAt:      new Date().toISOString(),
+        updatedAt:      new Date().toISOString(),
+      }
+
+      const docRef = await addDoc(collection(db, 'foodAid'), newDist)
+      const savedDist = { id: docRef.id, ...newDist }
+      await this._createFoodAidNotification(savedDist, 'scheduled')
+      // Notify residents in the target area (best-effort, non-blocking)
+      this._notifyAreaResidents(distributionData.barangay, distributionData.purok, savedDist)
+      return { success: true, ...savedDist }
+    } catch (error) {
+      console.error('Error posting distribution:', error)
+      throw new Error('Failed to post distribution')
+    }
+  }
+
+  // Broadcast a food aid notification to all residents of a specific purok/barangay
+  async _notifyAreaResidents(barangay, purok, distData) {
+    try {
+      const snapshot = await getDocs(collection(db, 'users'))
+      const allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+      const currentUserId = auth.currentUser?.uid
+
+      // Match residents by purok first; if no purok stored, match all non-admins
+      let targets = allUsers.filter(u =>
+        u.id !== currentUserId &&
+        u.role !== 'admin' &&
+        u.role !== 'barangay_official' &&
+        (purok ? u.purok === purok : true)
+      )
+
+      // If no exact purok matches, fall back to notifying all residents
+      if (targets.length === 0) {
+        targets = allUsers.filter(u =>
+          u.id !== currentUserId &&
+          u.role !== 'admin' &&
+          u.role !== 'barangay_official'
+        )
+      }
+
+      const areaLabel = [purok, barangay].filter(Boolean).join(', ') || 'your area'
+      const message = `🍱 Food Aid Alert: Distribution scheduled at ${areaLabel} on ${distData.date} (${distData.timeSlot || 'Morning'}). ${distData.totalFamilies} families will be served. Open the Food Aid page to view the route and track progress.`
+
+      await Promise.all(
+        targets.map(u =>
+          notificationService.createNotification({
+            userId:    u.id,
+            type:      'info',
+            category:  'foodaid',
+            message,
+            relatedId: distData.id,
+          })
+        )
+      )
+    } catch (err) {
+      console.error('Error notifying area residents:', err)
+      // fail silently — notification is best-effort
+    }
+  }
+
   async getFoodAidSchedules() {
     try {
       const userId = auth.currentUser?.uid

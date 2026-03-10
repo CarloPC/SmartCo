@@ -5,6 +5,7 @@ import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import eventsService from '../services/eventsService'
+import announcementsService from '../services/announcementsService'
 
 const EVENT_CATEGORIES = ['Sports', 'Health', 'Community Service', 'Social', 'Educational']
 const DURATION_OPTIONS = ['30 minutes', '1 hour', '2 hours', '3 hours', '4 hours', 'Half day', 'Full day']
@@ -523,7 +524,33 @@ const CreateEventPage = () => {
       console.log('Creating event with data:', { ...eventData, createdBy: '(will be set by service)' })
       const result = await eventsService.createEvent(eventData)
       console.log('Event created successfully:', result)
-      
+
+      // ── Mirror to Community Board feed so residents can see the event ──
+      try {
+        const feedContent = [
+          formData.description && formData.description.trim(),
+          `📅 Category: ${formData.category}`,
+          formData.duration ? `⏱ Duration: ${formData.duration}` : null,
+          `👥 Expected attendance: ${aiRecommendation.attendancePrediction.predicted} people (${aiRecommendation.attendancePrediction.confidence}% confidence)`,
+          `🤖 AI Success Probability: ${aiRecommendation.successProbability}% — ${aiRecommendation.overallStatus.charAt(0).toUpperCase() + aiRecommendation.overallStatus.slice(1)} conditions`
+        ].filter(Boolean).join('\n')
+
+        await announcementsService.createPost({
+          title: formData.title,
+          content: feedContent,
+          type: 'event',
+          eventDate: formData.date,
+          eventTime: formData.time,
+          eventVenue: formData.venue,
+          authorName: user?.fullName || 'Official',
+          authorRole: user?.role || 'barangay_official'
+        })
+        console.log('✅ Event mirrored to Community Board feed')
+      } catch (feedErr) {
+        // Non-fatal — event itself was created successfully
+        console.warn('⚠️ Could not mirror event to feed:', feedErr.message)
+      }
+
       alert(`✅ Event created successfully!\n\nSuccess Probability: ${aiRecommendation.successProbability}%\nPredicted Attendance: ${aiRecommendation.attendancePrediction.predicted} people`)
       navigate('/events')
     } catch (error) {

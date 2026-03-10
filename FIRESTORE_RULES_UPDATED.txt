@@ -1,5 +1,7 @@
 // UPDATED FIRESTORE RULES - Copy these to your Firebase Console
-// Includes Emergency, Fake Report, User Suspension, and Notification rules
+// Includes Emergency, Fake Report, User Suspension, Notification rules
+// and FIXED Food Aid rules so residents can view distributions
+// + NEW Announcements collection rules for Community Board (Events feed)
 
 rules_version = '2';
 service cloud.firestore {
@@ -58,10 +60,11 @@ service cloud.firestore {
     }
 
     // ─── Food Aid ────────────────────────────────────────────────────────────
+    // FIX: All authenticated users can READ food aid distributions.
+    // Food aid schedules are community/public information — residents need to see
+    // upcoming distributions, progress, and schedule posted by barangay officials.
     match /foodAid/{scheduleId} {
-      allow read: if isAuthenticated() && (
-        resource.data.createdBy == request.auth.uid || isAdmin()
-      );
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
       allow update: if isAuthenticated() && (
         (resource.data.createdBy == request.auth.uid && resource.data.approvalStatus == 'pending') ||
@@ -87,6 +90,45 @@ service cloud.firestore {
         (resource.data.createdBy == request.auth.uid && resource.data.approvalStatus == 'pending') ||
         isAdmin()
       );
+    }
+
+    // ─── Announcements (Community Board) ─────────────────────────────────────
+    // Barangay officials/admins can post announcements and events to the feed.
+    // All authenticated residents can READ, LIKE (update likes array), and COMMENT.
+    // Only officials can create top-level posts.
+    // Officials can reply to comments (update the comment's replies array).
+    match /announcements/{postId} {
+      // All authenticated users can read posts
+      allow read: if isAuthenticated();
+
+      // Only officials/admins can create posts
+      allow create: if isAdmin();
+
+      // All authenticated users can update (for toggling likes & incrementing commentCount)
+      // Officials can also edit their own posts
+      allow update: if isAuthenticated();
+
+      // Officials or the original author can delete a post
+      allow delete: if isAdmin() ||
+                       (isAuthenticated() && resource.data.authorId == request.auth.uid);
+
+      // ── Comments subcollection ─────────────────────────────────────────────
+      match /comments/{commentId} {
+        // All authenticated users can read comments
+        allow read: if isAuthenticated();
+
+        // All authenticated users can comment
+        allow create: if isAuthenticated();
+
+        // Any authenticated user can update a comment
+        // (residents add replies via arrayUnion — officials use this to reply)
+        allow update: if isAuthenticated();
+
+        // Comment author or officials can delete
+        allow delete: if isAuthenticated() && (
+          resource.data.authorId == request.auth.uid || isAdmin()
+        );
+      }
     }
 
     // ─── Emergencies ─────────────────────────────────────────────────────────

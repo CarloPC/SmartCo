@@ -317,7 +317,10 @@ const HomePage = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: 'Record Checkup', path: '/health/record', theme: isDarkMode ? 'bg-blue-900/50 hover:bg-blue-800/70 text-blue-300' : 'bg-blue-50 hover:bg-blue-100 text-blue-700' },
-              { label: 'Schedule Aid', path: '/food-aid/optimize', theme: isDarkMode ? 'bg-green-900/50 hover:bg-green-800/70 text-green-300' : 'bg-green-50 hover:bg-green-100 text-green-700' },
+              ...(user?.role === 'admin' || user?.role === 'barangay_official'
+                ? [{ label: 'Schedule Aid', path: '/food-aid/optimize', theme: isDarkMode ? 'bg-green-900/50 hover:bg-green-800/70 text-green-300' : 'bg-green-50 hover:bg-green-100 text-green-700' }]
+                : []
+              ),
               { label: 'Create Event', path: '/events/create', theme: isDarkMode ? 'bg-purple-900/50 hover:bg-purple-800/70 text-purple-300' : 'bg-purple-50 hover:bg-purple-100 text-purple-700' },
               { label: 'Report Emergency', path: '/emergency/report', theme: isDarkMode ? 'bg-red-900/50 hover:bg-red-800/70 text-red-300' : 'bg-red-50 hover:bg-red-100 text-red-700', icon: 'alert' },
             ].map((action) => (

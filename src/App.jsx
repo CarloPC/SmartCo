@@ -77,11 +77,11 @@ function App() {
         <Route
           path="/food-aid/optimize"
           element={
-            <ProtectedRoute>
+            <AdminRoute>
               <Layout>
                 <OptimizeSchedulePage />
               </Layout>
-            </ProtectedRoute>
+            </AdminRoute>
           }
         />
         <Route
@@ -97,11 +97,11 @@ function App() {
         <Route
           path="/events/create"
           element={
-            <ProtectedRoute>
+            <AdminRoute>
               <Layout>
                 <CreateEventPage />
               </Layout>
-            </ProtectedRoute>
+            </AdminRoute>
           }
         />
 
