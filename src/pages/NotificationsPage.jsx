@@ -1,6 +1,43 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Bell, Trash2, Check, X, Loader2, AlertTriangle, Calendar, Heart, Package, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Bell, Trash2, Check, X, Loader2, AlertTriangle, Calendar, Heart, Package, AlertCircle, ExternalLink } from 'lucide-react'
+
+const getNotificationPath = (notification) => {
+  const category = notification.category || notification.type
+  switch (category) {
+    case 'events':
+      return '/events'
+    case 'health':
+      return '/health'
+    case 'food_aid':
+    case 'foodaid':
+      return '/food-aid'
+    case 'emergency':
+      return '/emergency/report'
+    case 'community':
+    default:
+      return '/home'
+  }
+}
+
+const getNotificationLabel = (notification) => {
+  const category = notification.category || notification.type
+  switch (category) {
+    case 'events':
+      return 'View Events'
+    case 'health':
+      return 'View Health'
+    case 'food_aid':
+    case 'foodaid':
+      return 'View Food Aid'
+    case 'emergency':
+      return 'View Emergency'
+    case 'community':
+      return 'View Community'
+    default:
+      return 'Go to Home'
+  }
+}
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import notificationService from '../services/notificationService'
@@ -82,6 +119,13 @@ const NotificationsPage = () => {
       console.error('❌ [NotificationsPage] Error deleting notification:', err)
       alert('Failed to delete notification. Please try again.')
     }
+  }
+
+  const handleViewNotification = async (notification) => {
+    if (!notification.read) {
+      await handleMarkAsRead(notification.id)
+    }
+    navigate(getNotificationPath(notification))
   }
 
   const handleClearAll = async () => {
@@ -287,32 +331,53 @@ const NotificationsPage = () => {
                 notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`backdrop-blur-lg rounded-xl shadow-xl p-4 ${isDarkMode ? 'bg-gray-800/95 border border-gray-700/50' : 'bg-white/95 border border-white/30'} ${
+                    className={`backdrop-blur-lg rounded-xl shadow-xl overflow-hidden ${isDarkMode ? 'bg-gray-800/95 border border-gray-700/50' : 'bg-white/95 border border-white/30'} ${
                       !notification.read ? `ring-2 ${isDarkMode ? 'ring-blue-500' : 'ring-blue-400'}` : ''
                     }`}
                   >
-                    <div className="flex items-start space-x-4">
-                      <div className={`flex-shrink-0 w-12 h-12 rounded-full ${getTypeColor(notification.type, notification.category)} flex items-center justify-center border`}>
-                        {getCategoryIcon(notification.category)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-1">
-                          <h4 className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                            {notification.type ? notification.type.charAt(0).toUpperCase() + notification.type.slice(1) : 'Notification'}
-                          </h4>
-                          {!notification.read && (
-                            <span className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full ml-2 mt-2"></span>
-                          )}
+                    {/* Clickable card body */}
+                    <button
+                      onClick={() => handleViewNotification(notification)}
+                      className={`w-full text-left p-4 transition ${isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50/80'}`}
+                    >
+                      <div className="flex items-start space-x-4">
+                        <div className={`flex-shrink-0 w-12 h-12 rounded-full ${getTypeColor(notification.type, notification.category)} flex items-center justify-center border`}>
+                          {getCategoryIcon(notification.category)}
                         </div>
-                        <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {notification.message}
-                        </p>
-                        <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                          {formatTime(notification.createdAt)}
-                        </p>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex items-start justify-between mb-1">
+                            <h4 className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                              {notification.type ? notification.type.charAt(0).toUpperCase() + notification.type.slice(1) : 'Notification'}
+                            </h4>
+                            {!notification.read && (
+                              <span className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full ml-2 mt-2"></span>
+                            )}
+                          </div>
+                          <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {notification.message}
+                          </p>
+                          <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                            {formatTime(notification.createdAt)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className={`flex items-center space-x-2 mt-3 pt-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                    </button>
+
+                    {/* Action row */}
+                    <div className={`flex items-center space-x-2 px-4 pb-3 pt-0 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                      {/* View button */}
+                      <button
+                        onClick={() => handleViewNotification(notification)}
+                        className={`flex items-center space-x-1 text-sm font-medium transition ${
+                          isDarkMode 
+                            ? 'text-emerald-400 hover:text-emerald-300' 
+                            : 'text-emerald-600 hover:text-emerald-700'
+                        }`}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>{getNotificationLabel(notification)}</span>
+                      </button>
+
                       {!notification.read && (
                         <button
                           onClick={() => handleMarkAsRead(notification.id)}

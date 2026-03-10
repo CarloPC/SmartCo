@@ -1,8 +1,44 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, AlertCircle, Bell, Loader2 } from 'lucide-react'
+import { X, AlertCircle, Bell, Loader2, Calendar, Heart, Package, AlertTriangle, ChevronRight } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import notificationService from '../services/notificationService'
+
+const getNotificationPath = (notification) => {
+  const category = notification.category || notification.type
+  switch (category) {
+    case 'events':
+      return '/events'
+    case 'health':
+      return '/health'
+    case 'food_aid':
+    case 'foodaid':
+      return '/food-aid'
+    case 'emergency':
+      return '/emergency/report'
+    case 'community':
+    default:
+      return '/home'
+  }
+}
+
+const getCategoryIcon = (category, type) => {
+  const notifType = category || type
+  const cls = "w-4 h-4 flex-shrink-0 mt-0.5"
+  switch (notifType) {
+    case 'events':
+      return <Calendar className={`${cls} text-purple-500`} />
+    case 'health':
+      return <Heart className={`${cls} text-blue-500`} />
+    case 'food_aid':
+    case 'foodaid':
+      return <Package className={`${cls} text-green-500`} />
+    case 'emergency':
+      return <AlertTriangle className={`${cls} text-red-500`} />
+    default:
+      return <AlertCircle className={`${cls} text-gray-400`} />
+  }
+}
 
 const NotificationDropdown = ({ onClose }) => {
   const navigate = useNavigate()
@@ -48,6 +84,15 @@ const NotificationDropdown = ({ onClose }) => {
     navigate('/notifications')
   }
 
+  const handleNotificationClick = async (notification) => {
+    // Mark as read silently
+    if (!notification.read) {
+      notificationService.markAsRead(notification.id)
+    }
+    onClose()
+    navigate(getNotificationPath(notification))
+  }
+
   return (
     <div className={`${
       isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
@@ -81,22 +126,21 @@ const NotificationDropdown = ({ onClose }) => {
       ) : (
         <>
           {notifications.map(notification => (
-            <div 
-              key={notification.id} 
-              className={`p-3 rounded-lg text-sm ${
+            <button
+              key={notification.id}
+              onClick={() => handleNotificationClick(notification)}
+              className={`w-full text-left p-3 rounded-lg text-sm transition group ${
                 !notification.read 
                   ? isDarkMode 
-                    ? 'bg-blue-950/50 border border-blue-800/50' 
-                    : 'bg-blue-50 border border-blue-200'
+                    ? 'bg-blue-950/50 border border-blue-800/50 hover:bg-blue-900/60' 
+                    : 'bg-blue-50 border border-blue-200 hover:bg-blue-100'
                   : isDarkMode 
-                    ? 'bg-gray-800/50' 
-                    : 'bg-gray-50'
+                    ? 'bg-gray-800/50 hover:bg-gray-700/60' 
+                    : 'bg-gray-50 hover:bg-gray-100'
               }`}
             >
               <div className="flex items-start space-x-2">
-                {notification.type === 'emergency' && (
-                  <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                )}
+                {getCategoryIcon(notification.category, notification.type)}
                 <div className="flex-1 min-w-0">
                   <p className={`font-medium ${
                     isDarkMode ? 'text-gray-200' : 'text-gray-800'
@@ -109,11 +153,14 @@ const NotificationDropdown = ({ onClose }) => {
                     {formatTime(notification.createdAt)}
                   </p>
                 </div>
-                {!notification.read && (
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></span>
-                )}
+                <div className="flex items-center space-x-1 flex-shrink-0">
+                  {!notification.read && (
+                    <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></span>
+                  )}
+                  <ChevronRight className={`w-3.5 h-3.5 mt-0.5 opacity-0 group-hover:opacity-100 transition ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
+                </div>
               </div>
-            </div>
+            </button>
           ))}
           
           <button
