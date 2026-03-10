@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    --sidebar-width: 240px;
+    --sidebar-collapsed-width: 64px;
+    --topbar-height: 64px;
+    --bottom-nav-height: 60px;
+  }
+
   * {
     margin: 0;
     padding: 0;
@@ -13,4 +20,43 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+}
+
+@layer utilities {
+  .sidebar-width {
+    width: var(--sidebar-width);
+  }
+  .sidebar-collapsed-width {
+    width: var(--sidebar-collapsed-width);
+  }
+  .topbar-height {
+    height: var(--topbar-height);
+  }
+  .content-offset-sidebar {
+    margin-left: var(--sidebar-width);
+  }
+  .content-offset-collapsed {
+    margin-left: var(--sidebar-collapsed-width);
+  }
+  .content-offset-topbar {
+    padding-top: var(--topbar-height);
+  }
+}
+
+@utility glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+@utility glass-card-dark {
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(55, 65, 81, 0.5);
+}
+
+@utility glass-overlay {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }

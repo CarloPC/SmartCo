@@ -21,6 +21,8 @@ import AboutPage from './pages/AboutPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminApprovalsPage from './pages/AdminApprovalsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
+import ReportEmergencyPage from './pages/ReportEmergencyPage'
+import EmergencyManagementPage from './pages/EmergencyManagementPage'
 
 function App() {
   return (
@@ -110,6 +112,28 @@ function App() {
         <Route path="/privacy-security" element={<ProtectedRoute><PrivacySecurityPage /></ProtectedRoute>} />
         <Route path="/help-support" element={<ProtectedRoute><HelpSupportPage /></ProtectedRoute>} />
         <Route path="/about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
+
+        {/* Emergency Routes */}
+        <Route
+          path="/emergency/report"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ReportEmergencyPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/emergency"
+          element={
+            <AdminRoute>
+              <Layout>
+                <EmergencyManagementPage />
+              </Layout>
+            </AdminRoute>
+          }
+        />
 
         {/* Admin Routes - Only accessible by admin and barangay officials */}
         <Route
