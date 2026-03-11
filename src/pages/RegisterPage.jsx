@@ -238,8 +238,13 @@ const RegisterPage = () => {
                       <option value="">Select role</option>
                       <option value="resident">Resident</option>
                       <option value="barangay_official">Barangay Official</option>
-                      <option value="admin">Administrator</option>
                     </select>
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      Need admin access?{' '}
+                      <Link to="/login" className="text-blue-600 font-medium hover:underline">
+                        Sign in and request it here →
+                      </Link>
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Purok</label>

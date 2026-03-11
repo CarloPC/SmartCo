@@ -143,6 +143,20 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // ─── Admin Access Requests ───────────────────────────────────────────────
+    // Any authenticated user can submit a request (must own the userId field).
+    // Users can read their own requests to check status.
+    // Only admins can read all requests and approve/reject (update status).
+    match /adminRequests/{requestId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read:   if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow list:   if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
     // ─── Notifications ───────────────────────────────────────────────────────
     // Any authenticated user can CREATE a notification for any userId.
     // This is required for residents to notify admins when reporting emergencies.

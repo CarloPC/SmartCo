@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
+import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle, UserCheck } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import adminService from '../services/adminService'
@@ -27,6 +27,9 @@ const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
 
   if (isAdmin) {
     navItems.push({ icon: Shield, label: 'Admin', path: '/admin' })
+  }
+  if (user?.role === 'admin') {
+    navItems.push({ icon: UserCheck, label: 'Admin Requests', path: '/admin/requests' })
   }
 
   return (

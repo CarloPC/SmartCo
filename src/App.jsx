@@ -21,6 +21,8 @@ import AboutPage from './pages/AboutPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminApprovalsPage from './pages/AdminApprovalsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
+import AdminRequestsPage from './pages/AdminRequestsPage'
+import RequestAdminPage from './pages/RequestAdminPage'
 import ReportEmergencyPage from './pages/ReportEmergencyPage'
 import EmergencyManagementPage from './pages/EmergencyManagementPage'
 
@@ -112,6 +114,7 @@ function App() {
         <Route path="/privacy-security" element={<ProtectedRoute><PrivacySecurityPage /></ProtectedRoute>} />
         <Route path="/help-support" element={<ProtectedRoute><HelpSupportPage /></ProtectedRoute>} />
         <Route path="/about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
+        <Route path="/request-admin" element={<ProtectedRoute><RequestAdminPage /></ProtectedRoute>} />
 
         {/* Emergency Routes */}
         <Route
@@ -172,6 +175,16 @@ function App() {
             <AdminRoute>
               <Layout>
                 <AdminUsersPage />
+              </Layout>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/requests"
+          element={
+            <AdminRoute>
+              <Layout>
+                <AdminRequestsPage />
               </Layout>
             </AdminRoute>
           }

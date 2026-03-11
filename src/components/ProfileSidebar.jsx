@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { X, User, Settings, Bell, Shield, LogOut, ChevronRight, Moon, Sun, HelpCircle, Info } from 'lucide-react'
+import { X, User, Settings, Bell, Shield, LogOut, ChevronRight, Moon, Sun, HelpCircle, Info, Lock } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 
@@ -17,12 +17,15 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
     avatar: null
   }
 
+  const isAdmin = user?.role === 'admin' || user?.role === 'barangay_official'
+
   const menuItems = [
     { icon: User, label: 'My Profile', description: 'View and edit profile', path: '/profile' },
     { icon: Bell, label: 'Notifications', description: 'Manage alerts', badge: '3', path: '/notifications' },
     { icon: Settings, label: 'Settings', description: 'App preferences', path: '/settings' },
     { icon: Shield, label: 'Privacy & Security', description: 'Control your data', path: '/privacy-security' },
     { icon: isDarkMode ? Sun : Moon, label: 'Dark Mode', description: isDarkMode ? 'Switch to light mode' : 'Switch to dark mode', toggle: true },
+    ...(!isAdmin ? [{ icon: Lock, label: 'Request Admin Access', description: 'Contact an admin to get elevated access', path: '/request-admin' }] : []),
     { icon: HelpCircle, label: 'Help & Support', description: 'Get assistance', path: '/help-support' },
     { icon: Info, label: 'About SmartCo', description: 'App information', path: '/about' },
   ]
@@ -56,10 +59,10 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full w-full sm:w-[400px] ${
+        className={`fixed top-0 right-0 h-full w-full sm:w-[400px] ${
           isDarkMode ? 'bg-gray-900' : 'bg-white'
         } z-50 shadow-2xl transform transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+          isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
