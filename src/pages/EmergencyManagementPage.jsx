@@ -3,7 +3,7 @@ import {
   AlertTriangle, Flame, Stethoscope, ShieldAlert, Waves, Car, HelpCircle,
   Clock, CheckCircle, XCircle, Shield, MapPin, Phone, User, FileText,
   Loader2, RefreshCw, Filter, Navigation, ExternalLink,
-  AlertOctagon, Ban, Unlock, Calendar
+  AlertOctagon, Ban, Unlock, Calendar, ChevronDown, ChevronUp
 } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
@@ -286,17 +286,22 @@ const FakeReportForm = ({ isDarkMode, onConfirm, onCancel }) => {
 // ─── Emergency Card ───────────────────────────────────────────────────────────
 
 const EmergencyCard = ({ emergency, isDarkMode, onRefresh }) => {
+  const [expanded, setExpanded]         = useState(false)
   const [loadingAction, setLoadingAction] = useState(null)
   const [showDispatch, setShowDispatch] = useState(false)
-  const [showReject, setShowReject] = useState(false)
-  const [showFake, setShowFake] = useState(false)
+  const [showReject, setShowReject]     = useState(false)
+  const [showFake, setShowFake]         = useState(false)
 
-  const typeInfo  = TYPE_MAP[emergency.type] || TYPE_MAP.other
-  const statusCfg = STATUS_CONFIG[emergency.status] || STATUS_CONFIG.pending
+  const typeInfo     = TYPE_MAP[emergency.type] || TYPE_MAP.other
+  const statusCfg    = STATUS_CONFIG[emergency.status] || STATUS_CONFIG.pending
   const severityInfo = SEVERITY_STYLE[emergency.severity] || SEVERITY_STYLE.medium
-  const TypeIcon   = typeInfo.icon
-  const StatusIcon = statusCfg.icon
-  const card = `${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border`
+  const TypeIcon     = typeInfo.icon
+  const StatusIcon   = statusCfg.icon
+  const isFake       = emergency.status === 'fake'
+
+  const cardBase = `${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border ${
+    isFake ? (isDarkMode ? 'border-purple-800/60' : 'border-purple-300') : ''
+  }`
 
   const act = async (fn, label) => {
     setLoadingAction(label)
@@ -307,165 +312,183 @@ const EmergencyCard = ({ emergency, isDarkMode, onRefresh }) => {
 
   const closeAllForms = () => { setShowDispatch(false); setShowReject(false); setShowFake(false) }
 
-  const isFake = emergency.status === 'fake'
-
   return (
-    <div className={`${card} p-5 ${isFake ? (isDarkMode ? 'border-purple-800/60' : 'border-purple-300') : ''}`}>
-      {/* Top row */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center space-x-3 min-w-0">
-          <div className={`w-10 h-10 flex-shrink-0 rounded-xl flex items-center justify-center ${isDarkMode ? typeInfo.darkBg : typeInfo.bg}`}>
-            <TypeIcon className={`w-5 h-5 ${typeInfo.color}`} />
+    <div className={cardBase}>
+
+      {/* ── Collapsed header (always visible) ── */}
+      <button
+        onClick={() => setExpanded(p => !p)}
+        className={`w-full flex items-center justify-between gap-3 p-4 text-left transition ${
+          expanded ? `border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}` : 'rounded-2xl'
+        }`}
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className={`w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center ${isDarkMode ? typeInfo.darkBg : typeInfo.bg}`}>
+            <TypeIcon className={`w-4.5 h-4.5 ${typeInfo.color}`} />
           </div>
-          <div className="min-w-0">
-            <h4 className={`font-bold text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{typeInfo.label}</h4>
-            <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{getRelativeTime(emergency.createdAt)}</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`font-bold text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                {typeInfo.label}
+              </span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${severityInfo.cls}`}>
+                {severityInfo.label}
+              </span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${isDarkMode ? statusCfg.dark : statusCfg.light}`}>
+                <StatusIcon className="w-3 h-3" />{statusCfg.label}
+              </span>
+            </div>
+            <div className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <span className="flex items-center gap-1">
+                <User className="w-3 h-3" />{emergency.reporterName || 'Anonymous'}
+              </span>
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3 h-3" />{emergency.purok || '—'}
+              </span>
+              <span>{getRelativeTime(emergency.createdAt)}</span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${severityInfo.cls}`}>
-            {severityInfo.label}
-          </span>
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex items-center space-x-1 ${isDarkMode ? statusCfg.dark : statusCfg.light}`}>
-            <StatusIcon className="w-3 h-3" /><span>{statusCfg.label}</span>
-          </span>
+        <div className={`p-1 rounded-lg flex-shrink-0 ${isDarkMode ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-400 hover:bg-gray-100'}`}>
+          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>
-      </div>
+      </button>
 
-      {/* Meta */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-        <div className="flex items-center space-x-1.5"><MapPin className="w-3.5 h-3.5 flex-shrink-0" /><span>{emergency.purok}{emergency.location ? ` — ${emergency.location}` : ''}</span></div>
-        <div className="flex items-center space-x-1.5"><User className="w-3.5 h-3.5 flex-shrink-0" /><span>{emergency.reporterName || 'Anonymous'}</span></div>
-        {emergency.reporterPhone && <div className="flex items-center space-x-1.5"><Phone className="w-3.5 h-3.5 flex-shrink-0" /><span>{emergency.reporterPhone}</span></div>}
-      </div>
+      {/* ── Expanded body ── */}
+      {expanded && (
+        <div className="p-4 space-y-3">
 
-      {/* Description */}
-      <div className={`p-3 rounded-xl mb-3 text-sm leading-relaxed ${isDarkMode ? 'bg-gray-800/60 text-gray-300' : 'bg-gray-50 text-gray-700'}`}>
-        <FileText className={`w-3.5 h-3.5 inline mr-1.5 -mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-        {emergency.description}
-      </div>
+          {/* Meta */}
+          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            <div className="flex items-center space-x-1.5"><MapPin className="w-3.5 h-3.5 flex-shrink-0" /><span>{emergency.purok}{emergency.location ? ` — ${emergency.location}` : ''}</span></div>
+            <div className="flex items-center space-x-1.5"><User className="w-3.5 h-3.5 flex-shrink-0" /><span>{emergency.reporterName || 'Anonymous'}</span></div>
+            {emergency.reporterPhone && <div className="flex items-center space-x-1.5"><Phone className="w-3.5 h-3.5 flex-shrink-0" /><span>{emergency.reporterPhone}</span></div>}
+          </div>
 
-      {/* GPS Map */}
-      <LocationMap coords={emergency.coords} isDarkMode={isDarkMode} />
+          {/* Description */}
+          <div className={`p-3 rounded-xl text-sm leading-relaxed ${isDarkMode ? 'bg-gray-800/60 text-gray-300' : 'bg-gray-50 text-gray-700'}`}>
+            <FileText className={`w-3.5 h-3.5 inline mr-1.5 -mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+            {emergency.description}
+          </div>
 
-      {/* Info banners */}
-      {emergency.responseNote && (
-        <div className={`p-2.5 rounded-xl mt-3 text-xs ${isDarkMode ? 'bg-blue-950/30 text-blue-300 border border-blue-800/40' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
-          <strong>Response note:</strong> {emergency.responseNote}
-        </div>
-      )}
-      {emergency.rejectionReason && (
-        <div className={`p-2.5 rounded-xl mt-3 text-xs ${isDarkMode ? 'bg-red-950/30 text-red-300 border border-red-800/40' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-          <strong>Rejection reason:</strong> {emergency.rejectionReason}
-        </div>
-      )}
-      {isFake && emergency.fakeReason && (
-        <div className={`p-2.5 rounded-xl mt-3 text-xs flex items-start space-x-2 ${isDarkMode ? 'bg-purple-950/30 text-purple-300 border border-purple-800/40' : 'bg-purple-50 text-purple-700 border border-purple-200'}`}>
-          <AlertOctagon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-          <div><strong>Fake report reason:</strong> {emergency.fakeReason}</div>
-        </div>
-      )}
-      {emergency.tanodDispatched && emergency.tanodInfo && (
-        <div className={`p-2.5 rounded-xl mt-3 text-xs flex items-start space-x-2 ${isDarkMode ? 'bg-indigo-950/30 text-indigo-300 border border-indigo-800/40' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}>
-          <Shield className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-          <div><strong>Tanod dispatched:</strong> {emergency.tanodInfo.tanodName}{emergency.tanodInfo.tanodNote ? ` — ${emergency.tanodInfo.tanodNote}` : ''}</div>
-        </div>
-      )}
+          {/* GPS Map */}
+          <LocationMap coords={emergency.coords} isDarkMode={isDarkMode} />
 
-      {/* Inline forms */}
-      {showDispatch && (
-        <DispatchForm
-          isDarkMode={isDarkMode}
-          onDispatch={(name, note) => act(() => emergencyService.dispatchTanod(emergency.id, { tanodName: name, tanodNote: note }), 'dispatch').then(closeAllForms)}
-          onCancel={closeAllForms}
-        />
-      )}
-      {showReject && (
-        <RejectForm
-          isDarkMode={isDarkMode}
-          onReject={(reason) => act(() => emergencyService.rejectEmergency(emergency.id, reason), 'reject').then(closeAllForms)}
-          onCancel={closeAllForms}
-        />
-      )}
-      {showFake && (
-        <FakeReportForm
-          isDarkMode={isDarkMode}
-          onConfirm={(opts) => act(() => emergencyService.markAsFake(emergency.id, opts), 'fake').then(closeAllForms)}
-          onCancel={closeAllForms}
-        />
-      )}
-
-      {/* Action buttons */}
-      {!showDispatch && !showReject && !showFake && (
-        <div className="flex flex-wrap gap-2 mt-3">
-          {/* Pending actions */}
-          {emergency.status === 'pending' && (
-            <>
-              <button
-                onClick={() => act(() => emergencyService.respondToEmergency(emergency.id, ''), 'respond')}
-                disabled={!!loadingAction}
-                className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition disabled:opacity-60"
-              >
-                {loadingAction === 'respond' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                <span>Respond</span>
-              </button>
-              <button
-                onClick={() => { closeAllForms(); setShowReject(true) }}
-                disabled={!!loadingAction}
-                className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-60 ${isDarkMode ? 'bg-red-900/60 hover:bg-red-800 text-red-300' : 'bg-red-100 hover:bg-red-200 text-red-700'}`}
-              >
-                <XCircle className="w-3.5 h-3.5" /><span>Reject</span>
-              </button>
-              <button
-                onClick={() => { closeAllForms(); setShowFake(true) }}
-                disabled={!!loadingAction}
-                className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-60 ${isDarkMode ? 'bg-purple-900/60 hover:bg-purple-800 text-purple-300' : 'bg-purple-100 hover:bg-purple-200 text-purple-700'}`}
-              >
-                <AlertOctagon className="w-3.5 h-3.5" /><span>Mark as Fake</span>
-              </button>
-            </>
+          {/* Info banners */}
+          {emergency.responseNote && (
+            <div className={`p-2.5 rounded-xl text-xs ${isDarkMode ? 'bg-blue-950/30 text-blue-300 border border-blue-800/40' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+              <strong>Response note:</strong> {emergency.responseNote}
+            </div>
+          )}
+          {emergency.rejectionReason && (
+            <div className={`p-2.5 rounded-xl text-xs ${isDarkMode ? 'bg-red-950/30 text-red-300 border border-red-800/40' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+              <strong>Rejection reason:</strong> {emergency.rejectionReason}
+            </div>
+          )}
+          {isFake && emergency.fakeReason && (
+            <div className={`p-2.5 rounded-xl text-xs flex items-start space-x-2 ${isDarkMode ? 'bg-purple-950/30 text-purple-300 border border-purple-800/40' : 'bg-purple-50 text-purple-700 border border-purple-200'}`}>
+              <AlertOctagon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <div><strong>Fake report reason:</strong> {emergency.fakeReason}</div>
+            </div>
+          )}
+          {emergency.tanodDispatched && emergency.tanodInfo && (
+            <div className={`p-2.5 rounded-xl text-xs flex items-start space-x-2 ${isDarkMode ? 'bg-indigo-950/30 text-indigo-300 border border-indigo-800/40' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}>
+              <Shield className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <div><strong>Tanod dispatched:</strong> {emergency.tanodInfo.tanodName}{emergency.tanodInfo.tanodNote ? ` — ${emergency.tanodInfo.tanodNote}` : ''}</div>
+            </div>
           )}
 
-          {/* Active actions */}
-          {emergency.status === 'active' && (
-            <>
-              {!emergency.tanodDispatched && (
+          {/* Inline forms */}
+          {showDispatch && (
+            <DispatchForm
+              isDarkMode={isDarkMode}
+              onDispatch={(name, note) => act(() => emergencyService.dispatchTanod(emergency.id, { tanodName: name, tanodNote: note }), 'dispatch').then(closeAllForms)}
+              onCancel={closeAllForms}
+            />
+          )}
+          {showReject && (
+            <RejectForm
+              isDarkMode={isDarkMode}
+              onReject={(reason) => act(() => emergencyService.rejectEmergency(emergency.id, reason), 'reject').then(closeAllForms)}
+              onCancel={closeAllForms}
+            />
+          )}
+          {showFake && (
+            <FakeReportForm
+              isDarkMode={isDarkMode}
+              onConfirm={(opts) => act(() => emergencyService.markAsFake(emergency.id, opts), 'fake').then(closeAllForms)}
+              onCancel={closeAllForms}
+            />
+          )}
+
+          {/* Action buttons */}
+          {!showDispatch && !showReject && !showFake && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {emergency.status === 'pending' && (
+                <>
+                  <button
+                    onClick={() => act(() => emergencyService.respondToEmergency(emergency.id, ''), 'respond')}
+                    disabled={!!loadingAction}
+                    className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition disabled:opacity-60"
+                  >
+                    {loadingAction === 'respond' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                    <span>Respond</span>
+                  </button>
+                  <button
+                    onClick={() => { closeAllForms(); setShowReject(true) }}
+                    disabled={!!loadingAction}
+                    className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-60 ${isDarkMode ? 'bg-red-900/60 hover:bg-red-800 text-red-300' : 'bg-red-100 hover:bg-red-200 text-red-700'}`}
+                  >
+                    <XCircle className="w-3.5 h-3.5" /><span>Reject</span>
+                  </button>
+                  <button
+                    onClick={() => { closeAllForms(); setShowFake(true) }}
+                    disabled={!!loadingAction}
+                    className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-60 ${isDarkMode ? 'bg-purple-900/60 hover:bg-purple-800 text-purple-300' : 'bg-purple-100 hover:bg-purple-200 text-purple-700'}`}
+                  >
+                    <AlertOctagon className="w-3.5 h-3.5" /><span>Mark as Fake</span>
+                  </button>
+                </>
+              )}
+              {emergency.status === 'active' && (
+                <>
+                  {!emergency.tanodDispatched && (
+                    <button
+                      onClick={() => { closeAllForms(); setShowDispatch(true) }}
+                      disabled={!!loadingAction}
+                      className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transition disabled:opacity-60"
+                    >
+                      <Shield className="w-3.5 h-3.5" /><span>Dispatch Tanod</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => act(() => emergencyService.resolveEmergency(emergency.id), 'resolve')}
+                    disabled={!!loadingAction}
+                    className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 transition disabled:opacity-60"
+                  >
+                    {loadingAction === 'resolve' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                    <span>Mark Resolved</span>
+                  </button>
+                  <button
+                    onClick={() => { closeAllForms(); setShowFake(true) }}
+                    disabled={!!loadingAction}
+                    className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-60 ${isDarkMode ? 'bg-purple-900/60 hover:bg-purple-800 text-purple-300' : 'bg-purple-100 hover:bg-purple-200 text-purple-700'}`}
+                  >
+                    <AlertOctagon className="w-3.5 h-3.5" /><span>Mark as Fake</span>
+                  </button>
+                </>
+              )}
+              {isFake && emergency.userId && (
                 <button
-                  onClick={() => { closeAllForms(); setShowDispatch(true) }}
+                  onClick={() => act(() => emergencyService.liftSuspension(emergency.userId), 'lift')}
                   disabled={!!loadingAction}
-                  className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transition disabled:opacity-60"
+                  className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-60 ${isDarkMode ? 'bg-green-900/60 hover:bg-green-800 text-green-300' : 'bg-green-100 hover:bg-green-200 text-green-700'}`}
                 >
-                  <Shield className="w-3.5 h-3.5" /><span>Dispatch Tanod</span>
+                  {loadingAction === 'lift' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Unlock className="w-3.5 h-3.5" />}
+                  <span>Lift Suspension</span>
                 </button>
               )}
-              <button
-                onClick={() => act(() => emergencyService.resolveEmergency(emergency.id), 'resolve')}
-                disabled={!!loadingAction}
-                className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 transition disabled:opacity-60"
-              >
-                {loadingAction === 'resolve' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                <span>Mark Resolved</span>
-              </button>
-              <button
-                onClick={() => { closeAllForms(); setShowFake(true) }}
-                disabled={!!loadingAction}
-                className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-60 ${isDarkMode ? 'bg-purple-900/60 hover:bg-purple-800 text-purple-300' : 'bg-purple-100 hover:bg-purple-200 text-purple-700'}`}
-              >
-                <AlertOctagon className="w-3.5 h-3.5" /><span>Mark as Fake</span>
-              </button>
-            </>
-          )}
-
-          {/* Fake — allow lifting suspension */}
-          {isFake && emergency.userId && (
-            <button
-              onClick={() => act(() => emergencyService.liftSuspension(emergency.userId), 'lift')}
-              disabled={!!loadingAction}
-              className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-60 ${isDarkMode ? 'bg-green-900/60 hover:bg-green-800 text-green-300' : 'bg-green-100 hover:bg-green-200 text-green-700'}`}
-            >
-              {loadingAction === 'lift' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Unlock className="w-3.5 h-3.5" />}
-              <span>Lift Suspension</span>
-            </button>
+            </div>
           )}
         </div>
       )}
