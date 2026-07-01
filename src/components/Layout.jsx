@@ -19,10 +19,19 @@ const Layout = ({ children }) => {
 
   const isActive = (path) => location.pathname === path
 
+  // Pages that render their own full-bleed background (image + gradient blobs)
+  // need Layout's own wrapper to stay transparent, or Layout's neutral bg
+  // paints over them due to z-index stacking.
+  const hasCustomBackground = location.pathname === '/home' || location.pathname === '/health' || location.pathname === '/food-aid' || location.pathname === '/events' || location.pathname === '/events/create' || location.pathname === '/emergency' || location.pathname === '/emergency/report' || location.pathname === '/admin'
+  || location.pathname === '/admin/users' || location.pathname === '/admin/notifications' || location.pathname === '/admin/announcements' || location.pathname === '/admin/requests' || location.pathname === '/admin/approvals' || location.pathname === '/profilesidebar' || location.pathname === '/profile' || location.pathname === '/notifications' || location.pathname === '/settings' || location.pathname === '/privacy-security' || location.pathname === '/request-admin' || location.pathname === '/help-support' || location.pathname === '/about'
   useEffect(() => {
     fetchUnreadCount()
     const interval = setInterval(fetchUnreadCount, 30000)
-    return () => clearInterval(interval)
+    window.addEventListener('notifications-updated', fetchUnreadCount)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('notifications-updated', fetchUnreadCount)
+    }
   }, [])
 
   const fetchUnreadCount = async () => {
@@ -34,114 +43,123 @@ const Layout = ({ children }) => {
     }
   }
 
-  const handleToggleSidebar = () => {
-    setIsSidebarCollapsed((prev) => !prev)
-  }
+  const handleNotificationRead = async () => { await fetchUnreadCount() }
+  const handleToggleSidebar = () => { setIsSidebarCollapsed((prev) => !prev) }
 
-  // Compute left offset for desktop main content
   const sidebarOffset = isSidebarCollapsed
     ? 'lg:ml-[var(--sidebar-collapsed-width)]'
     : 'lg:ml-[var(--sidebar-width)]'
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
-      {/* Profile Sidebar (slide-out panel) */}
-      <ProfileSidebar
-        isOpen={showProfileSidebar}
-        onClose={() => setShowProfileSidebar(false)}
-      />
+    /*
+     * Root shell:
+     *  - On pages with their own hero background (home, health): transparent
+     *    so that page's fixed gradient/image shows through
+     *  - Everywhere else: neutral bg as before
+     */
+    <div className={`min-h-screen ${
+      hasCustomBackground
+        ? 'bg-transparent'
+        : isDarkMode ? 'bg-gray-950' : 'bg-gray-50'
+    }`}>
 
-      {/* Fixed Top Bar */}
+      {/* Global gradient — only rendered on pages with their own hero background */}
+      {hasCustomBackground && (
+        <>
+          <div className={`fixed inset-0 -z-10 ${
+            isDarkMode
+              ? 'bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950'
+              : 'bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800'
+          }`} />
+          {/* Decorative blobs */}
+          <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+            <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
+            <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
+            <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-violet-500/15 blur-3xl" />
+            <div
+              className="absolute inset-0 opacity-[0.07]"
+              style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '32px 32px' }}
+            />
+          </div>
+        </>
+      )}
+
+      <ProfileSidebar isOpen={showProfileSidebar} onClose={() => setShowProfileSidebar(false)} />
+
       <Topbar
         onToggleSidebar={handleToggleSidebar}
         unreadCount={unreadCount}
         onOpenProfile={() => setShowProfileSidebar(true)}
+        onNotificationRead={handleNotificationRead}
       />
 
-      {/* Desktop Sidebar */}
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={handleToggleSidebar}
-      />
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
 
-      {/* Main Content */}
+      {/* Main content — transparent on pages with their own hero background so it bleeds through */}
       <main
         style={{ paddingTop: 'var(--topbar-height)' }}
-        className={`min-h-screen transition-all duration-300 ease-in-out ${sidebarOffset}`}
+        className={`min-h-screen transition-all duration-300 ease-in-out ${sidebarOffset} ${
+          hasCustomBackground ? 'bg-transparent' : ''
+        }`}
       >
-        {/* Page Content — bottom padding for mobile nav */}
         <div className="pb-[var(--bottom-nav-height)] lg:pb-0">
           {children}
         </div>
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-30 ${
-        isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
-      } border-t shadow-lg`} style={{ height: 'var(--bottom-nav-height)' }}>
+      <nav
+        className={`lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t shadow-lg ${
+          hasCustomBackground
+            ? 'border-white/15 bg-white/10 backdrop-blur-xl'
+            : isDarkMode
+              ? 'bg-gray-900 border-gray-700'
+              : 'bg-white border-gray-200'
+        }`}
+        style={{ height: 'var(--bottom-nav-height)' }}
+      >
         <div className={`flex items-center ${adminService.isAdmin(user) ? 'justify-between' : 'justify-around'} h-full px-2`}>
-          <Link
-            to="/home"
-            className={`flex flex-col items-center space-y-0.5 px-3 py-2 rounded-lg transition ${
-              isActive('/home')
-                ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Home className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Home</span>
-          </Link>
-          <Link
-            to="/health"
-            className={`flex flex-col items-center space-y-0.5 px-3 py-2 rounded-lg transition ${
-              isActive('/health')
-                ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Heart className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Health</span>
-          </Link>
-          <Link
-            to="/food-aid"
-            className={`flex flex-col items-center space-y-0.5 px-3 py-2 rounded-lg transition ${
-              isActive('/food-aid')
-                ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Package className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Food Aid</span>
-          </Link>
-          <Link
-            to="/events"
-            className={`flex flex-col items-center space-y-0.5 px-3 py-2 rounded-lg transition ${
-              isActive('/events')
-                ? isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Calendar className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Events</span>
-          </Link>
-          <Link
-            to={adminService.isAdmin(user) ? '/emergency' : '/emergency/report'}
-            className={`flex flex-col items-center space-y-0.5 px-3 py-2 rounded-lg transition ${
-              location.pathname.startsWith('/emergency')
-                ? isDarkMode ? 'text-red-400' : 'text-red-600'
-                : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <AlertTriangle className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Emergency</span>
-          </Link>
+          {[
+            { to: '/home',     Icon: Home,          label: 'Home',      match: '/home' },
+            { to: '/health',   Icon: Heart,         label: 'Health',    match: '/health' },
+            { to: '/food-aid', Icon: Package,       label: 'Food Aid',  match: '/food-aid' },
+            { to: '/events',   Icon: Calendar,      label: 'Events',    match: '/events' },
+            { to: adminService.isAdmin(user) ? '/emergency' : '/emergency/report',
+                               Icon: AlertTriangle, label: 'Emergency', match: '/emergency', accent: true },
+          ].map(({ to, Icon, label, match, accent }) => {
+            const active = location.pathname.startsWith(match)
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition ${
+                  hasCustomBackground
+                    ? active
+                      ? 'text-white'
+                      : 'text-white/50 hover:text-white'
+                    : active
+                      ? accent
+                        ? isDarkMode ? 'text-red-400' : 'text-red-600'
+                        : isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                      : isDarkMode
+                        ? 'text-gray-400 hover:text-gray-300'
+                        : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium">{label}</span>
+              </Link>
+            )
+          })}
           {adminService.isAdmin(user) && (
             <Link
               to="/admin"
-              className={`flex flex-col items-center space-y-0.5 px-3 py-2 rounded-lg transition ${
-                location.pathname.startsWith('/admin')
-                  ? isDarkMode ? 'text-purple-400' : 'text-purple-600'
-                  : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
+              className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition ${
+                hasCustomBackground
+                  ? location.pathname.startsWith('/admin') ? 'text-white' : 'text-white/50 hover:text-white'
+                  : location.pathname.startsWith('/admin')
+                    ? isDarkMode ? 'text-purple-400' : 'text-purple-600'
+                    : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Shield className="w-5 h-5" />

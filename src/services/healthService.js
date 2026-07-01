@@ -82,6 +82,27 @@ class HealthService {
 
       console.log('Health record saved with ID:', docRef.id)
 
+      await addDoc(collection(db, 'health_requests'), {
+        userId,
+        residentName: recordData.userName || auth.currentUser?.displayName || 'Resident',
+        residentEmail: auth.currentUser?.email || '',
+        purok: recordData.userPurok || '',
+        symptoms: recordData.formData?.symptoms || 'Resident submitted a health checkup.',
+        status: 'pending_review',
+        source: 'health_record',
+        sourceRecordId: docRef.id,
+        healthAssessment: recordData.healthAssessment || null,
+        preferredAppointmentDate: recordData.preferredAppointmentDate || null,
+        preferredAppointmentTime: recordData.preferredAppointmentTime || null,
+        requestedAppointment: recordData.preferredAppointmentDate
+          ? `${recordData.preferredAppointmentDate}${recordData.preferredAppointmentTime ? ` ${recordData.preferredAppointmentTime}` : ''}`
+          : '',
+        groqSummary: recordData.groqSummary || null,
+        requestedAt: newRecord.createdAt,
+        createdAt: newRecord.createdAt,
+        updatedAt: newRecord.updatedAt,
+      })
+
       // Create a notification for the new health record
       await this._createHealthNotification(record)
 

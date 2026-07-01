@@ -237,6 +237,7 @@ const RegisterPage = () => {
                     >
                       <option value="">Select role</option>
                       <option value="resident">Resident</option>
+                      <option value="bhw">Barangay Health Worker</option>
                       <option value="barangay_official">Barangay Official</option>
                     </select>
                     <p className="mt-1.5 text-xs text-gray-500">

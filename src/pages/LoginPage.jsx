@@ -23,7 +23,8 @@ const LoginPage = () => {
     try {
       const result = await login(formData.email, formData.password, formData.rememberMe)
       if (result.success) {
-        navigate('/home')
+        const role = result.user?.role
+        navigate(role === 'bhw' ? '/bhw' : '/home')
       } else {
         setError(result.error || 'Login failed. Please try again.')
       }

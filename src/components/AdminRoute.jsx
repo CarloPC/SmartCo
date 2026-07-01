@@ -19,8 +19,8 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/login" replace />
   }
 
-  // Check if user is admin or barangay official
-  if (user?.role !== 'admin' && user?.role !== 'barangay_official') {
+  // Check if user is admin, barangay official, or BHW
+  if (user?.role !== 'admin' && user?.role !== 'barangay_official' && user?.role !== 'bhw') {
     return <Navigate to="/home" replace />
   }
 

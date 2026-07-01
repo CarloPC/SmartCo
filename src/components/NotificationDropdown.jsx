@@ -40,7 +40,7 @@ const getCategoryIcon = (category, type) => {
   }
 }
 
-const NotificationDropdown = ({ onClose }) => {
+const NotificationDropdown = ({ onClose, onNotificationRead }) => {
   const navigate = useNavigate()
   const { isDarkMode } = useTheme()
   const [notifications, setNotifications] = useState([])
@@ -85,9 +85,18 @@ const NotificationDropdown = ({ onClose }) => {
   }
 
   const handleNotificationClick = async (notification) => {
-    // Mark as read silently
+    // Mark as read and update UI immediately
     if (!notification.read) {
-      notificationService.markAsRead(notification.id)
+      const result = await notificationService.markAsRead(notification.id)
+      if (result.success) {
+        setNotifications((prev) => prev.map((notif) =>
+          notif.id === notification.id ? { ...notif, read: true } : notif
+        ))
+        if (onNotificationRead) {
+          onNotificationRead()
+        }
+        window.dispatchEvent(new Event('notifications-updated'))
+      }
     }
     onClose()
     navigate(getNotificationPath(notification))

@@ -5,7 +5,7 @@ import notificationService from './notificationService'
 class AdminService {
   // Check if current user is admin or barangay official
   isAdmin(user) {
-    return user?.role === 'admin' || user?.role === 'barangay_official'
+    return user?.role === 'admin' || user?.role === 'barangay_official' || user?.role === 'bhw'
   }
 
   isAdminOnly(user) {
@@ -146,6 +146,23 @@ class AdminService {
         updatedAt: new Date().toISOString()
       })
 
+      const requestQuery = query(
+        collection(db, 'health_requests'),
+        where('sourceRecordId', '==', recordId)
+      )
+      const requestSnapshot = await getDocs(requestQuery)
+      if (!requestSnapshot.empty) {
+        const requestDocRef = doc(db, 'health_requests', requestSnapshot.docs[0].id)
+        await updateDoc(requestDocRef, {
+          status: 'scheduled',
+          reviewDecision: 'approved',
+          reviewMessage: 'Approved by the health team.',
+          reviewedBy: auth.currentUser?.displayName || 'Admin',
+          reviewedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+      }
+
       // Create notification for the user
       if (record.userId) {
         console.log('🔔 [AdminService] Creating approval notification for user:', record.userId)
@@ -196,6 +213,23 @@ class AdminService {
         rejectionReason: reason,
         updatedAt: new Date().toISOString()
       })
+
+      const requestQuery = query(
+        collection(db, 'health_requests'),
+        where('sourceRecordId', '==', recordId)
+      )
+      const requestSnapshot = await getDocs(requestQuery)
+      if (!requestSnapshot.empty) {
+        const requestDocRef = doc(db, 'health_requests', requestSnapshot.docs[0].id)
+        await updateDoc(requestDocRef, {
+          status: 'rejected',
+          reviewDecision: 'rejected',
+          reviewMessage: reason || 'The requested date is not available. Please choose another day.',
+          reviewedBy: auth.currentUser?.displayName || 'Admin',
+          reviewedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+      }
 
       // Create notification for the user
       if (record.userId) {

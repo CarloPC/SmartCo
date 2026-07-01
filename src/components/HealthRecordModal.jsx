@@ -1,7 +1,8 @@
+
 import { X, CalendarCheck, Clock, CheckCircle, XCircle, AlertCircle, FileText, User, Stethoscope, Sparkles, Activity } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 
-/* ── Status badge helper ───────────────────────────────────────────── */
+/* â”€â”€ Status badge helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const StatusBadge = ({ status, isDarkMode }) => {
   if (status === 'approved') return (
     <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${isDarkMode ? 'bg-green-900/40 text-green-400' : 'bg-green-100 text-green-700'}`}>
@@ -20,7 +21,7 @@ const StatusBadge = ({ status, isDarkMode }) => {
   )
 }
 
-/* ── Info row ───────────────────────────────────────────────────────── */
+/* â”€â”€ Info row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const InfoRow = ({ icon: Icon, label, value, isDarkMode, mono = false }) => {
   if (!value) return null
   return (
@@ -36,9 +37,9 @@ const InfoRow = ({ icon: Icon, label, value, isDarkMode, mono = false }) => {
   )
 }
 
-/* ══════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MAIN MODAL
-══════════════════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const HealthRecordModal = ({ record, isOpen, onClose }) => {
   const { isDarkMode } = useTheme()
 
@@ -81,7 +82,7 @@ const HealthRecordModal = ({ record, isOpen, onClose }) => {
         isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-100'
       }`}>
 
-        {/* ── Header ── */}
+        {/* â”€â”€ Header â”€â”€ */}
         <div className={`flex items-center justify-between p-5 border-b flex-shrink-0 ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-xl ${isUrgent
@@ -114,7 +115,7 @@ const HealthRecordModal = ({ record, isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* ── Body ── */}
+        {/* â”€â”€ Body â”€â”€ */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
           {/* Status + Type row */}
@@ -142,10 +143,10 @@ const HealthRecordModal = ({ record, isOpen, onClose }) => {
           )}
 
           {/* Scheduled appointment info */}
-          {isScheduled && record.scheduledDate && (
+          {record.scheduledDate && (
             <InfoRow
               icon={CalendarCheck}
-              label="Appointment Date & Time"
+              label={isScheduled ? 'Appointment Date & Time' : 'Requested Date & Time'}
               value={formatScheduled(record.scheduledDate, record.scheduledTime)}
               isDarkMode={isDarkMode}
             />
@@ -211,7 +212,7 @@ const HealthRecordModal = ({ record, isOpen, onClose }) => {
           )}
         </div>
 
-        {/* ── Footer ── */}
+        {/* â”€â”€ Footer â”€â”€ */}
         <div className={`p-4 border-t flex-shrink-0 ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
           <button
             onClick={onClose}
@@ -230,3 +231,4 @@ const HealthRecordModal = ({ record, isOpen, onClose }) => {
 }
 
 export default HealthRecordModal
+

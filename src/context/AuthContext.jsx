@@ -17,7 +17,6 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
-    // Check if user is already logged in on mount
     checkAuth()
   }, [])
 
@@ -27,9 +26,14 @@ export const AuthProvider = ({ children }) => {
       if (currentUser) {
         setUser(currentUser)
         setIsAuthenticated(true)
+      } else {
+        setUser(null)
+        setIsAuthenticated(false)
       }
     } catch (error) {
       console.error('Auth check failed:', error)
+      setUser(null)
+      setIsAuthenticated(false)
     } finally {
       setLoading(false)
     }
@@ -73,7 +77,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    updateUser
+    updateUser,
   }
 
   return (

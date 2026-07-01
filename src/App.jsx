@@ -25,6 +25,7 @@ import AdminRequestsPage from './pages/AdminRequestsPage'
 import RequestAdminPage from './pages/RequestAdminPage'
 import ReportEmergencyPage from './pages/ReportEmergencyPage'
 import EmergencyManagementPage from './pages/EmergencyManagementPage'
+import BHWDashboard from './pages/BHWDashboard'
 
 function App() {
   return (
@@ -104,6 +105,27 @@ function App() {
                 <CreateEventPage />
               </Layout>
             </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/bhw"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <BHWDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bhw/dashboard"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <BHWDashboard />
+              </Layout>
+            </ProtectedRoute>
           }
         />
 

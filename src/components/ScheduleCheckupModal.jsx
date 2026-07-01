@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { X, Calendar, Clock, FileText, CheckCircle, Loader2, CalendarCheck } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
@@ -45,6 +46,10 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '' }) => {
         type: 'scheduled_checkup',
         scheduledDate: date,
         scheduledTime: time,
+        // These two are what healthService reads into the `health_requests`
+        // doc that BHWDashboard subscribes to — must match exactly.
+        preferredAppointmentDate: date,
+        preferredAppointmentTime: time,
         aiSymptomsNotes: notes,
         message: `AI-recommended barangay checkup on ${date} at ${time}`,
         healthAssessment: {
@@ -172,12 +177,12 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '' }) => {
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={6}
-                placeholder="Describe your symptoms for the health worker…"
+                placeholder="Describe your symptoms for the health workerâ€¦"
                 className={`${inputCls} resize-y`}
               />
               {symptomsSummary && (
                 <p className={`text-xs mt-1 flex items-center gap-1 ${isDarkMode ? 'text-green-500' : 'text-green-600'}`}>
-                  <span>✦</span> Pre-filled from your AI health conversation
+                  <span>âœ¦</span> Pre-filled from your AI health conversation
                 </p>
               )}
             </div>
@@ -187,7 +192,7 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '' }) => {
               disabled={loading}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Scheduling…</span></> : <><CalendarCheck className="w-4 h-4" /><span>Confirm Schedule</span></>}
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Schedulingâ€¦</span></> : <><CalendarCheck className="w-4 h-4" /><span>Confirm Schedule</span></>}
             </button>
           </form>
         )}
@@ -197,3 +202,4 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '' }) => {
 }
 
 export default ScheduleCheckupModal
+

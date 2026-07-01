@@ -1,23 +1,51 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Shield, Lock, Key, Eye, EyeOff, Save } from 'lucide-react'
-import toledoImage from '../assets/Toledo.jpg'
-import { useTheme } from '../context/ThemeContext'
+import { ArrowLeft, Shield, Lock, Key, Eye, EyeOff, Save, ChevronRight } from 'lucide-react'
 
 const PrivacySecurityPage = () => {
   const navigate = useNavigate()
-  const { isDarkMode } = useTheme()
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  
+
   const [passwords, setPasswords] = useState({
     current: '',
     new: '',
-    confirm: ''
+    confirm: '',
   })
 
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+
+  const loginActivity = [
+    { device: 'iPhone 13', location: 'Toledo City, Cebu', time: 'Just now', current: true },
+    { device: 'Chrome on Windows', location: 'Toledo City, Cebu', time: '2 hours ago', current: false },
+    { device: 'Android Phone', location: 'Cebu City', time: '1 day ago', current: false },
+  ]
+
+  const dataLinks = [
+    { title: 'Download Your Data', description: 'Get a copy of your information' },
+    { title: 'Privacy Policy', description: 'Read our privacy policy' },
+    { title: 'Terms of Service', description: 'View terms and conditions' },
+  ]
+
+  /* glass card — matches HomePage panels */
+  const card =
+    'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
+
+  const sectionHeader = (Icon, eyebrow, title) => (
+    <div className="mb-5 flex items-center gap-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
+        <Icon className="h-4 w-4 text-blue-200" />
+      </div>
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wider text-white/50">{eyebrow}</p>
+        <p className="text-base font-semibold text-white">{title}</p>
+      </div>
+    </div>
+  )
+
+  const inputClasses =
+    'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 pr-12 text-white placeholder-white/40 backdrop-blur-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-400'
 
   const handlePasswordChange = () => {
     if (passwords.new !== passwords.confirm) {
@@ -34,222 +62,187 @@ const PrivacySecurityPage = () => {
   }
 
   return (
-    <div className="min-h-screen relative pb-20">
-      {/* Background Image with Overlay */}
-      <div 
-        className="fixed inset-0 bg-cover bg-center -z-10"
-        style={{ backgroundImage: `url(${toledoImage})` }}
-      >
-        <div className={`absolute inset-0 bg-gradient-to-br ${isDarkMode ? 'from-gray-950/90 via-slate-900/90 to-gray-900/90' : 'from-blue-900/85 via-blue-800/85 to-indigo-900/85'}`}></div>
+    /* No background here — Layout.jsx paints the gradient behind everything */
+    <div className="mx-auto max-w-2xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate(-1)}
+          className="rounded-lg border border-white/20 bg-white/10 p-2 text-white backdrop-blur-sm transition hover:bg-white/20"
+        >
+          <ArrowLeft className="h-6 w-6" />
+        </button>
+        <h1 className="text-xl font-bold text-white">Privacy & Security</h1>
+        <div className="w-10" />
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      {/* Change Password Section */}
+      <div className={`${card} p-5`}>
+        {sectionHeader(Lock, 'Account security', 'Change Password')}
+
+        <div className="space-y-4">
+          {/* Current Password */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-white/70">Current Password</label>
+            <div className="relative">
+              <input
+                type={showCurrentPassword ? 'text' : 'password'}
+                value={passwords.current}
+                onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+                className={inputClasses}
+                placeholder="Enter current password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
+              >
+                {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* New Password */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-white/70">New Password</label>
+            <div className="relative">
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                value={passwords.new}
+                onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+                className={inputClasses}
+                placeholder="Enter new password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
+              >
+                {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-white/40">Must be at least 8 characters long</p>
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-white/70">Confirm New Password</label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={passwords.confirm}
+                onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                className={inputClasses}
+                placeholder="Confirm new password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
+              >
+                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+
           <button
-            onClick={() => navigate(-1)}
-            className={`p-2 backdrop-blur-sm rounded-lg transition ${isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-white/20 hover:bg-white/30'}`}
+            onClick={handlePasswordChange}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-3 font-semibold text-white shadow-lg transition hover:from-blue-600 hover:to-indigo-700"
           >
-            <ArrowLeft className="w-6 h-6 text-white" />
+            <Save className="h-5 w-5" />
+            <span>Update Password</span>
           </button>
-          <h1 className="text-xl font-bold text-white">Privacy & Security</h1>
-          <div className="w-10" />
         </div>
+      </div>
 
-        {/* Change Password Section */}
-        <div className={`backdrop-blur-lg rounded-xl shadow-xl p-4 ${isDarkMode ? 'bg-gray-800/95 border border-gray-700/50' : 'bg-white/95 border border-white/30'}`}>
-          <div className="flex items-center space-x-3 mb-4">
-            <Lock className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h3 className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Change Password</h3>
+      {/* Two-Factor Authentication */}
+      <div className={`${card} p-5`}>
+        {sectionHeader(Key, 'Extra protection', 'Two-Factor Authentication')}
+
+        <div className="space-y-4">
+          <p className="text-sm text-white/60">
+            Add an extra layer of security to your account by enabling two-factor authentication (2FA).
+          </p>
+
+          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4">
+            <div>
+              <p className="font-medium text-white">Enable 2FA</p>
+              <p className="mt-0.5 text-xs text-white/50">Require code from authentication app</p>
+            </div>
+            <label className="relative inline-block h-6 w-12 flex-shrink-0">
+              <input
+                type="checkbox"
+                checked={twoFactorEnabled}
+                onChange={() => setTwoFactorEnabled(!twoFactorEnabled)}
+                className="peer sr-only"
+              />
+              <div className="h-6 w-12 cursor-pointer rounded-full bg-white/20 shadow-inner ring-1 ring-white/20 transition-all after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-indigo-600 peer-checked:after:translate-x-6 peer-focus:outline-none" />
+            </label>
           </div>
-          
-          <div className="space-y-4">
-            {/* Current Password */}
-            <div>
-              <label className={`text-sm font-medium mb-2 block ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Current Password</label>
-              <div className="relative">
-                <input
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  value={passwords.current}
-                  onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
-                  className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                  placeholder="Enter current password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-                >
-                  {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
 
-            {/* New Password */}
-            <div>
-              <label className={`text-sm font-medium mb-2 block ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>New Password</label>
-              <div className="relative">
-                <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={passwords.new}
-                  onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
-                  className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                  placeholder="Enter new password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-                >
-                  {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Must be at least 8 characters long</p>
+          {twoFactorEnabled && (
+            <div className="rounded-xl border border-blue-400/20 bg-blue-500/10 p-4">
+              <p className="mb-2 text-sm font-medium text-blue-200">Setup Instructions:</p>
+              <ol className="list-inside list-decimal space-y-1 text-sm text-blue-100/80">
+                <li>Download an authenticator app (Google Authenticator, Authy, etc.)</li>
+                <li>Scan the QR code shown in the setup wizard</li>
+                <li>Enter the 6-digit code to verify</li>
+              </ol>
+              <button className="mt-3 w-full rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 py-2 text-sm font-semibold text-white transition hover:from-blue-600 hover:to-indigo-700">
+                Start Setup
+              </button>
             </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label className={`text-sm font-medium mb-2 block ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirm New Password</label>
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={passwords.confirm}
-                  onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
-                  className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                  placeholder="Confirm new password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-                >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={handlePasswordChange}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-xl transition shadow-lg flex items-center justify-center space-x-2"
-            >
-              <Save className="w-5 h-5" />
-              <span>Update Password</span>
-            </button>
-          </div>
+          )}
         </div>
+      </div>
 
-        {/* Two-Factor Authentication */}
-        <div className={`backdrop-blur-lg rounded-xl shadow-xl p-4 ${isDarkMode ? 'bg-gray-800/95 border border-gray-700/50' : 'bg-white/95 border border-white/30'}`}>
-          <div className="flex items-center space-x-3 mb-4">
-            <Key className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h3 className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Two-Factor Authentication</h3>
-          </div>
-          
-          <div className="space-y-4">
-            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Add an extra layer of security to your account by enabling two-factor authentication (2FA).
-            </p>
-            
-            <div className={`flex items-center justify-between py-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-              <div>
-                <p className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Enable 2FA</p>
-                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Require code from authentication app</p>
-              </div>
-              <label className="relative inline-block w-12 h-6 flex-shrink-0">
-                <input
-                  type="checkbox"
-                  checked={twoFactorEnabled}
-                  onChange={() => setTwoFactorEnabled(!twoFactorEnabled)}
-                  className="sr-only peer"
-                />
-                <div className={`w-12 h-6 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 shadow-inner cursor-pointer ${isDarkMode ? 'bg-gray-600' : 'bg-gray-200'}`}></div>
-              </label>
-            </div>
+      {/* Login Activity */}
+      <div className={`${card} p-5`}>
+        {sectionHeader(Shield, 'Where you\'re signed in', 'Recent Login Activity')}
 
-            {twoFactorEnabled && (
-              <div className={`border rounded-lg p-4 ${isDarkMode ? 'bg-blue-900/30 border-blue-800' : 'bg-blue-50 border-blue-200'}`}>
-                <p className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-blue-300' : 'text-blue-800'}`}>Setup Instructions:</p>
-                <ol className={`text-sm space-y-1 list-decimal list-inside ${isDarkMode ? 'text-blue-400' : 'text-blue-700'}`}>
-                  <li>Download an authenticator app (Google Authenticator, Authy, etc.)</li>
-                  <li>Scan the QR code shown in the setup wizard</li>
-                  <li>Enter the 6-digit code to verify</li>
-                </ol>
-                <button className="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-lg text-sm transition">
-                  Start Setup
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Login Activity */}
-        <div className={`backdrop-blur-lg rounded-xl shadow-xl p-4 ${isDarkMode ? 'bg-gray-800/95 border border-gray-700/50' : 'bg-white/95 border border-white/30'}`}>
-          <div className="flex items-center space-x-3 mb-4">
-            <Shield className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h3 className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Recent Login Activity</h3>
-          </div>
-          
-          <div className="space-y-3">
-            {[
-              { device: 'iPhone 13', location: 'Toledo City, Cebu', time: 'Just now', current: true },
-              { device: 'Chrome on Windows', location: 'Toledo City, Cebu', time: '2 hours ago', current: false },
-              { device: 'Android Phone', location: 'Cebu City', time: '1 day ago', current: false },
-            ].map((activity, index) => (
-              <div key={index} className={`flex items-start justify-between py-3 border-b last:border-0 ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <p className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{activity.device}</p>
-                    {activity.current && (
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'}`}>
-                        Current
-                      </span>
-                    )}
-                  </div>
-                  <p className={`text-sm mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{activity.location}</p>
-                  <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>{activity.time}</p>
+        <div className="space-y-3">
+          {loginActivity.map((activity, index) => (
+            <div key={index} className="flex items-start justify-between rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-white">{activity.device}</p>
+                  {activity.current && (
+                    <span className="rounded-full bg-emerald-400/20 px-2 py-0.5 text-xs font-semibold text-emerald-300">
+                      Current
+                    </span>
+                  )}
                 </div>
-                {!activity.current && (
-                  <button className={`text-sm font-medium ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'}`}>
-                    Revoke
-                  </button>
-                )}
+                <p className="mt-0.5 text-sm text-white/60">{activity.location}</p>
+                <p className="mt-0.5 text-xs text-white/40">{activity.time}</p>
               </div>
-            ))}
-          </div>
+              {!activity.current && (
+                <button className="text-sm font-medium text-rose-300 hover:text-rose-200">
+                  Revoke
+                </button>
+              )}
+            </div>
+          ))}
         </div>
+      </div>
 
-        {/* Data & Privacy */}
-        <div className={`backdrop-blur-lg rounded-xl shadow-xl p-4 ${isDarkMode ? 'bg-gray-800/95 border border-gray-700/50' : 'bg-white/95 border border-white/30'}`}>
-          <div className="flex items-center space-x-3 mb-4">
-            <Shield className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h3 className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Data & Privacy</h3>
-          </div>
-          
-          <div className="space-y-3">
-            <button className={`w-full flex items-center justify-between p-3 rounded-lg transition text-left ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
+      {/* Data & Privacy */}
+      <div className={`${card} p-5`}>
+        {sectionHeader(Shield, 'Your information', 'Data & Privacy')}
+
+        <div className="space-y-2">
+          {dataLinks.map((link) => (
+            <button
+              key={link.title}
+              className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3 text-left transition hover:bg-white/10"
+            >
               <div>
-                <p className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Download Your Data</p>
-                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Get a copy of your information</p>
+                <p className="font-medium text-white">{link.title}</p>
+                <p className="mt-0.5 text-xs text-white/50">{link.description}</p>
               </div>
-              <ArrowLeft className={`w-5 h-5 rotate-180 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+              <ChevronRight className="h-5 w-5 text-white/40" />
             </button>
-            
-            <button className={`w-full flex items-center justify-between p-3 rounded-lg transition text-left ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
-              <div>
-                <p className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Privacy Policy</p>
-                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Read our privacy policy</p>
-              </div>
-              <ArrowLeft className={`w-5 h-5 rotate-180 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-            </button>
-            
-            <button className={`w-full flex items-center justify-between p-3 rounded-lg transition text-left ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
-              <div>
-                <p className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Terms of Service</p>
-                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>View terms and conditions</p>
-              </div>
-              <ArrowLeft className={`w-5 h-5 rotate-180 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-            </button>
-          </div>
+          ))}
         </div>
       </div>
     </div>

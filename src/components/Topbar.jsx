@@ -5,94 +5,78 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import NotificationDropdown from './NotificationDropdown'
 
-const Topbar = ({ onToggleSidebar, unreadCount, onOpenProfile }) => {
+const Topbar = ({ onToggleSidebar, unreadCount, onOpenProfile, onNotificationRead }) => {
   const navigate = useNavigate()
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
   const [showNotifications, setShowNotifications] = useState(false)
 
-  const handleNotificationToggle = () => {
-    setShowNotifications((prev) => !prev)
-  }
+  const handleNotificationToggle = () => setShowNotifications((prev) => !prev)
 
   return (
-    <header
+   <header
       style={{ height: 'var(--topbar-height)' }}
-      className={`fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 shadow-lg ${
-        isDarkMode
-          ? 'bg-gradient-to-r from-blue-950 to-slate-900 border-b border-gray-700/50'
-          : 'bg-gradient-to-r from-blue-600 to-indigo-700'
-      }`}
+      className={`fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 sm:px-6
+        border-b backdrop-blur-2xl shadow-[0_10px_40px_rgba(0,0,0,.15)] transition-all duration-500
+        ${isDarkMode
+          ? 'bg-gradient-to-r from-slate-900/70 via-indigo-900/55 to-blue-950/65 border-white/10'
+          : 'bg-gradient-to-r from-white/12 via-blue-500/12 to-indigo-600/18 border-white/10'
+        }`}
     >
-      {/* Left: Hamburger + Logo */}
-      <div className="flex items-center space-x-3">
-        {/* Hamburger - visible on desktop only to toggle sidebar */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-b-2xl">
+        <div className="absolute -top-16 left-1/4 h-40 w-40 rounded-full bg-cyan-400/10 blur-[90px]" />
+        <div className="absolute -bottom-16 right-1/4 h-40 w-40 rounded-full bg-violet-500/10 blur-[100px]" />
+      </div>
+
+     {/* Left: Hamburger + Logo */}
+      <div className="relative z-10 flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
-          className={`hidden lg:flex items-center justify-center w-9 h-9 rounded-lg transition ${
-            isDarkMode ? 'hover:bg-blue-900/60' : 'hover:bg-blue-500/50'
-          } text-white`}
+          className="hidden lg:flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-300 text-white/60 hover:bg-white/10 hover:backdrop-blur-xl hover:text-white"
           title="Toggle sidebar"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Logo */}
-        <button
+       <button
           onClick={() => navigate('/home')}
-          className="flex items-center space-x-2.5"
+          className="flex items-center gap-3 text-left group"
         >
-          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
-            <div className="relative">
-              <span className="text-blue-600 font-bold text-base leading-none">S</span>
-              <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 rounded-full" />
-            </div>
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white text-base shadow-lg shadow-blue-500/30 ring-2 ring-white/20 transition-transform duration-300 group-hover:scale-105">
+            S
           </div>
-          <div className="text-white">
-            <div className="font-bold text-base leading-tight">SmartCo</div>
-            <div className={`text-xs leading-tight ${isDarkMode ? 'text-blue-300' : 'text-blue-100'}`}>
-              Barangay Management
-            </div>
+          <div>
+            <div className="font-bold text-sm tracking-tight text-white">SmartCo</div>
+            <div className="text-[11px] font-medium text-white/50 leading-none mt-0.5">Barangay Platform</div>
           </div>
         </button>
       </div>
 
-      {/* Right: Notifications + Profile */}
-      <div className="flex items-center space-x-2 relative">
-        {/* Notification Bell */}
+     {/* Right: Notifications + Profile */}
+      <div className="relative z-10 flex items-center gap-2">
         <button
           onClick={handleNotificationToggle}
-          className={`relative p-2 rounded-lg transition text-white ${
-            isDarkMode ? 'hover:bg-blue-900/60' : 'hover:bg-blue-500/50'
-          }`}
+          className="relative p-2 rounded-xl transition-all duration-300 text-white/60 hover:bg-white/10 hover:backdrop-blur-xl hover:text-white"
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className={`absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 rounded-full border-2 ${
-              isDarkMode ? 'border-blue-950' : 'border-blue-600'
-            } flex items-center justify-center text-white text-[9px] font-bold px-0.5`}>
+            <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-rose-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold px-1 ring-2 ring-black/20 animate-pulse">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </button>
 
-        {/* Profile Avatar */}
         <button
           onClick={onOpenProfile}
-          className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition shadow-md ${
-            isDarkMode
-              ? 'bg-blue-800 text-blue-100 hover:bg-blue-700'
-              : 'bg-white text-blue-600 hover:bg-blue-50'
-          }`}
+          className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm border border-white/20 bg-white/10 text-white backdrop-blur-xl transition-all duration-300 hover:bg-white/20 hover:border-white/30 hover:shadow-lg"
           title="Profile"
         >
           {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
         </button>
 
-        {/* Notification Dropdown */}
         {showNotifications && (
           <div className="absolute top-full right-0 mt-2 w-80 shadow-2xl rounded-xl overflow-hidden z-50">
-            <NotificationDropdown onClose={() => setShowNotifications(false)} />
+            <NotificationDropdown onClose={() => setShowNotifications(false)} onNotificationRead={onNotificationRead} />
           </div>
         )}
       </div>

@@ -1,7 +1,16 @@
+import FoodAidProjectionChart from '../components/FoodAidProjectionChart'
+import EventAttendanceChart from '../components/EventAttendanceChart'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, Package, Calendar, Users, AlertCircle, Plus, TrendingUp, Activity, BarChart3, Loader } from 'lucide-react'
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import {
+  Heart, Package, Calendar, Users, AlertCircle,
+  Activity, BarChart3, Loader, ArrowRight,
+  Sparkles, ShieldCheck, Clock3, MapPin,
+} from 'lucide-react'
+import {
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
@@ -31,9 +40,9 @@ const HomePage = () => {
         healthService.getHealthRecords(),
         eventsService.getEvents(),
         foodAidService.getFoodAidSchedules(),
-        notificationService.getNotifications()
+        notificationService.getNotifications(),
       ])
-      const upcomingEvents = events.filter(e => e.status === 'upcoming').length
+      const upcomingEvents = events.filter((e) => e.status === 'upcoming').length
       const totalFamiliesServed = foodAidSchedules.reduce((sum, item) => sum + (item.deliveredFamilies || 0), 0)
       setStats({ healthRecords: healthRecords.length, aidDistributed: totalFamiliesServed, upcomingEvents, activeUsers: 342 })
       setHealthTrendsData(processHealthTrends(healthRecords))
@@ -42,7 +51,7 @@ const HomePage = () => {
       const alerts = notifications
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 5)
-        .map(n => ({ id: n.id, type: n.category, message: n.message, time: getRelativeTime(n.createdAt), urgent: n.type === 'emergency' }))
+        .map((n) => ({ id: n.id, type: n.category, message: n.message, time: getRelativeTime(n.createdAt), urgent: n.type === 'emergency' }))
       setRecentAlerts(alerts)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -57,7 +66,7 @@ const HomePage = () => {
       const date = new Date(today)
       date.setDate(date.getDate() - (6 - i))
       const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      const dayRecords = records.filter(r => new Date(r.createdAt).toDateString() === date.toDateString())
+      const dayRecords = records.filter((r) => new Date(r.createdAt).toDateString() === date.toDateString())
       const avgBP = dayRecords.length ? Math.round(dayRecords.reduce((s, r) => s + (parseInt(r.formData?.bloodPressureSystolic) || 0), 0) / dayRecords.length) : 0
       const avgTemp = dayRecords.length ? +(dayRecords.reduce((s, r) => s + (parseFloat(r.formData?.temperature) || 0), 0) / dayRecords.length).toFixed(1) : 0
       return { date: dateStr, avgBP, avgTemp, checkups: dayRecords.length }
@@ -66,7 +75,7 @@ const HomePage = () => {
 
   const processFoodAidByPurok = (schedules) => {
     const map = {}
-    schedules.forEach(s => {
+    schedules.forEach((s) => {
       const p = s.purok || 'Unknown'
       if (!map[p]) map[p] = { purok: p, families: 0, delivered: 0 }
       map[p].families += s.totalFamilies || 0
@@ -77,7 +86,7 @@ const HomePage = () => {
 
   const processEventAttendance = (events) => {
     const map = {}
-    events.forEach(e => {
+    events.forEach((e) => {
       const c = e.category || 'Other'
       if (!map[c]) map[c] = { category: c, expected: 0, actual: 0 }
       map[c].expected += e.expectedAttendees || 0
@@ -97,10 +106,12 @@ const HomePage = () => {
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null
     return (
-      <div className={`${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} border rounded-xl shadow-lg p-3`}>
-        <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{label}</p>
+      <div className="rounded-xl border border-white/25 bg-indigo-900/70 p-3 shadow-lg backdrop-blur-xl">
+        <p className="mb-1 text-xs font-bold text-white/60 uppercase tracking-wider">{label}</p>
         {payload.map((entry, i) => (
-          <p key={i} className="text-xs" style={{ color: entry.color }}>{entry.name}: {entry.value}</p>
+          <p key={i} className="text-xs font-semibold" style={{ color: entry.color }}>
+            {entry.name}: {entry.value}
+          </p>
         ))}
       </div>
     )
@@ -112,233 +123,402 @@ const HomePage = () => {
   const totalExpected = eventAttendanceData.reduce((s, i) => s + i.expected, 0)
   const totalActual = eventAttendanceData.reduce((s, i) => s + i.actual, 0)
   const attendanceRate = totalExpected > 0 ? ((totalActual / totalExpected) * 100).toFixed(1) : 0
+  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'
 
+  /* glass card — used on every panel */
+ const card =
+  'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
   const statCards = [
-    { icon: Heart, label: 'Health Records', value: stats.healthRecords, gradient: 'from-blue-500 to-blue-600', badge: <Activity className="w-4 h-4" /> },
-    { icon: Package, label: 'Families Served', value: stats.aidDistributed, gradient: 'from-green-500 to-emerald-600', badge: <TrendingUp className="w-4 h-4" /> },
-    { icon: Calendar, label: 'Upcoming Events', value: stats.upcomingEvents, gradient: 'from-purple-500 to-violet-600', badge: <Activity className="w-4 h-4" /> },
-    { icon: Users, label: 'Active Users', value: stats.activeUsers, gradient: 'from-orange-500 to-amber-600', badge: <Activity className="w-4 h-4" /> },
-  ]
+  {
+    icon: Heart,
+    label: 'Health Records',
+    value: stats.healthRecords,
+    iconBg:
+      'bg-gradient-to-br from-rose-500 via-pink-500 to-red-500',
+    iconColor: 'text-white',
+    iconRing: 'ring-rose-300/40',
+  },
+  {
+    icon: Package,
+    label: 'Families Served',
+    value: stats.aidDistributed,
+    iconBg:
+      'bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500',
+    iconColor: 'text-white',
+    iconRing: 'ring-emerald-300/40',
+  },
+  {
+    icon: Calendar,
+    label: 'Upcoming Events',
+    value: stats.upcomingEvents,
+    iconBg:
+      'bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500',
+    iconColor: 'text-white',
+    iconRing: 'ring-violet-300/40',
+  },
+  {
+    icon: Users,
+    label: 'Active Users',
+    value: stats.activeUsers,
+    iconBg:
+      'bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-500',
+    iconColor: 'text-white',
+    iconRing: 'ring-amber-300/40',
+  },
+]
+
+  const quickActions = [
+  {
+    label: 'Record Checkup',
+    description: 'Log a new resident health update',
+    path: '/health/record',
+    icon: Heart,
+    gradient: 'from-sky-500/60 via-blue-500/40 to-cyan-600/25',
+    glow: 'hover:shadow-sky-500/30',
+  },
+
+  ...(user?.role === 'admin' || user?.role === 'barangay_official'
+    ? [{
+        label: 'Schedule Aid',
+        description: 'Plan next food aid distribution',
+        path: '/food-aid/optimize',
+        icon: Package,
+        gradient: 'from-emerald-500/60 via-green-500/40 to-teal-600/25',
+        glow: 'hover:shadow-emerald-500/30',
+      }]
+    : []),
+
+  {
+    label: 'Create Event',
+    description: 'Publish a barangay activity',
+    path: '/events/create',
+    icon: Calendar,
+    gradient: 'from-violet-500/60 via-fuchsia-500/40 to-purple-700/25',
+    glow: 'hover:shadow-violet-500/30',
+  },
+
+  {
+    label: 'Report Emergency',
+    description: 'Send a fast community alert',
+    path: '/emergency/report',
+    icon: AlertCircle,
+    gradient: 'from-rose-500/60 via-red-500/40 to-orange-600/25',
+    glow: 'hover:shadow-rose-500/30',
+  },
+]
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative">
-        <div
-          className="fixed inset-0 bg-cover bg-center -z-10"
-          style={{ backgroundImage: `url(${toledoImage})` }}
-        >
-          <div className={`absolute inset-0 ${isDarkMode ? 'bg-gradient-to-br from-gray-950/95 via-blue-950/95 to-slate-950/95' : 'bg-gradient-to-br from-blue-900/85 via-blue-800/85 to-indigo-900/85'}`} />
-        </div>
-        <div className="text-center">
-          <Loader className="w-12 h-12 text-blue-400 animate-spin mx-auto mb-4" />
-          <p className="text-white font-medium">Loading dashboard...</p>
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <div className={`${card} px-8 py-10 text-center`}>
+          <Loader className="mx-auto mb-4 h-10 w-10 animate-spin text-white" />
+          <p className="font-semibold text-white">Loading your community dashboard...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen relative">
-      {/* Background */}
-      <div
-        className="fixed inset-0 bg-cover bg-center -z-10"
-        style={{ backgroundImage: `url(${toledoImage})` }}
-      >
-        <div className={`absolute inset-0 ${isDarkMode ? 'bg-gradient-to-br from-gray-950/95 via-blue-950/95 to-slate-950/95' : 'bg-gradient-to-br from-blue-900/85 via-blue-800/85 to-indigo-900/85'}`} />
-      </div>
+    /* No background here — Layout.jsx paints the gradient behind everything */
+    <div className="mx-auto max-w-7xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
 
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-screen-2xl">
-
-        {/* Welcome Header */}
-        <div className={`${isDarkMode ? 'bg-gradient-to-r from-blue-900/90 to-indigo-950/90 border-gray-700/50' : 'bg-gradient-to-r from-blue-500/90 to-indigo-600/90 border-white/20'} backdrop-blur-sm rounded-2xl p-6 lg:p-8 text-white shadow-xl border`}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-2xl lg:text-3xl font-bold mb-1">
-                Welcome back, {user?.fullName?.split(' ')[0] || 'User'} 👋
-              </h2>
-              <p className={`text-sm lg:text-base ${isDarkMode ? 'text-blue-200' : 'text-blue-100'}`}>
-                Barangay Analytics Dashboard · {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </p>
+      {/* ── Hero welcome banner ── */}
+     <section
+  className={`${card} overflow-hidden bg-gradient-to-r from-indigo-500/30 via-violet-500/20 to-blue-500/30`}
+>
+        <div className="flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 hover:bg-white/20 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+              <Sparkles className="h-3.5 w-3.5 text-yellow-300" />
+              AI-powered barangay overview
             </div>
-            <div className={`text-xs px-3 py-1.5 rounded-full font-medium ${isDarkMode ? 'bg-blue-800/50 text-blue-200' : 'bg-white/20 text-white'}`}>
-              🟢 System Online
+            <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              {greeting}, {user?.fullName?.split(' ')[0] || 'there'} 👋
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
+              Keep tabs on health updates, food aid progress, and community events — all in one modern dashboard.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                onClick={() => navigate('/health/record')}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-5 py-2.5 text-white shadow-lg hover:from-blue-600 hover:to-indigo-700 text-sm font-bold text-indigo-700 shadow-md transition hover:bg-indigo-50 hover:shadow-lg"
+              >
+                Record checkup <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => navigate('/notifications')}
+                className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 hover:bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/25"
+              >
+                Review alerts
+              </button>
             </div>
           </div>
+
+          {/* At-a-glance mini panel */}
+          <div className="flex w-full max-w-xs flex-col gap-3 lg:w-auto">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-widest text-white/50">Today at a glance</p>
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-400/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />Live
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-white/30 bg-gradient-to-br from-blue-500/25 to-cyan-500/10 p-4 backdrop-blur-sm">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-200">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Coverage
+                </div>
+                <p className="mt-2 text-2xl font-bold text-white">{deliveryProgress}%</p>
+              </div>
+              <div className="rounded-xl border border-white/30 bg-gradient-to-br from-violet-500/25 to-purple-500/10 p-4 backdrop-blur-sm">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-200">
+                  <Clock3 className="h-3.5 w-3.5" /> Attendance
+                </div>
+                <p className="mt-2 text-2xl font-bold text-white">{attendanceRate}%</p>
+              </div>
+            </div>
+            <p className="text-center text-xs text-white/40">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stat cards ── */}
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {statCards.map((c) => (
+          <div
+  key={c.label}
+  className={`${card} p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(59,130,246,.25)] hover:border-white/40`}
+>
+            <div
+  className={`mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl shadow-xl ring-2 transition-transform duration-300 group-hover:scale-110 ${c.iconBg} ${c.iconRing}`}
+>
+              <c.icon className={`h-5 w-5 ${c.iconColor}`} />
+            </div>
+            <div className="text-3xl font-bold tracking-tight text-white">{c.value}</div>
+            <div className="mt-1 text-xs font-semibold uppercase tracking-widest text-white/50">{c.label}</div>
+          </div>
+        ))}
+      </section>
+
+      {/* ── Health trend + Alerts ── */}
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.4fr_0.9fr]">
+
+        <div className={`${card} p-5 lg:p-6`}>
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-gradient-to-br from-sky-500 to-blue-600 shadow-lg shadow-sky-500/30">
+              <Activity className="h-4 w-4 text-sky-200" />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-white/50">Community health trend</p>
+              <p className="text-base font-semibold text-white">Weekly pulse of resident checkups</p>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={healthTrendsData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
+              <YAxis tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} iconType="line" />
+              <Line type="monotone" dataKey="checkups" stroke="#93c5fd" strokeWidth={2.5} name="Checkups" dot={{ fill: '#93c5fd', r: 3 }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="avgBP"    stroke="#fca5a5" strokeWidth={2.5} name="Avg BP"   dot={{ fill: '#fca5a5', r: 3 }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
 
-        {/* Stat Cards — 2 col mobile, 4 col desktop */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-          {statCards.map((card) => (
-            <div key={card.label} className={`bg-gradient-to-br ${card.gradient} backdrop-blur-sm rounded-2xl p-4 lg:p-5 text-white shadow-xl border border-white/20 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                  <card.icon className="w-5 h-5" />
-                </div>
-                <div className="bg-white/20 rounded-full p-1.5">
-                  {card.badge}
-                </div>
+        <div className={`${card} p-5 lg:p-6`}>
+          <div className="mb-5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-gradient-to-br from-rose-500 to-red-600 shadow-lg shadow-rose-500/30">
+                <AlertCircle className="h-4 w-4 text-rose-200" />
               </div>
-              <div className="text-2xl lg:text-3xl font-bold mb-0.5">{card.value}</div>
-              <div className="text-xs lg:text-sm opacity-85">{card.label}</div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-white/50">Priority alerts</p>
+                <p className="text-base font-semibold text-white">Latest updates</p>
+              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Charts Row 1 — Health Trends + Recent Alerts */}
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 lg:gap-6">
-          {/* Health Trends — takes 3/5 on xl */}
-          {healthTrendsData.length > 0 && (
-            <div className={`xl:col-span-3 ${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border p-5 lg:p-6`}>
-              <div className="flex items-center space-x-2 mb-5">
-                <div className={`w-8 h-8 ${isDarkMode ? 'bg-blue-900/60' : 'bg-blue-50'} rounded-lg flex items-center justify-center`}>
-                  <Activity className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                </div>
-                <div>
-                  <h3 className={`font-semibold text-sm lg:text-base ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Health Trends</h3>
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Past 7 days</p>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={healthTrendsData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#f3f4f6'} />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }} stroke={isDarkMode ? '#4b5563' : '#e5e7eb'} />
-                  <YAxis tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }} stroke={isDarkMode ? '#4b5563' : '#e5e7eb'} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} iconType="line" />
-                  <Line type="monotone" dataKey="checkups" stroke="#3b82f6" strokeWidth={2.5} name="Checkups" dot={{ fill: '#3b82f6', r: 3 }} activeDot={{ r: 5 }} />
-                  <Line type="monotone" dataKey="avgBP" stroke="#ef4444" strokeWidth={2.5} name="Avg BP (Systolic)" dot={{ fill: '#ef4444', r: 3 }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Recent Alerts — takes 2/5 on xl */}
-          {recentAlerts.length > 0 && (
-            <div className={`xl:col-span-2 ${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border p-5 lg:p-6`}>
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center space-x-2">
-                  <div className={`w-8 h-8 ${isDarkMode ? 'bg-red-900/40' : 'bg-red-50'} rounded-lg flex items-center justify-center`}>
-                    <AlertCircle className={`w-4 h-4 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
-                  </div>
-                  <div>
-                    <h3 className={`font-semibold text-sm lg:text-base ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Recent Alerts</h3>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Latest notifications</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate('/notifications')}
-                  className={`text-xs font-medium px-3 py-1.5 rounded-lg transition ${isDarkMode ? 'text-blue-400 hover:bg-blue-900/30' : 'text-blue-600 hover:bg-blue-50'}`}
-                >
-                  View All
-                </button>
-              </div>
-              <div className="space-y-3 overflow-y-auto max-h-[200px] lg:max-h-none">
-                {recentAlerts.map(alert => (
-                  <div key={alert.id} className={`flex items-start space-x-3 p-3 rounded-xl ${alert.urgent
-                    ? isDarkMode ? 'bg-red-950/50 border border-red-900/50' : 'bg-red-50 border border-red-200'
-                    : isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50'
-                  }`}>
-                    <AlertCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${alert.urgent ? 'text-red-500' : isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium leading-snug ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>{alert.message}</p>
-                      <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{alert.time}</p>
+            <button onClick={() => navigate('/notifications')} className="text-xs font-bold uppercase tracking-wider text-blue-200 transition hover:text-white">
+              View all
+            </button>
+          </div>
+          {recentAlerts.length > 0 ? (
+            <div className="divide-y divide-white/10">
+              {recentAlerts.map((alert) => (
+                <div key={alert.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                  <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${alert.urgent ? 'animate-pulse bg-rose-400' : 'bg-white/30'}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start gap-2">
+                      <p className="text-sm font-medium leading-5 text-white">{alert.message}</p>
+                      {alert.urgent && (
+                        <span className="flex-shrink-0 rounded-full border border-rose-300/30 bg-rose-400/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-200">
+                          Urgent
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex items-center gap-1 text-xs text-white/40">
+                      <MapPin className="h-3 w-3" />{alert.time}
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-white/20 p-5 text-center text-sm text-white/40">
+              No recent alerts. New notifications will appear here.
             </div>
           )}
         </div>
+      </section>
 
-        {/* Charts Row 2 — Food Aid + Event Attendance */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
-          {/* Food Aid Distribution */}
-          {foodAidData.length > 0 && (
-            <div className={`${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border p-5 lg:p-6`}>
-              <div className="flex items-center space-x-2 mb-5">
-                <div className={`w-8 h-8 ${isDarkMode ? 'bg-green-900/40' : 'bg-green-50'} rounded-lg flex items-center justify-center`}>
-                  <Package className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-                </div>
-                <div>
-                  <h3 className={`font-semibold text-sm lg:text-base ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Food Aid by Purok</h3>
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{deliveryProgress}% distributed</p>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={foodAidData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#f3f4f6'} />
-                  <XAxis dataKey="purok" tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }} stroke={isDarkMode ? '#4b5563' : '#e5e7eb'} />
-                  <YAxis tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }} stroke={isDarkMode ? '#4b5563' : '#e5e7eb'} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} iconType="rect" />
-                  <Area type="monotone" dataKey="families" stroke="#10b981" fill="#10b981" fillOpacity={0.2} name="Total Families" strokeWidth={2} />
-                  <Area type="monotone" dataKey="delivered" stroke="#059669" fill="#059669" fillOpacity={0.5} name="Delivered" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-              <div className={`mt-3 px-3 py-2 rounded-xl text-xs ${isDarkMode ? 'bg-green-950/30 text-green-400' : 'bg-green-50 text-green-700'}`}>
-                <span className="font-semibold">Progress:</span> {totalDelivered} of {totalFamilies} families served ({deliveryProgress}%)
-              </div>
+      {/* ── Charts ── */}
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+
+        <div className={`${card} p-5 lg:p-6`}>
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30">
+              <Package className="h-4 w-4 text-emerald-200" />
             </div>
-          )}
-
-          {/* Event Attendance */}
-          {eventAttendanceData.length > 0 && (
-            <div className={`${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border p-5 lg:p-6`}>
-              <div className="flex items-center space-x-2 mb-5">
-                <div className={`w-8 h-8 ${isDarkMode ? 'bg-purple-900/40' : 'bg-purple-50'} rounded-lg flex items-center justify-center`}>
-                  <BarChart3 className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-                </div>
-                <div>
-                  <h3 className={`font-semibold text-sm lg:text-base ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Event Attendance</h3>
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{attendanceRate}% overall rate</p>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={eventAttendanceData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#f3f4f6'} />
-                  <XAxis dataKey="category" tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }} stroke={isDarkMode ? '#4b5563' : '#e5e7eb'} />
-                  <YAxis tick={{ fontSize: 11, fill: isDarkMode ? '#9ca3af' : '#6b7280' }} stroke={isDarkMode ? '#4b5563' : '#e5e7eb'} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} iconType="rect" />
-                  <Bar dataKey="expected" fill="#a855f7" name="Expected" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="actual" fill="#7c3aed" name="Actual" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <div className={`mt-3 px-3 py-2 rounded-xl text-xs ${isDarkMode ? 'bg-purple-950/30 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>
-                <span className="font-semibold">Attendance Rate:</span> {attendanceRate}% ({totalActual} of {totalExpected} expected)
-              </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-white/50">Food aid distribution</p>
+              <p className="text-base font-semibold text-white">{deliveryProgress}% of families reached</p>
             </div>
-          )}
-        </div>
-
-        {/* Quick Actions */}
-        <div className={`${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border p-5 lg:p-6`}>
-          <h3 className={`font-semibold text-sm lg:text-base mb-4 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Quick Actions</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { label: 'Record Checkup', path: '/health/record', theme: isDarkMode ? 'bg-blue-900/50 hover:bg-blue-800/70 text-blue-300' : 'bg-blue-50 hover:bg-blue-100 text-blue-700' },
-              ...(user?.role === 'admin' || user?.role === 'barangay_official'
-                ? [{ label: 'Schedule Aid', path: '/food-aid/optimize', theme: isDarkMode ? 'bg-green-900/50 hover:bg-green-800/70 text-green-300' : 'bg-green-50 hover:bg-green-100 text-green-700' }]
-                : []
-              ),
-              { label: 'Create Event', path: '/events/create', theme: isDarkMode ? 'bg-purple-900/50 hover:bg-purple-800/70 text-purple-300' : 'bg-purple-50 hover:bg-purple-100 text-purple-700' },
-              { label: 'Report Emergency', path: '/emergency/report', theme: isDarkMode ? 'bg-red-900/50 hover:bg-red-800/70 text-red-300' : 'bg-red-50 hover:bg-red-100 text-red-700', icon: 'alert' },
-            ].map((action) => (
-              <button
-                key={action.label}
-                onClick={() => navigate(action.path)}
-                className={`flex items-center justify-center space-x-2 rounded-xl p-4 transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${action.theme}`}
-              >
-                {action.icon === 'alert'
-                  ? <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  : <Plus className="w-4 h-4 flex-shrink-0" />
-                }
-                <span className="font-medium text-sm">{action.label}</span>
-              </button>
-            ))}
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={foodAidData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+              <XAxis dataKey="purok"    tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
+              <YAxis                    tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} iconType="rect" />
+              <Area type="monotone" dataKey="families"  stroke="#6ee7b7" fill="#6ee7b7" fillOpacity={0.15} name="Families"  strokeWidth={2} />
+              <Area type="monotone" dataKey="delivered" stroke="#34d399" fill="#34d399" fillOpacity={0.35} name="Delivered" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+          <div className="mt-3 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs text-white/60">
+            <span className="font-semibold text-white">Progress:</span> {totalDelivered} of {totalFamilies} families served
           </div>
         </div>
-      </div>
+
+        <div className={`${card} p-5 lg:p-6`}>
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+              <BarChart3 className="h-4 w-4 text-violet-200" />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-white/50">Event attendance</p>
+              <p className="text-base font-semibold text-white">{attendanceRate}% overall turnout</p>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={eventAttendanceData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+              <XAxis dataKey="category" tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
+              <YAxis                    tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} iconType="rect" />
+              <Bar dataKey="expected" fill="rgba(167,139,250,0.5)" name="Expected" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="actual"   fill="#a78bfa"              name="Actual"   radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="mt-3 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs text-white/60">
+            <span className="font-semibold text-white">Attendance:</span> {totalActual} of {totalExpected} expected participants
+          </div>
+        </div>
+      </section>
+
+      {/* ── Quick actions ── */}
+      <section
+  className={`${card} bg-gradient-to-br from-indigo-500/15 via-blue-500/10 to-violet-500/15 p-5 lg:p-6`}
+>
+        <div className="mb-5">
+          <p className="text-xs font-bold uppercase tracking-wider text-white/50">Quick actions</p>
+          <p className="mt-0.5 text-base font-semibold text-white">Jump into the most-used tasks</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {quickActions.map((action) => {
+            const Icon = action.icon
+            return (
+              <button
+  key={action.label}
+  onClick={() => navigate(action.path)}
+  className={`
+group
+relative
+overflow-hidden
+rounded-3xl
+border
+${action.border}
+bg-gradient-to-br
+${action.gradient}
+p-5
+text-left
+backdrop-blur-xl
+shadow-xl
+transition-all
+duration-500
+hover:-translate-y-2
+hover:scale-[1.04]
+hover:shadow-[0_20px_80px_rgba(0,0,0,.35)]
+`}
+>
+
+  {/* Glow */}
+  <div
+    className="
+absolute
+-inset-20
+opacity-40
+blur-3xl
+group-hover:opacity-70
+transition-all
+duration-500
+bg-gradient-to-br
+from-white/20
+to-transparent
+"
+  />
+
+  {/* Shine */}
+  <div
+    className="
+absolute
+inset-0
+opacity-0
+group-hover:opacity-100
+transition
+duration-700
+bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.25),transparent_55%)]
+"
+  />
+
+  <div className="relative z-10">
+
+    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 border border-white/20 backdrop-blur-xl shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-6">
+      <Icon className="h-5 w-5 text-white" />
+    </div>
+
+    <p className="font-bold text-white">
+      {action.label}
+    </p>
+
+    <p className="mt-2 text-sm text-white/70">
+      {action.description}
+    </p>
+
+    <div className="mt-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/70 group-hover:text-white">
+      OPEN
+      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+    </div>
+
+  </div>
+
+</button>
+            )
+          })}
+        </div>
+      </section>
+
     </div>
   )
 }

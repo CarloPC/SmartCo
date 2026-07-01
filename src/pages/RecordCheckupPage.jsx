@@ -24,6 +24,8 @@ const RecordCheckupPage = () => {
   
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [healthAssessment, setHealthAssessment] = useState(null)
+  const [preferredAppointmentDate, setPreferredAppointmentDate] = useState('')
+  const [preferredAppointmentTime, setPreferredAppointmentTime] = useState('')
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -276,7 +278,9 @@ const RecordCheckupPage = () => {
         userPurok: user?.purok,
         formData,
         healthAssessment,
-        recordedBy: user?.fullName
+        recordedBy: user?.fullName,
+        preferredAppointmentDate,
+        preferredAppointmentTime
       }
 
       console.log('Saving health record with data:', recordData)
@@ -727,6 +731,38 @@ const RecordCheckupPage = () => {
                 ))}
               </div>
             </div>
+
+            {healthAssessment.requiresAppointment && (
+              <div className={`${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-lg p-4 border shadow-lg space-y-3`}>
+                <h4 className={`font-semibold flex items-center space-x-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                  <Calendar className="w-5 h-5" />
+                  <span>Preferred Appointment</span>
+                </h4>
+                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Share the date and time you prefer so the BHW can review availability.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Date</label>
+                    <input
+                      type="date"
+                      value={preferredAppointmentDate}
+                      onChange={(e) => setPreferredAppointmentDate(e.target.value)}
+                      className={`w-full rounded-lg border px-3 py-2 text-sm ${isDarkMode ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-300 bg-white text-gray-800'}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Time</label>
+                    <input
+                      type="time"
+                      value={preferredAppointmentTime}
+                      onChange={(e) => setPreferredAppointmentTime(e.target.value)}
+                      className={`w-full rounded-lg border px-3 py-2 text-sm ${isDarkMode ? 'border-gray-700 bg-gray-800 text-gray-100' : 'border-gray-300 bg-white text-gray-800'}`}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className={healthAssessment.requiresAppointment ? "grid grid-cols-2 gap-3" : ""}>

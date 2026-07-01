@@ -626,21 +626,31 @@ const FoodAidPage = () => {
   }
 
   const getFiltered = () => {
-    let list = [...distributions]
-    if (statusFilter !== 'all') {
-      list = list.filter(d => {
-        const s = (d.status || 'scheduled').toLowerCase().replace(/\s+/g, '-')
-        return s === statusFilter
-      })
-    }
-    if (userCoords) {
-      list.sort((a, b) =>
-        haversineDistance(userCoords.lat, userCoords.lng, a.barangayLat, a.barangayLng) -
-        haversineDistance(userCoords.lat, userCoords.lng, b.barangayLat, b.barangayLng)
-      )
-    }
-    return list
+  let list = [...distributions]
+  if (statusFilter !== 'all') {
+    list = list.filter(d => {
+      const s = (d.status || 'scheduled').toLowerCase().replace(/\s+/g, '-')
+      return s === statusFilter
+    })
   }
+  if (userCoords) {
+    // FR-FA-01: explicitly compute and attach distanceAway (km) to each record
+    list = list.map(d => ({
+      ...d,
+      distanceAway: (d.barangayLat != null && d.barangayLng != null)
+        ? haversineDistance(userCoords.lat, userCoords.lng, d.barangayLat, d.barangayLng)
+        : null,
+    }))
+    list.sort((a, b) => {
+      if (a.distanceAway == null) return 1
+      if (b.distanceAway == null) return -1
+      return a.distanceAway - b.distanceAway
+    })
+  } else {
+    list = list.map(d => ({ ...d, distanceAway: null }))
+  }
+  return list
+}
 
   const getStatusBadge = (status, approvalStatus) => {
     if (approvalStatus === 'pending')  return { label: 'Pending Approval', cls: isDarkMode ? 'bg-orange-950/60 text-orange-400' : 'bg-orange-100 text-orange-700' }
@@ -665,104 +675,114 @@ const FoodAidPage = () => {
     .filter(d => d.date === new Date().toISOString().split('T')[0])
     .reduce((s, d) => s + (d.deliveredFamilies || 0), 0)
 
-  const card = (isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30') + ' backdrop-blur-lg rounded-2xl shadow-xl border'
+  /* glass card — same design language as HomePage / HealthPage */
+  const card =
+    'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
 
   return (
     <div className="min-h-screen relative">
-      {/* Background */}
-      <div className="fixed inset-0 bg-cover bg-center -z-10" style={{ backgroundImage: 'url(' + toledoImage + ')' }}>
-        <div className={'absolute inset-0 ' + (isDarkMode
-          ? 'bg-gradient-to-br from-gray-950/95 via-blue-950/95 to-slate-950/95'
-          : 'bg-gradient-to-br from-blue-900/85 via-blue-800/85 to-indigo-900/85')} />
+      {/* Background — matches HomePage/HealthPage's hero shell */}
+      <div className="fixed inset-0 bg-cover bg-center -z-10" style={{ backgroundImage: `url(${toledoImage})` }}>
+        <div className={`absolute inset-0 ${isDarkMode
+          ? 'bg-gradient-to-br from-slate-900/95 via-blue-950/95 to-indigo-950/95'
+          : 'bg-gradient-to-br from-blue-600/90 via-indigo-600/90 to-blue-800/90'}`}
+        />
       </div>
 
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 max-w-screen-xl pb-24">
+      {/* Decorative blobs — matches HomePage/HealthPage's gradient shell */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
+        <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-violet-500/15 blur-3xl" />
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '32px 32px' }}
+        />
+      </div>
 
-        {/* Header */}
-        <div className={
-          'backdrop-blur-sm rounded-2xl p-5 lg:p-6 text-white shadow-xl border ' +
-          (isDarkMode
-            ? 'bg-gradient-to-r from-green-900/90 to-emerald-950/90 border-gray-700/50'
-            : 'bg-gradient-to-r from-green-500/90 to-emerald-600/90 border-white/20')
-        }>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <Package className="w-5 h-5" />
+      <div className="mx-auto max-w-7xl space-y-5 p-4 pb-24 sm:space-y-6 sm:p-6 lg:p-8">
+
+        {/* ── Hero header banner ── */}
+        <section className={`${card} overflow-hidden bg-gradient-to-r from-emerald-500/30 via-green-500/20 to-teal-500/30`}>
+          <div className="flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 hover:bg-white/20 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                <Sparkles className="h-3.5 w-3.5 text-yellow-300" />
+                GPS-smart route optimization
               </div>
-              <div>
-                <h2 className="text-xl lg:text-2xl font-bold">Food Aid Distribution</h2>
-                <p className={'text-sm ' + (isDarkMode ? 'text-green-200' : 'text-green-100')}>
-                  GPS-Smart Tracking · AI Route Optimization
-                </p>
-              </div>
+              <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Food Aid Distribution
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
+                Track deliveries and get AI-optimized routes to every barangay.
+              </p>
             </div>
             {isAdmin && (
               <button onClick={() => setShowPostModal(true)}
-                className="hidden sm:flex items-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl font-semibold text-sm transition border border-white/20">
-                <Plus className="w-4 h-4" />
+                className="hidden sm:inline-flex items-center gap-2 self-start rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:from-blue-600 hover:to-indigo-700 lg:self-center">
+                <Plus className="h-4 w-4" />
                 <span>Post Distribution</span>
               </button>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Location Card */}
-        <div className={card + ' p-4'}>
+        <div className={`${card} p-4`}>
           {locationStatus === 'idle' || locationStatus === 'detecting' ? (
             <div className="flex items-center space-x-3">
-              <div className={'w-9 h-9 rounded-xl flex items-center justify-center ' + (isDarkMode ? 'bg-blue-900/50' : 'bg-blue-50')}>
-                <Navigation className={'w-4 h-4 animate-pulse ' + (isDarkMode ? 'text-blue-400' : 'text-blue-600')} />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
+                <Navigation className="h-4 w-4 animate-pulse text-blue-200" />
               </div>
               <div className="flex-1">
-                <p className={'text-sm font-medium ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>
+                <p className="text-sm font-medium text-white">
                   {locationStatus === 'detecting' ? 'Detecting your location via GPS…' : 'Initializing GPS…'}
                 </p>
-                <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+                <p className="text-xs text-white/50">
                   AI will identify your barangay and sort distributions by distance
                 </p>
               </div>
-              <Loader2 className={'w-5 h-5 animate-spin ' + (isDarkMode ? 'text-blue-400' : 'text-blue-500')} />
+              <Loader2 className="h-5 w-5 animate-spin text-blue-200" />
             </div>
           ) : locationStatus === 'success' ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className={'w-9 h-9 rounded-xl flex items-center justify-center ' + (isDarkMode ? 'bg-green-900/50' : 'bg-green-50')}>
-                  <Navigation className={'w-4 h-4 ' + (isDarkMode ? 'text-green-400' : 'text-green-600')} />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
+                  <Navigation className="h-4 w-4 text-emerald-300" />
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <p className={'text-sm font-bold ' + (isDarkMode ? 'text-gray-100' : 'text-gray-900')}>{userBarangay?.name}</p>
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <p className="text-sm font-bold text-white">{userBarangay?.name}</p>
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                   </div>
-                  <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+                  <p className="text-xs text-white/50">
                     GPS detected · ±{userCoords?.accuracy}m accuracy · Distributions sorted by distance
                   </p>
                 </div>
               </div>
-              <button onClick={detectLocation} className={'p-2 rounded-lg transition ' + (isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500')}>
-                <RefreshCw className="w-4 h-4" />
+              <button onClick={detectLocation} className="rounded-lg p-2 text-white/50 transition hover:bg-white/10 hover:text-white">
+                <RefreshCw className="h-4 w-4" />
               </button>
             </div>
           ) : (
             /* GPS error – manual barangay selector */
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
-                <div className={'w-9 h-9 rounded-xl flex items-center justify-center ' + (isDarkMode ? 'bg-orange-900/50' : 'bg-orange-50')}>
-                  <AlertCircle className={'w-4 h-4 ' + (isDarkMode ? 'text-orange-400' : 'text-orange-600')} />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
+                  <AlertCircle className="h-4 w-4 text-orange-300" />
                 </div>
                 <div className="flex-1">
-                  <p className={'text-sm font-medium ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>GPS Unavailable</p>
-                  <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>Select your barangay manually to enable smart sorting</p>
+                  <p className="text-sm font-medium text-white">GPS Unavailable</p>
+                  <p className="text-xs text-white/50">Select your barangay manually to enable smart sorting</p>
                 </div>
-                <button onClick={detectLocation} className={'text-xs px-2.5 py-1.5 rounded-lg font-medium ' + (isDarkMode ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-50 text-blue-600')}>
+                <button onClick={detectLocation} className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium text-blue-200 hover:bg-white/20">
                   Retry GPS
                 </button>
               </div>
               <select value={manualBarangay} onChange={e => handleManualSelect(e.target.value)}
-                className={'w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ' + (isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-300 text-gray-900')}>
-                <option value="">Select your barangay…</option>
-                {TOLEDO_BARANGAYS.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                className="w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/50">
+                <option value="" className="text-gray-900">Select your barangay…</option>
+                {TOLEDO_BARANGAYS.map(b => <option key={b.id} value={b.id} className="text-gray-900">{b.name}</option>)}
               </select>
             </div>
           )}
@@ -771,13 +791,13 @@ const FoodAidPage = () => {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Distributions', value: distributions.length, color: isDarkMode ? 'text-blue-400'   : 'text-blue-600' },
-            { label: 'Active Now',    value: activeCount,          color: isDarkMode ? 'text-green-400'  : 'text-green-600' },
-            { label: 'Served Today',  value: servedToday,          color: isDarkMode ? 'text-purple-400' : 'text-purple-600' },
+            { label: 'Distributions', value: distributions.length, color: 'text-blue-200' },
+            { label: 'Active Now',    value: activeCount,          color: 'text-emerald-200' },
+            { label: 'Served Today',  value: servedToday,          color: 'text-violet-200' },
           ].map(s => (
-            <div key={s.label} className={card + ' p-3 text-center'}>
-              <p className={'text-2xl font-bold ' + s.color}>{s.value}</p>
-              <p className={'text-xs mt-0.5 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>{s.label}</p>
+            <div key={s.label} className={`${card} p-3 text-center`}>
+              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="mt-0.5 text-xs text-white/50">{s.label}</p>
             </div>
           ))}
         </div>
@@ -786,39 +806,35 @@ const FoodAidPage = () => {
         <div className="flex flex-wrap items-center gap-2">
           {[{ id: 'list', label: 'List View', Icon: List }, { id: 'map', label: 'Map View', Icon: Map }].map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={
-                'flex items-center space-x-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition ' +
-                (activeTab === t.id
-                  ? (isDarkMode ? 'bg-green-900/80 text-green-300 border border-green-700/50' : 'bg-green-500 text-white shadow-md')
-                  : (isDarkMode ? 'bg-gray-800/80 text-gray-400 hover:bg-gray-700/80' : 'bg-white/80 text-gray-600 hover:bg-white shadow-sm'))
-              }>
+              className={`flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                activeTab === t.id
+                  ? 'border-white/30 bg-white/20 text-white shadow-md'
+                  : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+              }`}>
               <t.Icon className="w-4 h-4" />
               <span>{t.label}</span>
             </button>
           ))}
 
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className={
-              'ml-auto px-3 py-2 rounded-xl text-sm border focus:outline-none ' +
-              (isDarkMode ? 'bg-gray-800/80 border-gray-700 text-gray-300' : 'bg-white/80 border-white/50 text-gray-700')
-            }>
-            <option value="all">All Status</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="in-progress">In Progress</option>
-            <option value="completed">Completed</option>
+            className="ml-auto rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/50">
+            <option value="all" className="text-gray-900">All Status</option>
+            <option value="scheduled" className="text-gray-900">Scheduled</option>
+            <option value="in-progress" className="text-gray-900">In Progress</option>
+            <option value="completed" className="text-gray-900">Completed</option>
           </select>
         </div>
 
         {/* Content */}
         {loading ? (
-          <div className={card + ' p-10 text-center'}>
-            <Loader2 className={'w-8 h-8 animate-spin mx-auto ' + (isDarkMode ? 'text-green-400' : 'text-green-500')} />
-            <p className={'mt-3 text-sm ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>Loading distributions…</p>
+          <div className={`${card} p-10 text-center`}>
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-300" />
+            <p className="mt-3 text-sm text-white/60">Loading distributions…</p>
           </div>
 
         ) : activeTab === 'map' ? (
           /* ── Map View ── */
-          <div className={card + ' overflow-hidden'}>
+          <div className={`${card} overflow-hidden`}>
             <div style={{ height: '400px' }}>
               <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
                 <MapUpdater center={mapCenter} />
@@ -848,9 +864,7 @@ const FoodAidPage = () => {
                 {filtered.map(d => {
                   const color = getMarkerColor(d)
                   const badge = getStatusBadge(d.status, d.approvalStatus)
-                  const dist  = userCoords
-                    ? haversineDistance(userCoords.lat, userCoords.lng, d.barangayLat, d.barangayLng)
-                    : null
+                  const dist = d.distanceAway
                   return (
                     <Marker key={d.id} position={[d.barangayLat, d.barangayLng]} icon={makeCircleIcon(color, 18)}>
                       <Popup>
@@ -880,8 +894,8 @@ const FoodAidPage = () => {
             </div>
 
             {/* Map legend */}
-            <div className={'p-3 flex flex-wrap items-center gap-4 border-t ' + (isDarkMode ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-gray-50/50')}>
-              <span className={'text-xs font-semibold ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>Legend:</span>
+            <div className="flex flex-wrap items-center gap-4 border-t border-white/10 bg-white/5 p-3">
+              <span className="text-xs font-semibold text-white/50">Legend:</span>
               {[
                 { color: '#3b82f6', label: 'You' },
                 { color: STATUS_COLORS.scheduled,     label: 'Scheduled' },
@@ -891,7 +905,7 @@ const FoodAidPage = () => {
               ].map(l => (
                 <div key={l.label} className="flex items-center space-x-1.5">
                   <div className="w-3 h-3 rounded-full border border-white/50" style={{ background: l.color }} />
-                  <span className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>{l.label}</span>
+                  <span className="text-xs text-white/70">{l.label}</span>
                 </div>
               ))}
             </div>
@@ -901,22 +915,22 @@ const FoodAidPage = () => {
           /* ── List View ── */
           <div className="space-y-3">
             {filtered.length === 0 ? (
-              <div className={card + ' p-8 text-center'}>
-                <Package className={'w-12 h-12 mx-auto mb-3 ' + (isDarkMode ? 'text-gray-600' : 'text-gray-400')} />
-                <p className={'text-sm font-semibold mb-1 ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>No distributions found</p>
-                <p className={'text-xs mb-4 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+              <div className={`${card} p-8 text-center`}>
+                <Package className="mx-auto mb-3 h-12 w-12 text-white/30" />
+                <p className="mb-1 text-sm font-semibold text-white">No distributions found</p>
+                <p className="mb-4 text-xs text-white/50">
                   {statusFilter !== 'all'
                     ? 'Try changing the status filter above.'
                     : 'No food aid distributions have been posted yet. Check back soon.'}
                 </p>
                 {isAdmin && (
                   <>
-                    <button onClick={() => setShowPostModal(true)} className="text-sm text-green-500 font-semibold hover:underline">
+                    <button onClick={() => setShowPostModal(true)} className="text-sm font-semibold text-emerald-300 hover:underline">
                       + Post a new distribution
                     </button>
                     {statusFilter === 'all' && (
-                      <div className={'mt-5 mx-auto max-w-xs text-left px-4 py-3 rounded-xl border text-xs ' + (isDarkMode ? 'bg-yellow-950/30 border-yellow-800/50 text-yellow-300' : 'bg-yellow-50 border-yellow-200 text-yellow-800')}>
-                        <p className="font-bold mb-1">⚠️ Residents can&apos;t see distributions?</p>
+                      <div className="mx-auto mt-5 max-w-xs rounded-xl border border-yellow-300/30 bg-yellow-400/10 px-4 py-3 text-left text-xs text-yellow-200">
+                        <p className="mb-1 font-bold">⚠️ Residents can&apos;t see distributions?</p>
                         <p>
                           Update your <strong>Firestore Security Rules</strong> so all authenticated users can read food aid schedules.
                           Copy the updated rules from <code className="font-mono">FIRESTORE_RULES_UPDATED.txt</code> and paste them into Firebase Console → Firestore → Rules.
@@ -929,15 +943,13 @@ const FoodAidPage = () => {
             ) : (
               filtered.map((d, idx) => {
                 const badge  = getStatusBadge(d.status, d.approvalStatus)
-                const distKm = userCoords && d.barangayLat
-                  ? haversineDistance(userCoords.lat, userCoords.lng, d.barangayLat, d.barangayLng)
-                  : null
+                const distKm = d.distanceAway
                 const isNearest = userCoords && idx === 0
 
                 return (
-                  <div key={d.id} className={card + ' p-4'}>
+                  <div key={d.id} className={`${card} p-4`}>
                     {isNearest && (
-                      <div className={'flex items-center space-x-1.5 mb-2 text-xs font-bold ' + (isDarkMode ? 'text-green-400' : 'text-green-600')}>
+                      <div className="mb-2 flex items-center space-x-1.5 text-xs font-bold text-emerald-300">
                         <Star className="w-3.5 h-3.5" />
                         <span>Nearest distribution to you</span>
                       </div>
@@ -945,10 +957,10 @@ const FoodAidPage = () => {
 
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <h4 className={'font-bold ' + (isDarkMode ? 'text-gray-100' : 'text-gray-900')}>
+                        <h4 className="font-bold text-white">
                           {d.barangay ? d.barangay + ' · ' + (d.purok || '') : d.purok}
                         </h4>
-                        <div className={'flex flex-wrap items-center gap-3 mt-1 text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-white/60">
                           <div className="flex items-center space-x-1">
                             <Clock className="w-3.5 h-3.5" />
                             <span>{d.date}{d.timeSlot ? ' · ' + d.timeSlot : ''}</span>
@@ -958,13 +970,13 @@ const FoodAidPage = () => {
                             <span>{d.totalFamilies} families</span>
                           </div>
                           {distKm != null && (
-                            <div className={'flex items-center space-x-1 font-semibold ' + (isDarkMode ? 'text-blue-400' : 'text-blue-600')}>
+                            <div className="flex items-center space-x-1 font-semibold text-blue-200">
                               <MapPin className="w-3.5 h-3.5" />
                               <span>{distKm.toFixed(1)} km away</span>
                             </div>
                           )}
                           {d.packageType && (
-                            <span className={'px-2 py-0.5 rounded-full ' + (isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600')}>
+                            <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/70">
                               📦 {d.packageType}
                             </span>
                           )}
@@ -977,18 +989,18 @@ const FoodAidPage = () => {
 
                     {/* Delivery progress bar */}
                     {d.totalFamilies > 0 && (
-                      <div className={'mb-3 pt-3 border-t ' + (isDarkMode ? 'border-gray-700' : 'border-gray-100')}>
-                        <div className={'flex items-center justify-between text-xs mb-1.5 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+                      <div className="mb-3 pt-3 border-t border-white/10">
+                        <div className="flex items-center justify-between text-xs mb-1.5 text-white/50">
                           <span>Distribution Progress</span>
                           <span className="font-semibold">{d.deliveredFamilies || 0} / {d.totalFamilies} families</span>
                         </div>
-                        <div className={'w-full h-2 rounded-full overflow-hidden ' + (isDarkMode ? 'bg-gray-700' : 'bg-gray-200')}>
+                        <div className="w-full h-2 rounded-full overflow-hidden bg-white/10">
                           <div
-                            className="h-2 rounded-full bg-green-500 transition-all duration-500"
+                            className="h-2 rounded-full bg-emerald-400 transition-all duration-500"
                             style={{ width: `${Math.min(100, Math.round(((d.deliveredFamilies || 0) / d.totalFamilies) * 100))}%` }}
                           />
                         </div>
-                        <p className={'text-xs mt-1 text-right ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
+                        <p className="text-xs mt-1 text-right text-white/40">
                           {Math.min(100, Math.round(((d.deliveredFamilies || 0) / d.totalFamilies) * 100))}% complete
                         </p>
                       </div>
@@ -996,11 +1008,8 @@ const FoodAidPage = () => {
 
                     {/* AI Route button */}
                     <button onClick={() => setRouteDist(d)}
-                      className={
-                        'w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-medium transition ' +
-                        (isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-300' : 'bg-gray-50 hover:bg-gray-100 text-gray-700')
-                      }>
-                      <Sparkles className={'w-4 h-4 ' + (isDarkMode ? 'text-green-400' : 'text-green-500')} />
+                      className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-medium transition bg-white/10 hover:bg-white/20 text-white/80 hover:text-white">
+                      <Sparkles className="w-4 h-4 text-emerald-300" />
                       <span>View AI Route from {userCoords ? 'My Location' : 'Hub'}</span>
                     </button>
                   </div>
@@ -1013,12 +1022,7 @@ const FoodAidPage = () => {
         {/* Optimize Schedule CTA — admin/barangay official only */}
         {isAdmin && (
           <button onClick={() => navigate('/food-aid/optimize')}
-            className={
-              'w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-4 rounded-xl font-semibold transition shadow-xl border ' +
-              (isDarkMode
-                ? 'bg-green-900/90 hover:bg-green-800 border-gray-700/50 text-white'
-                : 'bg-green-500/90 hover:bg-green-600 border-white/20 text-white')
-            }>
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-4 text-sm font-bold text-white shadow-lg transition hover:from-blue-600 hover:to-indigo-700 sm:w-auto">
             <TrendingUp className="w-5 h-5" />
             <span>AI Optimize Multi-Stop Distribution Schedule</span>
           </button>
