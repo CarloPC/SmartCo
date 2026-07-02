@@ -22,9 +22,11 @@ const Layout = ({ children }) => {
   // Pages that render their own full-bleed background (image + gradient blobs)
   // need Layout's own wrapper to stay transparent, or Layout's neutral bg
   // paints over them due to z-index stacking.
-  const hasCustomBackground = location.pathname === '/home' || location.pathname === '/health' || location.pathname === '/food-aid' || location.pathname === '/events' || location.pathname === '/events/create' || location.pathname === '/emergency' || location.pathname === '/emergency/report' || location.pathname === '/admin'
+  const hasCustomBackground = location.pathname === '/home' || location.pathname === '/bhw' || location.pathname === '/health' || location.pathname === '/food-aid' || location.pathname === '/events' || location.pathname === '/events/create' || location.pathname === '/emergency' || location.pathname === '/emergency/report' || location.pathname === '/admin'
   || location.pathname === '/admin/users' || location.pathname === '/admin/notifications' || location.pathname === '/admin/announcements' || location.pathname === '/admin/requests' || location.pathname === '/admin/approvals' || location.pathname === '/profilesidebar' || location.pathname === '/profile' || location.pathname === '/notifications' || location.pathname === '/settings' || location.pathname === '/privacy-security' || location.pathname === '/request-admin' || location.pathname === '/help-support' || location.pathname === '/about'
-  useEffect(() => {
+  || location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password' || location.pathname === '/reset-password' || location.pathname === '/welcome' || location.pathname === '/health/records' || location.pathname === '/health/records/:id' || location.pathname === '/health/records/:id/edit' || location.pathname === '/health/records/create' || location.pathname === '/food-aid/requests' || location.pathname === '/food-aid/requests/:id' || location.pathname === '/food-aid/requests/:id/edit' || location.pathname === '/food-aid/requests/create'
+  || location.pathname === '/record-checkup';
+  useEffect(() => { 
     fetchUnreadCount()
     const interval = setInterval(fetchUnreadCount, 30000)
     window.addEventListener('notifications-updated', fetchUnreadCount)
@@ -63,7 +65,7 @@ const Layout = ({ children }) => {
         : isDarkMode ? 'bg-gray-950' : 'bg-gray-50'
     }`}>
 
-      {/* Global gradient — only rendered on pages with their own hero background */}
+      {/* Global gradient â€” only rendered on pages with their own hero background */}
       {hasCustomBackground && (
         <>
           <div className={`fixed inset-0 -z-10 ${
@@ -95,7 +97,7 @@ const Layout = ({ children }) => {
 
       <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
 
-      {/* Main content — transparent on pages with their own hero background so it bleeds through */}
+      {/* Main content â€” transparent on pages with their own hero background so it bleeds through */}
       <main
         style={{ paddingTop: 'var(--topbar-height)' }}
         className={`min-h-screen transition-all duration-300 ease-in-out ${sidebarOffset} ${

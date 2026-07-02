@@ -4,6 +4,7 @@ import { Menu, Bell } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import NotificationDropdown from './NotificationDropdown'
+import notificationService from '../services/notificationService'
 
 const Topbar = ({ onToggleSidebar, unreadCount, onOpenProfile, onNotificationRead }) => {
   const navigate = useNavigate()
@@ -11,7 +12,16 @@ const Topbar = ({ onToggleSidebar, unreadCount, onOpenProfile, onNotificationRea
   const { user } = useAuth()
   const [showNotifications, setShowNotifications] = useState(false)
 
-  const handleNotificationToggle = () => setShowNotifications((prev) => !prev)
+  const handleNotificationToggle = async () => {
+  const opening = !showNotifications
+  setShowNotifications(opening)
+
+  if (opening && unreadCount > 0) {
+    await notificationService.markAllAsRead()
+    if (onNotificationRead) onNotificationRead()
+    window.dispatchEvent(new Event('notifications-updated'))
+  }
+}
 
   return (
    <header

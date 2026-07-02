@@ -213,7 +213,7 @@ const ReportEmergencyPage = () => {
     }
   }
 
-  const inputCls = 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none backdrop-blur-sm transition focus:border-transparent focus:ring-2 focus:ring-red-400/60'
+  const inputCls = 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none backdrop-blur-sm transition-all duration-300 ease-out hover:scale-[1.02] hover:border-red-300/60 hover:shadow-[0_0_30px_rgba(248,113,113,0.35)] focus:scale-[1.02] focus:border-red-300 focus:ring-2 focus:ring-red-400/70 focus:shadow-[0_0_35px_rgba(248,113,113,0.55)]'
 
   // Checking suspension…
   if (checkingSuspension) {
@@ -267,9 +267,17 @@ const ReportEmergencyPage = () => {
               <button onClick={handleReset} className="flex-1 rounded-xl bg-white/10 py-3 text-sm font-medium text-white/80 transition hover:bg-white/20">
                 Report Another
               </button>
-              <button onClick={() => navigate('/home')} className="flex-1 rounded-xl bg-gradient-to-r from-red-500 to-orange-600 py-3 text-sm font-semibold text-white transition hover:from-red-600 hover:to-orange-700">
-                Back to Dashboard
-              </button>
+              <div className="inline-block">
+  <button
+    onClick={() => navigate(-1)}
+    className="group flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 backdrop-blur-xl transition-all duration-300 hover:-translate-x-1 hover:scale-105 hover:border-red-300/50 hover:bg-white/15 hover:shadow-[0_0_30px_rgba(248,113,113,0.35)]"
+  >
+    <ArrowLeft className="w-4 h-4 text-white/70 transition-all duration-300 group-hover:-translate-x-1 group-hover:text-red-300" />
+    <span className="text-sm font-medium text-white/70 transition-all duration-300 group-hover:text-white">
+      Back
+    </span>
+  </button>
+</div>
             </div>
           </div>
         </div>
@@ -326,13 +334,13 @@ const ReportEmergencyPage = () => {
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/30 bg-gradient-to-br from-red-500/25 to-orange-500/10 p-4 backdrop-blur-sm">
+                <div className="rounded-xl border border-white/30 bg-gradient-to-br from-red-500/25 to-orange-500/10 p-4 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(248,113,113,0.30)]">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-red-200">
                     <Phone className="h-3.5 w-3.5" /> Hotline
                   </div>
                   <p className="mt-2 text-2xl font-bold text-white">911</p>
                 </div>
-                <div className="rounded-xl border border-white/30 bg-gradient-to-br from-orange-500/25 to-amber-500/10 p-4 backdrop-blur-sm">
+                <div className="rounded-xl border border-white/30 bg-gradient-to-br from-orange-500/25 to-amber-500/10 p-4 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(251,146,60,0.30)]">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-orange-200">
                     <Clock className="h-3.5 w-3.5" /> Response
                   </div>
@@ -377,7 +385,7 @@ const ReportEmergencyPage = () => {
                     className={`flex flex-col items-center rounded-xl border p-4 transition-all duration-200 ${
                       active
                         ? `bg-gradient-to-br ${type.grad} border-white/30 ring-2 ${type.ring} scale-[1.03] shadow-lg`
-                        : 'border-white/15 bg-white/5 hover:bg-white/10'
+                        : 'border-white/15 bg-white/5 hover:bg-white/10 hover:scale-[1.03] hover:-translate-y-1 hover:border-red-300/50 hover:shadow-[0_0_30px_rgba(248,113,113,0.30)]'
                     }`}
                   >
                     <type.icon className={`mb-2 h-7 w-7 ${active ? type.color : 'text-white/50'}`} />
@@ -404,7 +412,7 @@ const ReportEmergencyPage = () => {
                     className={`rounded-xl border p-3 text-left transition-all ${
                       active
                         ? `${s.selBg} border-transparent text-white shadow-lg`
-                        : 'border-white/15 bg-white/5 hover:bg-white/10'
+                        : 'border-white/15 bg-white/5 hover:bg-white/10 hover:scale-[1.03] hover:-translate-y-1 hover:border-orange-300/50 hover:shadow-[0_0_30px_rgba(251,146,60,0.30)]'
                     }`}
                   >
                     <div className={`mb-0.5 text-sm font-bold ${active ? 'text-white' : s.color}`}>{s.label}</div>
@@ -476,16 +484,18 @@ const ReportEmergencyPage = () => {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex w-full items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-red-500 to-orange-600 py-4 text-base font-bold text-white shadow-2xl transition hover:from-red-600 hover:to-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+          <div className="pt-2">
+  <button
+    type="submit"
+    disabled={loading}
+            className="flex w-full items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-red-500 to-orange-600 py-4 text-base font-bold text-white transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1 hover:from-red-600 hover:to-orange-700 hover:shadow-[0_0_45px_rgba(239,68,68,0.60)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading
               ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Submitting Report...</span></>
               : <><AlertTriangle className="w-5 h-5" /><span>Submit Emergency Report</span></>
             }
           </button>
+</div>
         </form>
       </div>
     </div>

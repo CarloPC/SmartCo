@@ -125,7 +125,7 @@ const HomePage = () => {
   const attendanceRate = totalExpected > 0 ? ((totalActual / totalExpected) * 100).toFixed(1) : 0
   const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'
 
-  /* glass card — used on every panel */
+  /* glass card â€” used on every panel */
  const card =
   'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
   const statCards = [
@@ -209,20 +209,46 @@ const HomePage = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-[80vh] items-center justify-center">
-        <div className={`${card} px-8 py-10 text-center`}>
-          <Loader className="mx-auto mb-4 h-10 w-10 animate-spin text-white" />
-          <p className="font-semibold text-white">Loading your community dashboard...</p>
+      <div className="min-h-screen relative">
+        <div className="fixed inset-0 bg-cover bg-center -z-10" style={{ backgroundImage: `url(${toledoImage})` }}>
+          <div className={`absolute inset-0 ${isDarkMode
+            ? 'bg-gradient-to-br from-slate-900/95 via-blue-950/95 to-indigo-950/95'
+            : 'bg-gradient-to-br from-blue-600/90 via-indigo-600/90 to-blue-800/90'}`}
+          />
+        </div>
+        <div className="flex min-h-[80vh] items-center justify-center">
+          <div className={`${card} px-8 py-10 text-center`}>
+            <Loader className="mx-auto mb-4 h-10 w-10 animate-spin text-white" />
+            <p className="font-semibold text-white">Loading your community dashboard...</p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    /* No background here — Layout.jsx paints the gradient behind everything */
-    <div className="mx-auto max-w-7xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
+    <div className="min-h-screen relative">
+      <div className="fixed inset-0 bg-cover bg-center -z-10" style={{ backgroundImage: `url(${toledoImage})` }}>
+        <div className={`absolute inset-0 ${isDarkMode
+          ? 'bg-gradient-to-br from-slate-900/95 via-blue-950/95 to-indigo-950/95'
+          : 'bg-gradient-to-br from-blue-600/90 via-indigo-600/90 to-blue-800/90'}`}
+        />
+      </div>
 
-      {/* ── Hero welcome banner ── */}
+      {/* Decorative blobs */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
+        <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-violet-500/15 blur-3xl" />
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '32px 32px' }}
+        />
+      </div>
+
+      <div className="mx-auto max-w-7xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
+
+      {/* â”€â”€ Hero welcome banner â”€â”€ */}
      <section
   className={`${card} overflow-hidden bg-gradient-to-r from-indigo-500/30 via-violet-500/20 to-blue-500/30`}
 >
@@ -233,14 +259,14 @@ const HomePage = () => {
               AI-powered barangay overview
             </div>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              {greeting}, {user?.fullName?.split(' ')[0] || 'there'} 👋
+              {greeting}, {user?.fullName?.split(' ')[0] || 'there'} 😊
             </h2>
             <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-              Keep tabs on health updates, food aid progress, and community events — all in one modern dashboard.
+              Keep tabs on health updates, food aid progress, and community events  all in one modern dashboard.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <button
-                onClick={() => navigate('/health/record')}
+                onClick={() => navigate('/health')}
                 className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-5 py-2.5 text-white shadow-lg hover:from-blue-600 hover:to-indigo-700 text-sm font-bold text-indigo-700 shadow-md transition hover:bg-indigo-50 hover:shadow-lg"
               >
                 Record checkup <ArrowRight className="h-4 w-4" />
@@ -283,7 +309,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ── Stat cards ── */}
+      {/* â”€â”€ Stat cards â”€â”€ */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map((c) => (
           <div
@@ -301,7 +327,7 @@ const HomePage = () => {
         ))}
       </section>
 
-      {/* ── Health trend + Alerts ── */}
+      {/* â”€â”€ Health trend + Alerts â”€â”€ */}
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.4fr_0.9fr]">
 
         <div className={`${card} p-5 lg:p-6`}>
@@ -371,7 +397,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ── Charts ── */}
+      {/* â”€â”€ Charts â”€â”€ */}
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
 
         <div className={`${card} p-5 lg:p-6`}>
@@ -427,7 +453,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ── Quick actions ── */}
+      {/* â”€â”€ Quick actions â”€â”€ */}
       <section
   className={`${card} bg-gradient-to-br from-indigo-500/15 via-blue-500/10 to-violet-500/15 p-5 lg:p-6`}
 >
@@ -519,6 +545,7 @@ bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.25),transparent_55%)]
         </div>
       </section>
 
+      </div>
     </div>
   )
 }
