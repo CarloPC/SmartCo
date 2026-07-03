@@ -1,12 +1,33 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, User, Settings, Bell, Shield, LogOut, ChevronRight, Moon, Sun, HelpCircle, Info, Lock } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import notificationService from '../services/notificationService'
 
 const ProfileSidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate()
   const { isDarkMode, toggleTheme } = useTheme()
   const { user, logout } = useAuth()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const count = await notificationService.getUnreadCount()
+        setUnreadCount(count)
+      } catch (error) {
+        console.error('Error fetching unread count:', error)
+      }
+    }
+
+    if (isOpen) {
+      fetchUnreadCount()
+    }
+
+    window.addEventListener('notifications-updated', fetchUnreadCount)
+    return () => window.removeEventListener('notifications-updated', fetchUnreadCount)
+  }, [isOpen])
 
   // Use actual user data from auth context
   const userData = {
@@ -32,11 +53,11 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
       iconBg: 'bg-gradient-to-br from-sky-500 via-blue-500 to-cyan-500',
       iconRing: 'ring-sky-300/40',
     },
-    {
+   {
       icon: Bell,
       label: 'Notifications',
       description: 'Manage alerts',
-      badge: '3',
+      badge: unreadCount > 0 ? String(unreadCount > 99 ? '99+' : unreadCount) : null,
       path: '/notifications',
       iconBg: 'bg-gradient-to-br from-rose-500 via-pink-500 to-red-500',
       iconRing: 'ring-rose-300/40',

@@ -85,9 +85,15 @@ const Topbar = ({ onToggleSidebar, unreadCount, onOpenProfile, onNotificationRea
         </button>
 
         {showNotifications && (
-          <div className="absolute top-full right-0 mt-2 w-80 shadow-2xl rounded-xl overflow-hidden z-50">
-            <NotificationDropdown onClose={() => setShowNotifications(false)} onNotificationRead={onNotificationRead} />
-          </div>
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowNotifications(false)}
+            />
+            <div className="absolute top-full right-0 mt-2 w-80 z-50">
+              <NotificationDropdown onClose={() => setShowNotifications(false)} onNotificationRead={onNotificationRead} />
+            </div>
+          </>
         )}
       </div>
     </header>

@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import healthService from '../services/healthService'
 
-const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '' }) => {
+const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversation = [] }) => {
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
 
@@ -51,6 +51,12 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '' }) => {
         preferredAppointmentDate: date,
         preferredAppointmentTime: time,
         aiSymptomsNotes: notes,
+        // Full AI chat history so the BHW can review it in Patient History Logs
+        aiConversation: conversation.map(m => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp
+        })),
         message: `AI-recommended barangay checkup on ${date} at ${time}`,
         healthAssessment: {
           vitalsSummary: `Scheduled checkup: ${notes.slice(0, 120)}`,

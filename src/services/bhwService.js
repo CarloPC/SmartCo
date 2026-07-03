@@ -19,7 +19,7 @@ export const subscribeToPendingRequests = (callback) => {
 export const subscribeToProcessedRequests = (callback) => {
   const q = query(
     collection(db, HEALTH_REQUESTS_COLLECTION),
-    where('status', 'in', ['scheduled', 'completed', 'reviewed', 'referred'])
+    where('status', 'in', ['scheduled', 'completed', 'reviewed', 'referred', 'rejected'])
   )
 
   return onSnapshot(q, (snapshot) => {

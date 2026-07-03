@@ -82,12 +82,12 @@ class HealthService {
 
       console.log('Health record saved with ID:', docRef.id)
 
-      await addDoc(collection(db, 'health_requests'), {
+      const healthRequestRef = await addDoc(collection(db, 'health_requests'), {
         userId,
         residentName: recordData.userName || auth.currentUser?.displayName || 'Resident',
         residentEmail: auth.currentUser?.email || '',
         purok: recordData.userPurok || '',
-        symptoms: recordData.formData?.symptoms || 'Resident submitted a health checkup.',
+        symptoms: recordData.formData?.symptoms || recordData.aiSymptomsNotes || 'Resident submitted a health checkup.',
         status: 'pending_review',
         source: 'health_record',
         sourceRecordId: docRef.id,
@@ -98,13 +98,21 @@ class HealthService {
           ? `${recordData.preferredAppointmentDate}${recordData.preferredAppointmentTime ? ` ${recordData.preferredAppointmentTime}` : ''}`
           : '',
         groqSummary: recordData.groqSummary || null,
+        aiConversation: recordData.aiConversation || null,
         requestedAt: newRecord.createdAt,
         createdAt: newRecord.createdAt,
         updatedAt: newRecord.updatedAt,
       })
 
-      // Create a notification for the new health record
+      // Notify the resident about their own submission
       await this._createHealthNotification(record)
+
+      // Notify BHW staff so it shows up on their dashboard bell
+      await this._notifyBHWStaff({
+        residentName: recordData.userName || auth.currentUser?.displayName || 'A resident',
+        hasAppointment: Boolean(recordData.preferredAppointmentDate),
+        relatedId: healthRequestRef.id,
+      })
 
       return { success: true, record }
     } catch (error) {
@@ -280,6 +288,34 @@ class HealthService {
       })
     } catch (error) {
       console.error('Error creating health notification:', error)
+    }
+  }
+
+  async _notifyBHWStaff({ residentName, hasAppointment, relatedId }) {
+    try {
+      const snapshot = await getDocs(
+        query(collection(db, 'users'), where('role', '==', 'bhw'))
+      )
+
+      const message = hasAppointment
+        ? `${residentName} submitted a health checkup and requested an appointment.`
+        : `${residentName} submitted a new health checkup for review.`
+
+      const tasks = snapshot.docs.map((d) =>
+        notificationService.createNotification({
+          userId: d.id,
+          type: 'info',
+          category: 'health',
+          message,
+          relatedId,
+          relatedType: 'healthRequest',
+        })
+      )
+
+      await Promise.all(tasks)
+      console.log(`🔔 [HealthService] Notified ${tasks.length} BHW staff`)
+    } catch (error) {
+      console.warn('⚠️ [HealthService] Could not notify BHW staff:', error.message)
     }
   }
 }

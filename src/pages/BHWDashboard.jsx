@@ -2,7 +2,7 @@ import FoodAidProjectionChart from '../components/FoodAidProjectionChart'
 import EventAttendanceChart from '../components/EventAttendanceChart'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarDays, Search, Stethoscope, Sparkles, Clock3, UserRound, MapPin, CheckCircle2, ArrowRight, Loader2, Loader } from 'lucide-react'
+import { CalendarDays, Search, Stethoscope, Sparkles, Clock3, UserRound, MapPin, CheckCircle2, ArrowRight, Loader2, Loader, Filter, X, Bot } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import toledoImage from '../assets/Toledo.jpg'
 import { useAuth } from '../context/AuthContext'
@@ -26,6 +26,8 @@ const BHWDashboard = () => {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [selectedRequest, setSelectedRequest] = useState(null)
+  const [selectedHistoryRequest, setSelectedHistoryRequest] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('all')
   const [scheduleError, setScheduleError] = useState('')
   const [triageSummary, setTriageSummary] = useState('')
   const [reviewMessage, setReviewMessage] = useState('')
@@ -126,9 +128,19 @@ const BHWDashboard = () => {
       const residentName = (request.residentName || '').toLowerCase()
       const status = (request.status || '').toLowerCase()
       const purok = (request.purok || '').toLowerCase()
-      return residentName.includes(searchTerm) || status.includes(searchTerm) || purok.includes(searchTerm)
+      const matchesSearch = residentName.includes(searchTerm) || status.includes(searchTerm) || purok.includes(searchTerm)
+      const matchesFilter = statusFilter === 'all' || request.status === statusFilter
+      return matchesSearch && matchesFilter
     })
-  }, [processedRequests, search])
+  }, [processedRequests, search, statusFilter])
+
+  const getStatusBadgeClass = (status) => {
+    if (status === 'rejected') return 'border-rose-400/40 bg-rose-500/15 text-rose-200'
+    if (['scheduled', 'completed', 'reviewed', 'referred'].includes(status)) {
+      return 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
+    }
+    return 'border-white/20 bg-white/10 text-white/80'
+  }
 
   const handleReviewDecision = async (event, decision = 'approve') => {
     event.preventDefault()
@@ -397,14 +409,31 @@ const BHWDashboard = () => {
                 <h2 className="text-lg font-semibold text-white">Patient History Logs</h2>
                 <p className="text-sm text-white/60">Previously processed requests and outcomes</p>
               </div>
-              <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-sm backdrop-blur-sm">
-                <Search className="h-4 w-4 text-white/50" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search"
-                  className="w-24 bg-transparent text-white placeholder-white/40 outline-none sm:w-40"
-                />
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-sm backdrop-blur-sm">
+                  <Search className="h-4 w-4 text-white/50" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search"
+                    className="w-24 bg-transparent text-white placeholder-white/40 outline-none sm:w-40"
+                  />
+                </div>
+                <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-sm backdrop-blur-sm">
+                  <Filter className="h-4 w-4 text-white/50" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-transparent text-white outline-none [&>option]:text-gray-900"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="completed">Completed</option>
+                    <option value="reviewed">Reviewed</option>
+                    <option value="referred">Referred</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -426,12 +455,16 @@ const BHWDashboard = () => {
                     </tr>
                   ) : (
                     filteredHistory.map((request) => (
-                      <tr key={request.id} className="border-t border-white/10 text-white/80">
+                      <tr
+                        key={request.id}
+                        onClick={() => setSelectedHistoryRequest(request)}
+                        className="cursor-pointer border-t border-white/10 text-white/80 transition hover:bg-white/5"
+                      >
                         <td className="py-3 pr-3 font-medium">{request.residentName || 'Resident'}</td>
                         <td className="py-3 pr-3">{request.scheduledAt || request.updatedAt ? new Date(request.scheduledAt || request.updatedAt).toLocaleDateString() : '—'}</td>
                         <td className="py-3 pr-3">{request.purok || 'Unassigned'}</td>
                         <td className="py-3">
-                          <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-white/80">
+                          <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusBadgeClass(request.status)}`}>
                             {request.status || 'processed'}
                           </span>
                         </td>
@@ -479,9 +512,112 @@ const BHWDashboard = () => {
               </div>
             )}
           </div>
-        </section>
+       </section>
 
       </div>
+
+      {/* ── Patient history detail modal ── */}
+      {selectedHistoryRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSelectedHistoryRequest(null)}
+          />
+          <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-white/15 bg-gradient-to-br from-slate-900/95 via-indigo-950/95 to-blue-950/95 p-6 shadow-2xl backdrop-blur-2xl">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <UserRound className="h-5 w-5 text-emerald-300" />
+                  <h3 className="text-lg font-bold text-white">
+                    {selectedHistoryRequest.residentName || 'Resident'}
+                  </h3>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-white/60">
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {selectedHistoryRequest.purok || 'Unassigned'}
+                  </span>
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusBadgeClass(selectedHistoryRequest.status)}`}
+                  >
+                    {selectedHistoryRequest.status || 'processed'}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedHistoryRequest(null)}
+                className="rounded-lg border border-white/20 bg-white/10 p-2 text-white/70 transition hover:bg-white/20 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur-sm">
+                <p className="text-sm font-semibold text-white">Resident's symptoms / request</p>
+                <p className="mt-2 text-sm leading-6 text-white/70">
+                  {selectedHistoryRequest.symptoms || 'No details provided.'}
+                </p>
+                {selectedHistoryRequest.preferredAppointmentDate && (
+                  <p className="mt-2 text-sm text-white/60">
+                    Requested slot: {selectedHistoryRequest.preferredAppointmentDate}
+                    {selectedHistoryRequest.preferredAppointmentTime ? ` at ${selectedHistoryRequest.preferredAppointmentTime}` : ''}
+                  </p>
+                )}
+              </div>
+
+              {selectedHistoryRequest.groqSummary && (
+                <div className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur-sm">
+                  <p className="text-sm font-semibold text-white">AI triage summary</p>
+                  <p className="mt-2 text-sm leading-6 text-white/70">{selectedHistoryRequest.groqSummary}</p>
+                </div>
+              )}
+
+              {selectedHistoryRequest.reviewMessage && (
+                <div className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur-sm">
+                  <p className="text-sm font-semibold text-white">BHW review note</p>
+                  <p className="mt-2 text-sm leading-6 text-white/70">{selectedHistoryRequest.reviewMessage}</p>
+                  <p className="mt-2 text-xs text-white/40">
+                    {selectedHistoryRequest.reviewedBy ? `Reviewed by ${selectedHistoryRequest.reviewedBy}` : ''}
+                    {selectedHistoryRequest.reviewedAt ? ` · ${new Date(selectedHistoryRequest.reviewedAt).toLocaleString()}` : ''}
+                  </p>
+                </div>
+              )}
+
+              {Array.isArray(selectedHistoryRequest.aiConversation) && selectedHistoryRequest.aiConversation.length > 0 ? (
+                <div className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur-sm">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-blue-300" />
+                    <p className="text-sm font-semibold text-white">AI health conversation</p>
+                  </div>
+                  <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+                    {selectedHistoryRequest.aiConversation.map((msg, i) => (
+                      <div
+                        key={i}
+                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
+                            msg.role === 'user'
+                              ? 'rounded-br-sm bg-blue-600 text-white'
+                              : 'rounded-bl-sm border border-white/15 bg-white/10 text-white/85'
+                          }`}
+                        >
+                          {msg.content}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-white/20 py-6 text-center text-sm text-white/50">
+                  No AI chat conversation was recorded for this request.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

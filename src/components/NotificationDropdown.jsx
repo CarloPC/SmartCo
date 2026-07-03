@@ -103,87 +103,74 @@ const NotificationDropdown = ({ onClose, onNotificationRead }) => {
   }
 
   return (
-    <div className={`${
-      isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
-    } border-b shadow-lg p-4 space-y-2`}>
-      <div className="flex items-center justify-between mb-2">
-        <h3 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-          Notifications
-        </h3>
-        <button onClick={onClose} className={`${
-          isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
-        } transition`}>
-          <X className="w-5 h-5" />
-        </button>
+    <div className="relative rounded-2xl border border-white/15 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,.35)] overflow-hidden bg-gradient-to-br from-slate-900/80 via-indigo-900/60 to-blue-950/70">
+      {/* ambient glow accents, matches Topbar style */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-10 -left-10 h-32 w-32 rounded-full bg-cyan-400/10 blur-[70px]" />
+        <div className="absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-violet-500/10 blur-[80px]" />
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className={`w-6 h-6 animate-spin ${
-            isDarkMode ? 'text-blue-400' : 'text-blue-500'
-          }`} />
-        </div>
-      ) : notifications.length === 0 ? (
-        <div className="text-center py-8">
-          <Bell className={`w-12 h-12 mx-auto mb-2 ${
-            isDarkMode ? 'text-gray-600' : 'text-gray-300'
-          }`} />
-          <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            No notifications
-          </p>
-        </div>
-      ) : (
-        <>
-          {notifications.map(notification => (
-            <button
-              key={notification.id}
-              onClick={() => handleNotificationClick(notification)}
-              className={`w-full text-left p-3 rounded-lg text-sm transition group ${
-                !notification.read 
-                  ? isDarkMode 
-                    ? 'bg-blue-950/50 border border-blue-800/50 hover:bg-blue-900/60' 
-                    : 'bg-blue-50 border border-blue-200 hover:bg-blue-100'
-                  : isDarkMode 
-                    ? 'bg-gray-800/50 hover:bg-gray-700/60' 
-                    : 'bg-gray-50 hover:bg-gray-100'
-              }`}
-            >
-              <div className="flex items-start space-x-2">
-                {getCategoryIcon(notification.category, notification.type)}
-                <div className="flex-1 min-w-0">
-                  <p className={`font-medium ${
-                    isDarkMode ? 'text-gray-200' : 'text-gray-800'
-                  }`}>
-                    {notification.message}
-                  </p>
-                  <p className={`text-xs mt-1 ${
-                    isDarkMode ? 'text-gray-500' : 'text-gray-500'
-                  }`}>
-                    {formatTime(notification.createdAt)}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-1 flex-shrink-0">
-                  {!notification.read && (
-                    <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></span>
-                  )}
-                  <ChevronRight className={`w-3.5 h-3.5 mt-0.5 opacity-0 group-hover:opacity-100 transition ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
-                </div>
-              </div>
-            </button>
-          ))}
-          
+      <div className="relative z-10 p-4 space-y-2">
+        <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/10">
+          <h3 className="font-semibold text-white">Notifications</h3>
           <button
-            onClick={handleViewAll}
-            className={`w-full text-center py-2 rounded-lg font-medium text-sm transition ${
-              isDarkMode 
-                ? 'text-blue-400 hover:bg-blue-950/30' 
-                : 'text-blue-600 hover:bg-blue-50'
-            }`}
+            onClick={onClose}
+            className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-all duration-200"
           >
-            View All Notifications
+            <X className="w-4 h-4" />
           </button>
-        </>
-      )}
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-300" />
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="text-center py-8">
+            <Bell className="w-12 h-12 mx-auto mb-2 text-white/20" />
+            <p className="text-sm text-white/50">No notifications</p>
+          </div>
+        ) : (
+          <>
+            {notifications.map(notification => (
+              <button
+                key={notification.id}
+                onClick={() => handleNotificationClick(notification)}
+                className={`w-full text-left p-3 rounded-xl text-sm transition-all duration-200 group border ${
+                  !notification.read
+                    ? 'bg-blue-500/10 border-blue-400/30 hover:bg-blue-500/20 hover:border-blue-400/40'
+                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className="flex items-start space-x-2">
+                  {getCategoryIcon(notification.category, notification.type)}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-white/90">
+                      {notification.message}
+                    </p>
+                    <p className="text-xs mt-1 text-white/40">
+                      {formatTime(notification.createdAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-1 flex-shrink-0">
+                    {!notification.read && (
+                      <span className="w-2 h-2 bg-blue-400 rounded-full mt-1.5 shadow-[0_0_6px_rgba(96,165,250,.8)]"></span>
+                    )}
+                    <ChevronRight className="w-3.5 h-3.5 mt-0.5 opacity-0 group-hover:opacity-100 transition text-white/50" />
+                  </div>
+                </div>
+              </button>
+            ))}
+
+            <button
+              onClick={handleViewAll}
+              className="w-full text-center py-2 rounded-xl font-medium text-sm text-blue-300 hover:bg-white/10 hover:text-blue-200 transition-all duration-200"
+            >
+              View All Notifications
+            </button>
+          </>
+        )}
+      </div>
     </div>
   )
 }
