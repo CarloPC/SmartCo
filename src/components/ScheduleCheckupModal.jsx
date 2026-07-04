@@ -44,6 +44,8 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
     try {
       await healthService.createHealthRecord({
         type: 'scheduled_checkup',
+        userName: user?.fullName,
+        userPurok: user?.purok,
         scheduledDate: date,
         scheduledTime: time,
         // These two are what healthService reads into the `health_requests`

@@ -67,8 +67,15 @@ class HealthService {
         throw new Error('User not authenticated')
       }
 
+      const userDoc = await getDoc(doc(db, 'users', userId))
+      const profile = userDoc.data() || {}
+      const residentName = recordData.userName || profile.fullName || auth.currentUser?.displayName || 'Resident'
+      const residentPurok = recordData.userPurok || profile.purok || ''
+
       const newRecord = {
         ...recordData,
+        userName: residentName,
+        userPurok: residentPurok,
         userId,
         approvalStatus: 'pending',
         createdAt: new Date().toISOString(),
@@ -84,9 +91,9 @@ class HealthService {
 
       const healthRequestRef = await addDoc(collection(db, 'health_requests'), {
         userId,
-        residentName: recordData.userName || auth.currentUser?.displayName || 'Resident',
+        residentName,
         residentEmail: auth.currentUser?.email || '',
-        purok: recordData.userPurok || '',
+        purok: residentPurok,
         symptoms: recordData.formData?.symptoms || recordData.aiSymptomsNotes || 'Resident submitted a health checkup.',
         status: 'pending_review',
         source: 'health_record',
@@ -109,7 +116,7 @@ class HealthService {
 
       // Notify BHW staff so it shows up on their dashboard bell
       await this._notifyBHWStaff({
-        residentName: recordData.userName || auth.currentUser?.displayName || 'A resident',
+        residentName,
         hasAppointment: Boolean(recordData.preferredAppointmentDate),
         relatedId: healthRequestRef.id,
       })
