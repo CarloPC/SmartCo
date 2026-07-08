@@ -35,7 +35,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
     email: user?.email || '',
     role: user?.role || 'Resident',
     purok: user?.purok || '',
-    avatar: null
+    avatar: user?.photoURL || null
   }
 
   const isAdmin = user?.role === 'admin' || user?.role === 'barangay_official'
@@ -176,8 +176,12 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
 
             {/* User Info */}
             <div className="flex items-center space-x-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/30 bg-white/15 text-2xl font-bold text-white shadow-lg backdrop-blur-sm">
-                {userData.name.charAt(0)}
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-white/15 text-2xl font-bold text-white shadow-lg backdrop-blur-sm">
+                {userData.avatar ? (
+                  <img src={userData.avatar} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  userData.name.charAt(0)
+                )}
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-white">{userData.name}</h3>

@@ -2295,7 +2295,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
     email: user?.email || '',
     role: user?.role || 'Resident',
     purok: user?.purok || '',
-    avatar: null
+    avatar: user?.photoURL || null
   }
 
   const isAdmin = user?.role === 'admin' || user?.role === 'barangay_official'
@@ -2436,8 +2436,12 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
 
             {/* User Info */}
             <div className="flex items-center space-x-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/30 bg-white/15 text-2xl font-bold text-white shadow-lg backdrop-blur-sm">
-                {userData.name.charAt(0)}
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-white/15 text-2xl font-bold text-white shadow-lg backdrop-blur-sm">
+                {userData.avatar ? (
+                  <img src={userData.avatar} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  userData.name.charAt(0)
+                )}
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-white">{userData.name}</h3>
@@ -3034,10 +3038,14 @@ const Topbar = ({ onToggleSidebar, unreadCount, onOpenProfile, onNotificationRea
 
         <button
           onClick={onOpenProfile}
-          className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm border border-white/20 bg-white/10 text-white backdrop-blur-xl transition-all duration-300 hover:bg-white/20 hover:border-white/30 hover:shadow-lg"
+          className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden font-bold text-sm border border-white/20 bg-white/10 text-white backdrop-blur-xl transition-all duration-300 hover:bg-white/20 hover:border-white/30 hover:shadow-lg"
           title="Profile"
         >
-          {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+          {user?.photoURL ? (
+            <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+          ) : (
+            user?.fullName?.charAt(0)?.toUpperCase() || 'U'
+          )}
         </button>
 
         {showNotifications && (
@@ -3085,6 +3093,15 @@ export const db = getFirestore(app)
 export const storage = getStorage(app)
 
 export default app
+
+== FILE: C:\Users\Admin\Documents\SmartCo\src\config\supabase.js ==
+
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 == FILE: C:\Users\Admin\Documents\SmartCo\src\context\AuthContext.jsx ==
 
@@ -10809,9 +10826,10 @@ export default LoginPage
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit2, Save, X, Trash2, User, Mail, Phone, MapPin, Briefcase, Loader } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Trash2, User, Mail, Phone, MapPin, Briefcase, Loader, Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import authService from '../services/authService'
+import storageService from '../services/storageService'
 
 const MyProfilePage = () => {
   const navigate = useNavigate()
@@ -10820,6 +10838,7 @@ const MyProfilePage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   // User data from Firebase
   const [userData, setUserData] = useState(null)
@@ -10866,6 +10885,38 @@ const MyProfilePage = () => {
       alert('Ã¢Å’ Failed to update profile: ' + error.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file || !userData) return
+
+    // Basic validation
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be smaller than 5MB.')
+      return
+    }
+
+    try {
+      setUploadingImage(true)
+      const photoURL = await storageService.uploadProfileImage(userData.id, file)
+
+      await authService.updateProfile(userData.id, { photoURL })
+
+      setUserData({ ...userData, photoURL })
+      updateUser({ photoURL })
+
+      alert('âœ… Profile picture updated!')
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      alert('âŒ Failed to upload image: ' + error.message)
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -10922,11 +10973,39 @@ const MyProfilePage = () => {
       <div className={`${card} p-6`}>
         {/* Avatar Section */}
         <div className="mb-6 flex flex-col items-center">
-          <div className="mb-3 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 text-4xl font-bold text-white shadow-xl ring-2 ring-sky-300/40">
-            {userData.fullName?.charAt(0) || 'U'}
+          <div className="relative mb-3 h-24 w-24">
+            {userData.photoURL ? (
+              <img
+                src={userData.photoURL}
+                alt="Profile"
+                className="h-24 w-24 rounded-full object-cover shadow-xl ring-2 ring-sky-300/40"
+              />
+            ) : (
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 text-4xl font-bold text-white shadow-xl ring-2 ring-sky-300/40">
+                {userData.fullName?.charAt(0) || 'U'}
+              </div>
+            )}
+
+            <label
+              htmlFor="profile-image-input"
+              className="absolute bottom-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-blue-600 text-white shadow-lg transition hover:bg-blue-700"
+            >
+              {uploadingImage ? (
+                <Loader className="h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="h-4 w-4" />
+              )}
+            </label>
+            <input
+              id="profile-image-input"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+              disabled={uploadingImage}
+            />
           </div>
         </div>
-
         {/* Profile Information */}
         <div className="space-y-4">
           {/* Full Name */}
@@ -16386,10 +16465,11 @@ class AuthService {
         user: {
           id: user.uid,
           email: user.email,
-          fullName: userData?.fullName || '',
+         fullName: userData?.fullName || '',
           phone: userData?.phone || '',
           role: userData?.role || '',
           purok: userData?.purok || '',
+          photoURL: userData?.photoURL || '',
           createdAt: userData?.createdAt || new Date().toISOString()
         }
       }
@@ -16464,6 +16544,7 @@ class AuthService {
               phone: userData?.phone || '',
               role: userData?.role || '',
               purok: userData?.purok || '',
+              photoURL: userData?.photoURL || '',
               createdAt: userData?.createdAt || new Date().toISOString()
             })
           } catch (error) {
@@ -18368,116 +18449,35 @@ const STORAGE_KEYS = {
   USERS: 'smartco_users'
 }
 
+import { supabase } from '../config/supabase'
+
 class StorageService {
-  // Generic methods
-  get(key) {
+  // Upload a profile image and return its public URL
+  async uploadProfileImage(userId, file) {
     try {
-      const item = localStorage.getItem(key)
-      return item ? JSON.parse(item) : null
+      if (!file) throw new Error('No file provided')
+
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${userId}/profile-${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        })
+
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      return data.publicUrl
     } catch (error) {
-      console.error('Error reading from storage:', error)
-      return null
+      console.error('Error uploading profile image:', error)
+      throw new Error('Failed to upload profile image')
     }
-  }
-
-  set(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value))
-      return true
-    } catch (error) {
-      console.error('Error writing to storage:', error)
-      return false
-    }
-  }
-
-  remove(key) {
-    try {
-      localStorage.removeItem(key)
-      return true
-    } catch (error) {
-      console.error('Error removing from storage:', error)
-      return false
-    }
-  }
-
-  clear() {
-    try {
-      localStorage.clear()
-      return true
-    } catch (error) {
-      console.error('Error clearing storage:', error)
-      return false
-    }
-  }
-
-  // Auth specific methods
-  getAuthToken() {
-    return this.get(STORAGE_KEYS.AUTH_TOKEN)
-  }
-
-  setAuthToken(token) {
-    return this.set(STORAGE_KEYS.AUTH_TOKEN, token)
-  }
-
-  removeAuthToken() {
-    return this.remove(STORAGE_KEYS.AUTH_TOKEN)
-  }
-
-  getUserData() {
-    return this.get(STORAGE_KEYS.USER_DATA)
-  }
-
-  setUserData(userData) {
-    return this.set(STORAGE_KEYS.USER_DATA, userData)
-  }
-
-  removeUserData() {
-    return this.remove(STORAGE_KEYS.USER_DATA)
-  }
-
-  // Health records methods
-  getHealthRecords() {
-    return this.get(STORAGE_KEYS.HEALTH_RECORDS) || []
-  }
-
-  setHealthRecords(records) {
-    return this.set(STORAGE_KEYS.HEALTH_RECORDS, records)
-  }
-
-  // Events methods
-  getEvents() {
-    return this.get(STORAGE_KEYS.EVENTS) || []
-  }
-
-  setEvents(events) {
-    return this.set(STORAGE_KEYS.EVENTS, events)
-  }
-
-  // Food aid methods
-  getFoodAid() {
-    return this.get(STORAGE_KEYS.FOOD_AID) || []
-  }
-
-  setFoodAid(foodAid) {
-    return this.set(STORAGE_KEYS.FOOD_AID, foodAid)
-  }
-
-  // Notifications methods
-  getNotifications() {
-    return this.get(STORAGE_KEYS.NOTIFICATIONS) || []
-  }
-
-  setNotifications(notifications) {
-    return this.set(STORAGE_KEYS.NOTIFICATIONS, notifications)
-  }
-
-  // Users methods (for registration)
-  getUsers() {
-    return this.get(STORAGE_KEYS.USERS) || []
-  }
-
-  setUsers(users) {
-    return this.set(STORAGE_KEYS.USERS, users)
   }
 }
 

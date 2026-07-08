@@ -78,10 +78,14 @@ const Topbar = ({ onToggleSidebar, unreadCount, onOpenProfile, onNotificationRea
 
         <button
           onClick={onOpenProfile}
-          className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm border border-white/20 bg-white/10 text-white backdrop-blur-xl transition-all duration-300 hover:bg-white/20 hover:border-white/30 hover:shadow-lg"
+          className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden font-bold text-sm border border-white/20 bg-white/10 text-white backdrop-blur-xl transition-all duration-300 hover:bg-white/20 hover:border-white/30 hover:shadow-lg"
           title="Profile"
         >
-          {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+          {user?.photoURL ? (
+            <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+          ) : (
+            user?.fullName?.charAt(0)?.toUpperCase() || 'U'
+          )}
         </button>
 
         {showNotifications && (

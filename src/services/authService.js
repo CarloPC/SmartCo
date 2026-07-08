@@ -27,10 +27,11 @@ class AuthService {
         user: {
           id: user.uid,
           email: user.email,
-          fullName: userData?.fullName || '',
+         fullName: userData?.fullName || '',
           phone: userData?.phone || '',
           role: userData?.role || '',
           purok: userData?.purok || '',
+          photoURL: userData?.photoURL || '',
           createdAt: userData?.createdAt || new Date().toISOString()
         }
       }
@@ -105,6 +106,7 @@ class AuthService {
               phone: userData?.phone || '',
               role: userData?.role || '',
               purok: userData?.purok || '',
+              photoURL: userData?.photoURL || '',
               createdAt: userData?.createdAt || new Date().toISOString()
             })
           } catch (error) {

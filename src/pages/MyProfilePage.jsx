@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit2, Save, X, Trash2, User, Mail, Phone, MapPin, Briefcase, Loader } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Trash2, User, Mail, Phone, MapPin, Briefcase, Loader, Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import authService from '../services/authService'
+import storageService from '../services/storageService'
 
 const MyProfilePage = () => {
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ const MyProfilePage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   // User data from Firebase
   const [userData, setUserData] = useState(null)
@@ -57,6 +59,38 @@ const MyProfilePage = () => {
       alert('âŒ Failed to update profile: ' + error.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file || !userData) return
+
+    // Basic validation
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be smaller than 5MB.')
+      return
+    }
+
+    try {
+      setUploadingImage(true)
+      const photoURL = await storageService.uploadProfileImage(userData.id, file)
+
+      await authService.updateProfile(userData.id, { photoURL })
+
+      setUserData({ ...userData, photoURL })
+      updateUser({ photoURL })
+
+      alert('✅ Profile picture updated!')
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      alert('❌ Failed to upload image: ' + error.message)
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -113,11 +147,39 @@ const MyProfilePage = () => {
       <div className={`${card} p-6`}>
         {/* Avatar Section */}
         <div className="mb-6 flex flex-col items-center">
-          <div className="mb-3 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 text-4xl font-bold text-white shadow-xl ring-2 ring-sky-300/40">
-            {userData.fullName?.charAt(0) || 'U'}
+          <div className="relative mb-3 h-24 w-24">
+            {userData.photoURL ? (
+              <img
+                src={userData.photoURL}
+                alt="Profile"
+                className="h-24 w-24 rounded-full object-cover shadow-xl ring-2 ring-sky-300/40"
+              />
+            ) : (
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 text-4xl font-bold text-white shadow-xl ring-2 ring-sky-300/40">
+                {userData.fullName?.charAt(0) || 'U'}
+              </div>
+            )}
+
+            <label
+              htmlFor="profile-image-input"
+              className="absolute bottom-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-blue-600 text-white shadow-lg transition hover:bg-blue-700"
+            >
+              {uploadingImage ? (
+                <Loader className="h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="h-4 w-4" />
+              )}
+            </label>
+            <input
+              id="profile-image-input"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+              disabled={uploadingImage}
+            />
           </div>
         </div>
-
         {/* Profile Information */}
         <div className="space-y-4">
           {/* Full Name */}
