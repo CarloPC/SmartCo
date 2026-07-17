@@ -1,5 +1,6 @@
 import { collection, getDocs, addDoc, query, where } from 'firebase/firestore'
 import { db } from '../config/firebase'
+import { PUROKS_SHORT } from '../constants/puroks'
 
 // Helper to check if demo data exists
 async function isDemoDataInitialized() {
@@ -41,9 +42,9 @@ export const initializeDemoData = async () => {
         date: '2026-02-15',
         time: '09:00',
         duration: 'Full day',
-        venue: 'Barangay Court',
+        venue: 'Barangay Ilihan Court',
         expectedAttendees: 50,
-        description: 'Annual basketball tournament for all puroks',
+        description: 'Annual basketball tournament for all puroks of Barangay Ilihan',
         status: 'upcoming',
         attendees: [],
         createdBy: 'demo',
@@ -56,9 +57,9 @@ export const initializeDemoData = async () => {
         date: '2026-02-01',
         time: '08:00',
         duration: 'Half day',
-        venue: 'Barangay Hall',
+        venue: 'Barangay Ilihan Hall',
         expectedAttendees: 60,
-        description: 'Free health checkup for senior citizens',
+        description: 'Free health checkup for senior citizens in Barangay Ilihan',
         status: 'upcoming',
         attendees: [],
         createdBy: 'demo',
@@ -66,14 +67,14 @@ export const initializeDemoData = async () => {
         updatedAt: new Date('2026-01-18').toISOString()
       },
       {
-        title: 'Community Clean-up',
+        title: 'Barangay Ilihan Clean-up',
         category: 'Community Service',
         date: '2026-02-08',
         time: '06:00',
         duration: '3 hours',
         venue: 'All Puroks',
         expectedAttendees: 80,
-        description: 'Monthly community cleanup drive',
+        description: 'Monthly community cleanup drive for Barangay Ilihan',
         status: 'upcoming',
         attendees: [],
         createdBy: 'demo',

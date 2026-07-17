@@ -239,14 +239,14 @@ const HealthAIChat = ({ onClose }) => {
           {showSchedule && !loading && (
             <div className={`flex flex-col items-center gap-2 py-2`}>
               <p className={`text-xs font-medium ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                ⚕️ HealthBot recommends a barangay checkup
+                ⚕️ HealthBot recommends a checkup at Barangay Ilihan Health Center
               </p>
               <button
                 onClick={() => setScheduleModal(true)}
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-lg"
               >
                 <CalendarCheck className="w-4 h-4" />
-                Schedule Barangay Checkup
+                Schedule Barangay Ilihan Health Checkup
               </button>
             </div>
           )}

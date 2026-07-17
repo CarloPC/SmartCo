@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, Loader2, CheckCircle, Shield, Zap, Bell } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useAuth } from '../context/AuthContext'
+import BARANGAY_CONFIG from '../config/barangayConfig'
+import { PUROKS_ILIHAN } from '../constants/puroks'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
@@ -112,13 +114,13 @@ const RegisterPage = () => {
           </div>
 
           <h1 className="text-4xl font-bold text-white leading-tight mb-4">
-            Join the Future of<br />
+            Join Barangay Ilihan's<br />
             <span className="bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent">
-              Barangay Governance
+              Smart Governance
             </span>
           </h1>
           <p className="text-blue-200 text-base mb-10 max-w-sm">
-            Create your account and start managing community services smarter, faster, and more efficiently.
+            Create your account and start managing Barangay Ilihan services smarter, faster, and more efficiently.
           </p>
 
           <div className="space-y-4">
@@ -195,6 +197,15 @@ const RegisterPage = () => {
               )}
 
               <form className="space-y-4" onSubmit={handleSubmit}>
+                {/* Barangay Information - Fixed */}
+                <div className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-3 mb-4">
+                  <p className="text-xs font-medium text-cyan-200 mb-2">Registration Area</p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-white font-semibold">{BARANGAY_CONFIG.fullBarangayName}</p>
+                    <p className="text-xs text-white/70">{BARANGAY_CONFIG.municipality}, {BARANGAY_CONFIG.province}, {BARANGAY_CONFIG.country}</p>
+                  </div>
+                </div>
+
                 {/* Full Name */}
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1.5">Full Name</label>
@@ -278,12 +289,12 @@ const RegisterPage = () => {
                       className={selectClass}
                       required
                     >
-                      <option value="">Select purok</option>
-                      <option value="purok1">Purok 1</option>
-                      <option value="purok2">Purok 2</option>
-                      <option value="purok3">Purok 3</option>
-                      <option value="purok4">Purok 4</option>
-                      <option value="purok5">Purok 5</option>
+                      <option value="">Select your purok</option>
+                      {PUROKS_ILIHAN.map((purok, index) => (
+                        <option key={index} value={`Purok ${index + 1}`}>
+                          {purok}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

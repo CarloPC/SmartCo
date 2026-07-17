@@ -536,7 +536,7 @@ const EmergencyManagementPage = () => {
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl lg:text-2xl font-bold">Emergency Management</h2>
+                <h2 className="text-xl lg:text-2xl font-bold">Barangay Ilihan Emergency Management</h2>
                 <p className="text-red-100 text-sm">Respond, dispatch assistance, and manage false reports</p>
               </div>
             </div>

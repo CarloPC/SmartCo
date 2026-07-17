@@ -1,14 +1,28 @@
+
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Stethoscope } from 'lucide-react'
+import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Stethoscope, Truck, Brain } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import adminService from '../services/adminService'
+import foodAidService from '../services/foodAidService'
 
 const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
   const location = useLocation()
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
   const isAdmin = adminService.isAdmin(user)
+  const [assignmentCount, setAssignmentCount] = useState(0)
+
+  // Only show "My Assignments" once this user actually has a food aid assignment â€”
+  // keeps the sidebar clean for people who've never volunteered.
+  useEffect(() => {
+    if (!user?.id) return
+    const unsubscribe = foodAidService.subscribeToVolunteerAssignments(user.id, list => {
+      setAssignmentCount(list.filter(a => !['completed', 'archived', 'cancelled'].includes(a.progress?.workflowStatus)).length)
+    })
+    return () => unsubscribe()
+  }, [user?.id])
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/')
 
@@ -25,7 +39,12 @@ const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
     },
   ]
 
+  if (assignmentCount > 0) {
+    navItems.splice(3, 0, { icon: Truck, label: 'My Assignments', path: '/food-aid/my-assignments' })
+  }
+
   if (user?.role === 'bhw') navItems.splice(1, 0, { icon: Stethoscope, label: 'BHW', path: '/bhw' })
+  if (isAdmin) navItems.push({ icon: Brain, label: 'AI Decision Support', path: '/ai-insights', accent: true })
   if (isAdmin) navItems.push({ icon: Shield, label: 'Admin', path: '/admin' })
   if (user?.role === 'admin') navItems.push({ icon: UserCheck, label: 'Admin Requests', path: '/admin/requests' })
 

@@ -12,10 +12,11 @@ const DURATION_OPTIONS = ['30 minutes', '1 hour', '2 hours', '3 hours', '4 hours
 
 // Venue characteristics for AI analysis
 const VENUE_DATA = {
-  'Barangay Court': { capacity: 200, type: 'outdoor', facilities: ['sports', 'seating', 'lighting'], covered: false },
-  'Barangay Hall': { capacity: 150, type: 'indoor', facilities: ['chairs', 'stage', 'sound_system', 'AC'], covered: true },
+  'Barangay Ilihan Court': { capacity: 200, type: 'outdoor', facilities: ['sports', 'seating', 'lighting'], covered: false },
+  'Barangay Ilihan Hall': { capacity: 150, type: 'indoor', facilities: ['chairs', 'stage', 'sound_system', 'AC'], covered: true },
+  'Barangay Ilihan Health Center': { capacity: 80, type: 'indoor', facilities: ['chairs', 'medical', 'AC'], covered: true },
   'Community Center': { capacity: 100, type: 'indoor', facilities: ['tables', 'chairs', 'kitchen'], covered: true },
-  'Barangay Plaza': { capacity: 300, type: 'outdoor', facilities: ['stage', 'seating'], covered: false },
+  'Barangay Ilihan Plaza': { capacity: 300, type: 'outdoor', facilities: ['stage', 'seating'], covered: false },
   'Multi-Purpose Hall': { capacity: 250, type: 'indoor', facilities: ['stage', 'sound_system', 'chairs', 'AC'], covered: true }
 }
 
@@ -525,7 +526,7 @@ const CreateEventPage = () => {
       const result = await eventsService.createEvent(eventData)
       console.log('Event created successfully:', result)
 
-      // ── Mirror to Community Board feed so residents can see the event ──
+      // ── Mirror to Barangay Ilihan Board feed so residents can see the event ──
       try {
         const feedContent = [
           formData.description && formData.description.trim(),
@@ -545,7 +546,7 @@ const CreateEventPage = () => {
           authorName: user?.fullName || 'Official',
           authorRole: user?.role || 'barangay_official'
         })
-        console.log('✅ Event mirrored to Community Board feed')
+        console.log('✅ Event mirrored to Barangay Ilihan Board feed')
       } catch (feedErr) {
         // Non-fatal — event itself was created successfully
         console.warn('⚠️ Could not mirror event to feed:', feedErr.message)
@@ -759,7 +760,7 @@ const CreateEventPage = () => {
                 name="venue"
                 value={formData.venue}
                 onChange={handleInputChange}
-                placeholder="e.g., Barangay Court"
+                placeholder="e.g., Barangay Ilihan Court"
                 className={`w-full pl-10 pr-3 py-2 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-500' 

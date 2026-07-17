@@ -4,6 +4,7 @@ import { LayoutDashboard, Users, Activity, Package, Calendar, AlertCircle, Clock
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import adminService from '../services/adminService'
+import foodAidService from '../services/foodAidService'
 
 const StatGroup = ({ icon: Icon, title, total, pending, approved, totalLabel, pendingLabel, approvedLabel, isDarkMode, onManage, manageLabel }) => {
   const card = `${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border`
@@ -46,12 +47,18 @@ const AdminDashboardPage = () => {
     totalEvents: 0, pendingEvents: 0, approvedEvents: 0, totalPending: 0
   })
   const [isLoading, setIsLoading] = useState(true)
+  const [foodAidAnalytics, setFoodAidAnalytics] = useState(null)
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setIsLoading(true)
-        setStats(await adminService.getAdminStats())
+        const [adminStats, faAnalytics] = await Promise.all([
+          adminService.getAdminStats(),
+          foodAidService.getDashboardAnalytics(),
+        ])
+        setStats(adminStats)
+        setFoodAidAnalytics(faAnalytics)
       } catch (error) {
         console.error('Error fetching admin stats:', error)
       } finally {
@@ -153,6 +160,79 @@ const AdminDashboardPage = () => {
                 isDarkMode={isDarkMode}
               />
             </div>
+
+            {/* Food Aid Distribution Analytics */}
+            {foodAidAnalytics && (
+              <div className={`${card} p-5 lg:p-6`}>
+                <h3 className={`font-semibold flex items-center space-x-2 mb-4 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                  <Package className="w-5 h-5" /><span>Food Aid Distribution Analytics</span>
+                </h3>
+
+                {/* Workflow stage counts */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-5">
+                  {[
+                    { label: 'Pending',    value: foodAidAnalytics.pending,    color: 'text-orange-500' },
+                    { label: 'Approved',   value: foodAidAnalytics.approved,   color: 'text-blue-500' },
+                    { label: 'Scheduled',  value: foodAidAnalytics.scheduled,  color: 'text-purple-500' },
+                    { label: 'In Progress',value: foodAidAnalytics.inProgress, color: 'text-yellow-500' },
+                    { label: 'Completed',  value: foodAidAnalytics.completed,  color: 'text-green-500' },
+                    { label: 'Cancelled',  value: foodAidAnalytics.cancelled,  color: 'text-red-500' },
+                  ].map(s => (
+                    <div key={s.label} className="text-center">
+                      <div className={`text-xl lg:text-2xl font-bold ${s.color}`}>{s.value}</div>
+                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Households */}
+                <div className="grid grid-cols-3 gap-3 mb-5">
+                  {[
+                    { label: 'Total Households',     value: foodAidAnalytics.totalHouseholds },
+                    { label: 'Households Served',     value: foodAidAnalytics.householdsServed, color: 'text-green-500' },
+                    { label: 'Households Remaining',  value: foodAidAnalytics.householdsRemaining, color: 'text-orange-500' },
+                  ].map(s => (
+                    <div key={s.label} className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-800/60' : 'bg-gray-50'}`}>
+                      <div className={`text-xl font-bold ${s.color || (isDarkMode ? 'text-gray-100' : 'text-gray-800')}`}>{s.value}</div>
+                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Progress by purok */}
+                <div className="mb-5">
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Progress by Purok</p>
+                  <div className="space-y-2">
+                    {foodAidAnalytics.progressByPurok.map(p => (
+                      <div key={p.purok}>
+                        <div className={`flex justify-between text-xs mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          <span>{p.purok} <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>({p.distributions} distribution{p.distributions === 1 ? '' : 's'})</span></span>
+                          <span className="font-semibold">{p.householdsServed}/{p.householdsTarget} · {p.percentage}%</span>
+                        </div>
+                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                          <div className="h-1.5 rounded-full bg-green-500" style={{ width: `${p.percentage}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Volunteer performance */}
+                {foodAidAnalytics.volunteerPerformance.length > 0 && (
+                  <div>
+                    <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Volunteer Performance</p>
+                    <div className="space-y-1.5">
+                      {foodAidAnalytics.volunteerPerformance.map(v => (
+                        <div key={v.id} className={`flex items-center justify-between text-xs rounded-lg px-3 py-2 ${isDarkMode ? 'bg-gray-800/60 text-gray-300' : 'bg-gray-50 text-gray-700'}`}>
+                          <span className="font-medium">{v.name}</span>
+                          <span>{v.completed}/{v.assigned} completed · {v.householdsServed} households served</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Quick Actions */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

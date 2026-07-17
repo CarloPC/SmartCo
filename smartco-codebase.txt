@@ -1,5 +1,5 @@
 ﻿
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\AdminRoute.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\AdminRoute.jsx ==
 
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -32,7 +32,139 @@ const AdminRoute = ({ children }) => {
 
 export default AdminRoute
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\BHWRoutes.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\AIInsightCard.jsx ==
+
+import { Sparkles, Clock, ChevronDown, ChevronUp, Check, X } from 'lucide-react'
+import { useState } from 'react'
+
+const PRIORITY_STYLES = {
+  high:   { dot: 'bg-red-500',    badge: 'bg-red-500/10 text-red-500 border-red-500/30',       label: 'High Priority' },
+  medium: { dot: 'bg-amber-500',  badge: 'bg-amber-500/10 text-amber-500 border-amber-500/30',   label: 'Medium Priority' },
+  low:    { dot: 'bg-emerald-500', badge: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30', label: 'Low Priority' },
+}
+
+const CONFIDENCE_STYLES = {
+  High:   'text-emerald-500',
+  Medium: 'text-amber-500',
+  Low:    'text-gray-400',
+}
+
+const MODULE_LABELS = {
+  health: 'Health AI',
+  food_aid: 'Food Aid AI',
+  events: 'Event AI',
+  emergency: 'Emergency AI',
+}
+
+const formatTimestamp = (iso) => {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    })
+  } catch {
+    return iso
+  }
+}
+
+/**
+ * Displays a single explainable AI recommendation.
+ * Every card always shows: Title, Summary, Reason, Confidence, Suggested Action,
+ * Priority Level, Timestamp â€” per the Explainable AI requirement.
+ */
+const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }) => {
+  const [expanded, setExpanded] = useState(false)
+  const priorityStyle = PRIORITY_STYLES[insight.priority] || PRIORITY_STYLES.low
+
+  const card = `${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border`
+
+  return (
+    <div className={`${card} p-5 flex flex-col gap-3`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <span className={`mt-1 w-2 h-2 rounded-full ${priorityStyle.dot} shrink-0`} />
+          <div>
+            <span className={`text-[11px] uppercase tracking-wide font-medium ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+              {MODULE_LABELS[insight.module] || 'AI'}
+            </span>
+            <h3 className={`font-semibold leading-snug ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+              {insight.title}
+            </h3>
+          </div>
+        </div>
+        <span className={`text-[11px] px-2 py-0.5 rounded-full border whitespace-nowrap ${priorityStyle.badge}`}>
+          {priorityStyle.label}
+        </span>
+      </div>
+
+      <p className={`text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{insight.summary}</p>
+
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className={`flex items-center gap-1 text-xs font-medium self-start ${isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+      >
+        <Sparkles className="w-3.5 h-3.5" />
+        {expanded ? 'Hide reasoning' : 'Why is the AI recommending this?'}
+        {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+      </button>
+
+      {expanded && (
+        <div className={`rounded-xl p-3 text-sm space-y-2 ${isDarkMode ? 'bg-gray-800/70 text-gray-300' : 'bg-gray-50 text-gray-600'}`}>
+          <p><span className="font-semibold">Reason: </span>{insight.reason}</p>
+          <p><span className="font-semibold">Suggested Action: </span>{insight.suggestedAction}</p>
+          {insight.dataAnalyzed && (
+            <p className="text-xs opacity-70 break-words">
+              <span className="font-semibold">Data analyzed: </span>
+              {Object.entries(insight.dataAnalyzed).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`).join(' Â· ')}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className={`flex items-center justify-between pt-2 mt-1 border-t ${isDarkMode ? 'border-gray-700/50' : 'border-gray-100'}`}>
+        <div className="flex items-center gap-3 text-xs">
+          <span className={CONFIDENCE_STYLES[insight.confidence] || 'text-gray-400'}>
+            Confidence: {insight.confidence}
+          </span>
+          <span className={`flex items-center gap-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <Clock className="w-3 h-3" /> {formatTimestamp(insight.timestamp)}
+          </span>
+        </div>
+
+        {(onAcknowledge || onDismiss) && (
+          <div className="flex items-center gap-2">
+            {status && status !== 'generated' && (
+              <span className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                {status === 'acted_on' ? 'Acted on' : status === 'dismissed' ? 'Dismissed' : status}
+              </span>
+            )}
+            {(!status || status === 'generated') && (
+              <>
+                <button
+                  onClick={() => onAcknowledge?.(insight)}
+                  title="Mark as acted on"
+                  className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => onDismiss?.(insight)}
+                  title="Dismiss"
+                  className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-gray-700/50 text-gray-400 hover:bg-gray-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default AIInsightCard
+
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\BHWRoutes.jsx ==
 
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -63,7 +195,7 @@ const BHWRoutes = () => {
 
 export default BHWRoutes
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\CreatePostModal.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\CreatePostModal.jsx ==
 
 import { useState } from 'react'
 import { X, Megaphone, Send, Loader2, Sparkles } from 'lucide-react'
@@ -237,7 +369,7 @@ const CreatePostModal = ({ onClose, onCreated, user }) => {
 
 export default CreatePostModal
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\EventAttendanceChart.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\EventAttendanceChart.jsx ==
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { CalendarCheck } from 'lucide-react'
@@ -340,11 +472,12 @@ export default function EventAttendanceChart({ data = [] }) {
   )
 }
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\FoodAidProjectionChart.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\FoodAidProjectionChart.jsx ==
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Boxes } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
+import { PUROKS_ILIHAN } from '../constants/puroks'
 
 /**
  * FoodAidProjectionChart
@@ -355,12 +488,14 @@ import { useTheme } from '../context/ThemeContext'
  */
 
 // Drop this in alongside initializeDemoData() if you need quick mock data
-export const buildFoodAidProjectionDemoData = (puroks = []) =>
-  (puroks.length ? puroks : ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6']).map((name) => {
+export const buildFoodAidProjectionDemoData = (puroks = []) => {
+  const purokList = puroks.length ? puroks : PUROKS_ILIHAN.map((p, i) => `Purok ${i + 1}`)
+  return purokList.map((name) => {
     const targetHouseholds = 80 + Math.floor(Math.random() * 80)
     const servedHouseholds = Math.max(0, targetHouseholds - Math.floor(Math.random() * 35))
     return { name, targetHouseholds, servedHouseholds }
   })
+}
 
 const CustomTooltip = ({ active, payload, label, isDarkMode }) => {
   if (!active || !payload || !payload.length) return null
@@ -464,7 +599,7 @@ export default function FoodAidProjectionChart({ data = [] }) {
   )
 }
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\HealthAIChat.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\HealthAIChat.jsx ==
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import {
@@ -707,14 +842,14 @@ const HealthAIChat = ({ onClose }) => {
           {showSchedule && !loading && (
             <div className={`flex flex-col items-center gap-2 py-2`}>
               <p className={`text-xs font-medium ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                âš•ï¸ HealthBot recommends a barangay checkup
+                âš•ï¸ HealthBot recommends a checkup at Barangay Ilihan Health Center
               </p>
               <button
                 onClick={() => setScheduleModal(true)}
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-lg"
               >
                 <CalendarCheck className="w-4 h-4" />
-                Schedule Barangay Checkup
+                Schedule Barangay Ilihan Health Checkup
               </button>
             </div>
           )}
@@ -815,7 +950,7 @@ const HealthAIChat = ({ onClose }) => {
 
 export default HealthAIChat
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\HealthRecordModal.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\HealthRecordModal.jsx ==
 
 
 import { X, CalendarCheck, Clock, CheckCircle, XCircle, AlertCircle, FileText, User, Stethoscope, Sparkles, Activity } from 'lucide-react'
@@ -1052,7 +1187,7 @@ const HealthRecordModal = ({ record, isOpen, onClose }) => {
 export default HealthRecordModal
 
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\Layout.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\Layout.jsx ==
 
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
@@ -1081,7 +1216,7 @@ const Layout = ({ children }) => {
   const hasCustomBackground = location.pathname === '/home' || location.pathname === '/bhw' || location.pathname === '/health' || location.pathname === '/food-aid' || location.pathname === '/events' || location.pathname === '/events/create' || location.pathname === '/emergency' || location.pathname === '/emergency/report' || location.pathname === '/admin'
   || location.pathname === '/admin/users' || location.pathname === '/admin/notifications' || location.pathname === '/admin/announcements' || location.pathname === '/admin/requests' || location.pathname === '/admin/approvals' || location.pathname === '/profilesidebar' || location.pathname === '/profile' || location.pathname === '/notifications' || location.pathname === '/settings' || location.pathname === '/privacy-security' || location.pathname === '/request-admin' || location.pathname === '/help-support' || location.pathname === '/about'
   || location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password' || location.pathname === '/reset-password' || location.pathname === '/welcome' || location.pathname === '/health/records' || location.pathname === '/health/records/:id' || location.pathname === '/health/records/:id/edit' || location.pathname === '/health/records/create' || location.pathname === '/food-aid/requests' || location.pathname === '/food-aid/requests/:id' || location.pathname === '/food-aid/requests/:id/edit' || location.pathname === '/food-aid/requests/create'
-  || location.pathname === '/record-checkup';
+  || location.pathname === '/record-checkup' || location.pathname === '/my-assignments' || location.pathname === '/food-aid/my-assignments' || location.pathname === '/food-aid/optimize-schedule' || location.pathname === '/food-aid/optimize-schedule/:id' || location.pathname === '/food-aid/optimize-schedule/:id/edit' || location.pathname === '/ai-insights' || location.pathname === '/ai-insights/:id' || location.pathname === '/ai-insights/:id/edit' || location.pathname === '/ai-insights/create' || location.pathname === '/food-aid/optimize'
   useEffect(() => { 
     fetchUnreadCount()
     const interval = setInterval(fetchUnreadCount, 30000)
@@ -1232,7 +1367,7 @@ const Layout = ({ children }) => {
 
 export default Layout
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\LocationPicker.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\LocationPicker.jsx ==
 
 import { useState, useEffect, useCallback } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
@@ -1577,7 +1712,7 @@ const LocationPicker = ({ value, onChange, isDarkMode, originPin, originLabel })
 
 export default LocationPicker
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\NotificationDropdown.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\NotificationDropdown.jsx ==
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -1758,7 +1893,7 @@ const NotificationDropdown = ({ onClose, onNotificationRead }) => {
 
 export default NotificationDropdown
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\PostCard.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\PostCard.jsx ==
 
 import { useState, useCallback } from 'react'
 import {
@@ -2256,7 +2391,7 @@ const PostCard = ({ post, currentUser, isOfficial, onLikeToggle, onCommentAdded,
 
 export default PostCard
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\ProfileSidebar.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\ProfileSidebar.jsx ==
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -2525,7 +2660,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
 
 export default ProfileSidebar
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\ProtectedRoute.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\ProtectedRoute.jsx ==
 
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -2553,14 +2688,48 @@ const ProtectedRoute = ({ children }) => {
 
 export default ProtectedRoute
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\ScheduleCheckupModal.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\ScheduleCheckupModal.jsx ==
 
 
 import { useState, useEffect } from 'react'
-import { X, Calendar, Clock, FileText, CheckCircle, Loader2, CalendarCheck } from 'lucide-react'
+import { X, Calendar, Clock, FileText, CheckCircle, Loader2, CalendarCheck, AlertTriangle } from 'lucide-react'
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import healthService from '../services/healthService'
+import { db } from '../config/firebase'
+
+const TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']
+
+// A request only blocks its slot while it's still "in play" â€” once a BHW
+// rejects it or marks it completed, the slot frees back up for others.
+const ACTIVE_STATUSES = ['pending_review', 'scheduled', 'inreview']
+
+// Truncates the checkup notes for the dashboard's vitalsSummary preview.
+// A blind slice(0, n) can land mid-word (e.g. "AI Health Analysis" -> "AI
+// Anal"), so this prefers to drop the trailing "AI Health Analysis:" block
+// entirely when it wouldn't fully fit, and otherwise backs off to the last
+// whole word before the limit.
+const truncateForSummary = (text, maxLen = 140) => {
+  if (!text) return ''
+  if (text.length <= maxLen) return text
+
+  const analysisMarker = '\n\nAI Health Analysis:'
+  const analysisIdx = text.indexOf(analysisMarker)
+
+  // If including the analysis label would cut it off partway, just drop it
+  // and summarize the symptoms alone instead.
+  const base = analysisIdx !== -1 && analysisIdx <= maxLen
+    ? text.slice(0, analysisIdx)
+    : text.slice(0, maxLen)
+
+  if (base.length <= maxLen) return `${base.trim()}...`
+
+  const cut = base.slice(0, maxLen)
+  const lastSpace = cut.lastIndexOf(' ')
+  const safeCut = lastSpace > 40 ? cut.slice(0, lastSpace) : cut
+  return `${safeCut.trim()}...`
+}
 
 const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversation = [] }) => {
   const { isDarkMode } = useTheme()
@@ -2577,6 +2746,8 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
   const [loading, setLoading] = useState(false)
   const [done, setDone]     = useState(false)
   const [error, setError]   = useState('')
+  const [bookedSlots, setBookedSlots] = useState({})   // { '2026-07-10': Set(['09:00','14:00']) }
+  const [slotsLoading, setSlotsLoading] = useState(true)
 
   // Sync form state every time the modal opens so the latest
   // AI analysis (passed via symptomsSummary) is always shown.
@@ -2591,14 +2762,80 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
     }
   }, [isOpen, symptomsSummary])
 
+  // Real-time availability: listen to every appointment request in the
+  // bookable window so residents see slots fill up / free up live, instead
+  // of finding out only after submitting and waiting for BHW review.
+  useEffect(() => {
+    if (!isOpen) return
+
+    setSlotsLoading(true)
+    const q = query(
+      collection(db, 'health_requests'),
+      where('preferredAppointmentDate', '>=', today),
+      where('preferredAppointmentDate', '<=', maxDateStr)
+    )
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const map = {}
+        snapshot.docs.forEach((docSnap) => {
+          const req = docSnap.data()
+          if (!req.preferredAppointmentDate || !req.preferredAppointmentTime) return
+          if (!ACTIVE_STATUSES.includes(req.status)) return
+          if (!map[req.preferredAppointmentDate]) map[req.preferredAppointmentDate] = new Set()
+          map[req.preferredAppointmentDate].add(req.preferredAppointmentTime)
+        })
+        setBookedSlots(map)
+        setSlotsLoading(false)
+      },
+      (err) => {
+        console.error('Error listening for appointment availability:', err)
+        setSlotsLoading(false)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [isOpen, today, maxDateStr])
+
+  const takenTimesForDate = date ? (bookedSlots[date] || new Set()) : new Set()
+  const availableTimesForDate = TIME_SLOTS.filter((t) => !takenTimesForDate.has(t))
+  const isDateFullyBooked = Boolean(date) && !slotsLoading && availableTimesForDate.length === 0
+
+  // If the picked time gets taken by someone else live, or the date changes,
+  // snap to the next open time instead of leaving a taken one selected.
+  useEffect(() => {
+    if (!date) return
+    if (takenTimesForDate.has(time)) {
+      setTime(availableTimesForDate[0] || '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, bookedSlots])
+
   if (!isOpen) return null
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!date) { setError('Please select a date.'); return }
+    if (isDateFullyBooked) { setError('This date is fully booked. Please choose another date.'); return }
+    if (!time) { setError('Please select an available time.'); return }
     setError('')
     setLoading(true)
     try {
+      // Final real-time safety check right before submitting, in case someone
+      // else grabbed this exact slot in the moment between picking and submitting.
+      const conflictSnap = await getDocs(query(
+        collection(db, 'health_requests'),
+        where('preferredAppointmentDate', '==', date),
+        where('preferredAppointmentTime', '==', time)
+      ))
+      const stillTaken = conflictSnap.docs.some((d) => ACTIVE_STATUSES.includes(d.data().status))
+      if (stillTaken) {
+        setError('Sorry, that slot was just taken. Please pick another time.')
+        setLoading(false)
+        return
+      }
+
       await healthService.createHealthRecord({
         type: 'scheduled_checkup',
         userName: user?.fullName,
@@ -2618,7 +2855,7 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
         })),
         message: `AI-recommended barangay checkup on ${date} at ${time}`,
         healthAssessment: {
-          vitalsSummary: `Scheduled checkup: ${notes.slice(0, 120)}`,
+          vitalsSummary: `Scheduled checkup: ${truncateForSummary(notes)}`,
           overallStatus: 'scheduled',
           urgencyLevel: 'routine'
         }
@@ -2711,12 +2948,27 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
               <input
                 type="date"
                 value={date}
-                onChange={e => setDate(e.target.value)}
+                onChange={e => { setDate(e.target.value); setError('') }}
                 min={today}
                 max={maxDateStr}
                 className={inputCls}
                 required
               />
+              {date && (
+                <p className={`mt-1.5 flex items-center gap-1 text-xs ${
+                  isDateFullyBooked
+                    ? 'text-red-500'
+                    : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                  {slotsLoading ? (
+                    'Checking availabilityâ€¦'
+                  ) : isDateFullyBooked ? (
+                    <><AlertTriangle className="w-3.5 h-3.5" /> Fully booked â€” please pick another date.</>
+                  ) : (
+                    `${availableTimesForDate.length} of ${TIME_SLOTS.length} time slots open on this date`
+                  )}
+                </p>
+              )}
             </div>
 
             {/* Time */}
@@ -2724,12 +2976,21 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
               <label className={`flex items-center gap-1.5 text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 <Clock className="w-3.5 h-3.5" /> Preferred Time
               </label>
-              <select value={time} onChange={e => setTime(e.target.value)} className={inputCls}>
-                {['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00'].map(t => (
-                  <option key={t} value={t}>
-                    {new Date(`2000-01-01T${t}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                  </option>
-                ))}
+             <select
+                value={time}
+                onChange={e => setTime(e.target.value)}
+                className={inputCls}
+                disabled={isDateFullyBooked}
+              >
+                {TIME_SLOTS.map(t => {
+                  const taken = takenTimesForDate.has(t)
+                  return (
+                    <option key={t} value={t} disabled={taken}>
+                      {new Date(`2000-01-01T${t}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      {taken ? ' â€” Booked' : ''}
+                    </option>
+                  )
+                })}
               </select>
             </div>
 
@@ -2747,17 +3008,17 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
               />
               {symptomsSummary && (
                 <p className={`text-xs mt-1 flex items-center gap-1 ${isDarkMode ? 'text-green-500' : 'text-green-600'}`}>
-                  <span>Ã¢Å“Â¦</span> Pre-filled from your AI health conversation
+                  <span></span> Pre-filled from your AI health conversation
                 </p>
               )}
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isDateFullyBooked}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /><span>SchedulingÃ¢â‚¬Â¦</span></> : <><CalendarCheck className="w-4 h-4" /><span>Confirm Schedule</span></>}
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Scheduling</span></> : <><CalendarCheck className="w-4 h-4" /><span>Confirm Schedule</span></>}
             </button>
           </form>
         )}
@@ -2769,19 +3030,33 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
 export default ScheduleCheckupModal
 
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\Sidebar.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\Sidebar.jsx ==
 
+
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Stethoscope } from 'lucide-react'
+import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Stethoscope, Truck, Brain } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import adminService from '../services/adminService'
+import foodAidService from '../services/foodAidService'
 
 const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
   const location = useLocation()
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
   const isAdmin = adminService.isAdmin(user)
+  const [assignmentCount, setAssignmentCount] = useState(0)
+
+  // Only show "My Assignments" once this user actually has a food aid assignment Ã¢â‚¬â€
+  // keeps the sidebar clean for people who've never volunteered.
+  useEffect(() => {
+    if (!user?.id) return
+    const unsubscribe = foodAidService.subscribeToVolunteerAssignments(user.id, list => {
+      setAssignmentCount(list.filter(a => !['completed', 'archived', 'cancelled'].includes(a.progress?.workflowStatus)).length)
+    })
+    return () => unsubscribe()
+  }, [user?.id])
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/')
 
@@ -2798,7 +3073,12 @@ const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
     },
   ]
 
+  if (assignmentCount > 0) {
+    navItems.splice(3, 0, { icon: Truck, label: 'My Assignments', path: '/food-aid/my-assignments' })
+  }
+
   if (user?.role === 'bhw') navItems.splice(1, 0, { icon: Stethoscope, label: 'BHW', path: '/bhw' })
+  if (isAdmin) navItems.push({ icon: Brain, label: 'AI Decision Support', path: '/ai-insights', accent: true })
   if (isAdmin) navItems.push({ icon: Shield, label: 'Admin', path: '/admin' })
   if (user?.role === 'admin') navItems.push({ icon: UserCheck, label: 'Admin Requests', path: '/admin/requests' })
 
@@ -2956,7 +3236,7 @@ blur-[140px]
 
 export default Sidebar
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\components\Topbar.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\Topbar.jsx ==
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -3066,7 +3346,63 @@ const Topbar = ({ onToggleSidebar, unreadCount, onOpenProfile, onNotificationRea
 
 export default Topbar
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\config\firebase.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\config\barangayConfig.js ==
+
+/**
+ * Central Barangay Configuration
+ * This file contains all barangay-specific information used throughout the application.
+ * It is designed to be maintainable and easily updatable without searching through the codebase.
+ */
+
+export const BARANGAY_CONFIG = {
+  // Barangay Information
+  barangayName: 'Ilihan',
+  municipality: 'Toledo City',
+  province: 'Cebu',
+  country: 'Philippines',
+  
+  // Full display names for UI
+  fullBarangayName: 'Barangay Ilihan',
+  fullAddress: 'Barangay Ilihan, Toledo City, Cebu, Philippines',
+  
+  // Health Services
+  healthCenterName: 'Barangay Ilihan Health Center',
+  
+  // Application Information
+  applicationName: 'SmartCo',
+  applicationTagline: 'Smart Barangay Management System',
+  applicationScope: 'Barangay Ilihan Only',
+  implementationArea: 'Barangay Ilihan, Toledo City, Cebu',
+  
+  // Default Coordinates (Barangay Ilihan, Toledo City)
+  defaultCoordinates: {
+    lat: 10.3321,
+    lng: 123.6187,
+  },
+  
+  // Distribution Hub (Barangay Hall)
+  distributionHub: {
+    name: 'Barangay Ilihan Hall',
+    lat: 10.3321,
+    lng: 123.6187,
+  },
+  
+  // Multi-barangay expansion flag (currently false)
+  // Set to true in future if expanding to support multiple barangays
+  supportsMultipleBarangays: false,
+  
+  // Deployment Information
+  deploymentVersion: '1.0.0',
+  deploymentYear: 2026,
+  
+  // Contact Information
+  contactEmail: 'support@smartco-ilihan.ph',
+  contactPhone: '+63 (0) 32 XXXX XXXX',
+}
+
+export default BARANGAY_CONFIG
+
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\config\firebase.js ==
 
 // Import the functions you need from the SDKs you need
 // TODO: Add SDKs for Firebase products that you want to use
@@ -3094,7 +3430,7 @@ export const storage = getStorage(app)
 
 export default app
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\config\supabase.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\config\supabase.js ==
 
 import { createClient } from '@supabase/supabase-js'
 
@@ -3103,7 +3439,69 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\context\AuthContext.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\constants\puroks.js ==
+
+/**
+ * Barangay Ilihan Puroks
+ * 
+ * This is the central source of truth for all puroks in Barangay Ilihan.
+ * All references to puroks throughout the application should import from this file.
+ * 
+ * NOTE: These are placeholder names. Once official purok names from Barangay Hall are available,
+ * replace the placeholder values with the official names. Do not hardcode puroks anywhere else.
+ */
+
+export const PUROKS_ILIHAN = [
+  'Purok 1 - [Pending Official Name]',
+  'Purok 2 - [Pending Official Name]',
+  'Purok 3 - [Pending Official Name]',
+  'Purok 4 - [Pending Official Name]',
+  'Purok 5 - [Pending Official Name]',
+  'Purok 6 - [Pending Official Name]',
+]
+
+/**
+ * Short labels for charts, dropdowns, and compact displays
+ */
+export const PUROKS_SHORT = [
+  'Purok 1',
+  'Purok 2',
+  'Purok 3',
+  'Purok 4',
+  'Purok 5',
+  'Purok 6',
+]
+
+/**
+ * Helper function to get the full purok name
+ */
+export const getFullPurokName = (purok) => {
+  if (!purok) return 'Unassigned'
+  
+  // If it's just a number, get the full name
+  const index = parseInt(purok.replace('Purok ', '')) - 1
+  if (!isNaN(index) && PUROKS_ILIHAN[index]) {
+    return PUROKS_ILIHAN[index]
+  }
+  
+  // If it's already a full name, return it
+  return purok
+}
+
+/**
+ * Helper function to get the short purok name
+ */
+export const getShortPurokName = (purok) => {
+  if (!purok) return 'Unassigned'
+  
+  // Extract just "Purok N"
+  const match = purok.match(/Purok \d+/)
+  return match ? match[0] : purok
+}
+
+export default PUROKS_ILIHAN
+
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\context\AuthContext.jsx ==
 
 import { createContext, useContext, useState, useEffect } from 'react'
 import authService from '../services/authService'
@@ -3194,7 +3592,7 @@ export const AuthProvider = ({ children }) => {
   )
 }
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\context\ThemeContext.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\context\ThemeContext.jsx ==
 
 import { createContext, useContext, useState, useEffect } from 'react'
 
@@ -3238,10 +3636,11 @@ export const ThemeProvider = ({ children }) => {
   )
 }
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\AboutPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\AboutPage.jsx ==
 
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Heart, Shield, Zap, Users, Globe, Award, Sparkles } from 'lucide-react'
+import BARANGAY_CONFIG from '../config/barangayConfig'
 
 const AboutPage = () => {
   const navigate = useNavigate()
@@ -3308,8 +3707,8 @@ const AboutPage = () => {
           S
         </div>
         <h2 className="mb-1 text-2xl font-bold text-white">SmartCo</h2>
-        <p className="text-white/70">Barangay Management System</p>
-        <p className="mt-0.5 text-sm text-white/40">Version 1.0.0</p>
+        <p className="text-white/70">{BARANGAY_CONFIG.applicationTagline}</p>
+        <p className="text-sm text-white/40">For Barangay Ilihan, Toledo City, Cebu</p>
         <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
           <Sparkles className="h-3.5 w-3.5 text-yellow-300" />
           Powered by AI Technology
@@ -3320,10 +3719,10 @@ const AboutPage = () => {
       <div className={`${card} p-6`}>
         {sectionHeader(Heart, 'Why we exist', 'Our Mission')}
         <p className="leading-relaxed text-white/70">
-          SmartCo is designed to revolutionize barangay management through technology.
-          We aim to streamline health services, food aid distribution, and community engagement
-          by leveraging AI-powered solutions to create a more efficient, transparent, and
-          responsive barangay governance system.
+          SmartCo was developed specifically for Barangay Ilihan, Toledo City, Cebu to revolutionize
+          local barangay management through technology. We aim to streamline health services, food aid distribution,
+          and community engagement by leveraging AI-powered solutions to create a more efficient, transparent, and
+          responsive governance system for our Barangay Ilihan residents.
         </p>
       </div>
 
@@ -3389,8 +3788,9 @@ const AboutPage = () => {
             </button>
           ))}
           <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
-            <p><span className="font-semibold text-white">Contact:</span> support@smartco.ph</p>
-            <p className="mt-1"><span className="font-semibold text-white">Location:</span> Toledo City, Cebu, Philippines</p>
+            <p><span className="font-semibold text-white">Contact:</span> {BARANGAY_CONFIG.contactEmail}</p>
+            <p className="mt-1"><span className="font-semibold text-white">Location:</span> {BARANGAY_CONFIG.fullAddress}</p>
+            <p className="mt-1"><span className="font-semibold text-white">Health Center:</span> {BARANGAY_CONFIG.healthCenterName}</p>
           </div>
         </div>
       </div>
@@ -3398,7 +3798,7 @@ const AboutPage = () => {
       {/* Footer */}
       <div className="py-4 text-center">
         <p className="text-sm text-white/50">Â© 2026 SmartCo. All rights reserved.</p>
-        <p className="mt-1 text-xs text-blue-200/70">Made with heart for the community of Toledo City</p>
+        <p className="mt-1 text-xs text-blue-200/70">Developed with heart for Barangay Ilihan, Toledo City, Cebu</p>
       </div>
     </div>
   )
@@ -3406,7 +3806,7 @@ const AboutPage = () => {
 
 export default AboutPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\AdminApprovalsPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\AdminApprovalsPage.jsx ==
 
 import { useState, useEffect } from 'react'
 import {
@@ -4273,7 +4673,7 @@ const AdminApprovalsPage = () => {
 
 export default AdminApprovalsPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\AdminDashboardPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\AdminDashboardPage.jsx ==
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -4281,6 +4681,7 @@ import { LayoutDashboard, Users, Activity, Package, Calendar, AlertCircle, Clock
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import adminService from '../services/adminService'
+import foodAidService from '../services/foodAidService'
 
 const StatGroup = ({ icon: Icon, title, total, pending, approved, totalLabel, pendingLabel, approvedLabel, isDarkMode, onManage, manageLabel }) => {
   const card = `${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border`
@@ -4323,12 +4724,18 @@ const AdminDashboardPage = () => {
     totalEvents: 0, pendingEvents: 0, approvedEvents: 0, totalPending: 0
   })
   const [isLoading, setIsLoading] = useState(true)
+  const [foodAidAnalytics, setFoodAidAnalytics] = useState(null)
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setIsLoading(true)
-        setStats(await adminService.getAdminStats())
+        const [adminStats, faAnalytics] = await Promise.all([
+          adminService.getAdminStats(),
+          foodAidService.getDashboardAnalytics(),
+        ])
+        setStats(adminStats)
+        setFoodAidAnalytics(faAnalytics)
       } catch (error) {
         console.error('Error fetching admin stats:', error)
       } finally {
@@ -4431,6 +4838,79 @@ const AdminDashboardPage = () => {
               />
             </div>
 
+            {/* Food Aid Distribution Analytics */}
+            {foodAidAnalytics && (
+              <div className={`${card} p-5 lg:p-6`}>
+                <h3 className={`font-semibold flex items-center space-x-2 mb-4 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                  <Package className="w-5 h-5" /><span>Food Aid Distribution Analytics</span>
+                </h3>
+
+                {/* Workflow stage counts */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-5">
+                  {[
+                    { label: 'Pending',    value: foodAidAnalytics.pending,    color: 'text-orange-500' },
+                    { label: 'Approved',   value: foodAidAnalytics.approved,   color: 'text-blue-500' },
+                    { label: 'Scheduled',  value: foodAidAnalytics.scheduled,  color: 'text-purple-500' },
+                    { label: 'In Progress',value: foodAidAnalytics.inProgress, color: 'text-yellow-500' },
+                    { label: 'Completed',  value: foodAidAnalytics.completed,  color: 'text-green-500' },
+                    { label: 'Cancelled',  value: foodAidAnalytics.cancelled,  color: 'text-red-500' },
+                  ].map(s => (
+                    <div key={s.label} className="text-center">
+                      <div className={`text-xl lg:text-2xl font-bold ${s.color}`}>{s.value}</div>
+                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Households */}
+                <div className="grid grid-cols-3 gap-3 mb-5">
+                  {[
+                    { label: 'Total Households',     value: foodAidAnalytics.totalHouseholds },
+                    { label: 'Households Served',     value: foodAidAnalytics.householdsServed, color: 'text-green-500' },
+                    { label: 'Households Remaining',  value: foodAidAnalytics.householdsRemaining, color: 'text-orange-500' },
+                  ].map(s => (
+                    <div key={s.label} className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-800/60' : 'bg-gray-50'}`}>
+                      <div className={`text-xl font-bold ${s.color || (isDarkMode ? 'text-gray-100' : 'text-gray-800')}`}>{s.value}</div>
+                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Progress by purok */}
+                <div className="mb-5">
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Progress by Purok</p>
+                  <div className="space-y-2">
+                    {foodAidAnalytics.progressByPurok.map(p => (
+                      <div key={p.purok}>
+                        <div className={`flex justify-between text-xs mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          <span>{p.purok} <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>({p.distributions} distribution{p.distributions === 1 ? '' : 's'})</span></span>
+                          <span className="font-semibold">{p.householdsServed}/{p.householdsTarget} Â· {p.percentage}%</span>
+                        </div>
+                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                          <div className="h-1.5 rounded-full bg-green-500" style={{ width: `${p.percentage}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Volunteer performance */}
+                {foodAidAnalytics.volunteerPerformance.length > 0 && (
+                  <div>
+                    <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Volunteer Performance</p>
+                    <div className="space-y-1.5">
+                      {foodAidAnalytics.volunteerPerformance.map(v => (
+                        <div key={v.id} className={`flex items-center justify-between text-xs rounded-lg px-3 py-2 ${isDarkMode ? 'bg-gray-800/60 text-gray-300' : 'bg-gray-50 text-gray-700'}`}>
+                          <span className="font-medium">{v.name}</span>
+                          <span>{v.completed}/{v.assigned} completed Â· {v.householdsServed} households served</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Quick Actions */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
@@ -4457,7 +4937,7 @@ const AdminDashboardPage = () => {
 
 export default AdminDashboardPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\AdminRequestsPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\AdminRequestsPage.jsx ==
 
 import { useState, useEffect } from 'react'
 import { Shield, Clock, CheckCircle, XCircle, Loader2, Users2, ChevronDown, ChevronUp } from 'lucide-react'
@@ -4742,7 +5222,7 @@ const AdminRequestsPage = () => {
 
 export default AdminRequestsPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\AdminUsersPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\AdminUsersPage.jsx ==
 
 import { useState, useEffect } from 'react'
 import { Users, Shield, User, Search, Loader2 } from 'lucide-react'
@@ -5038,7 +5518,247 @@ const AdminUsersPage = () => {
 
 export default AdminUsersPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\BHWDashboard.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\AIInsightsPage.jsx ==
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { collection, onSnapshot } from 'firebase/firestore'
+import { Brain, RefreshCw, History, LayoutGrid, Heart, Package, Calendar, AlertTriangle, Loader2 } from 'lucide-react'
+import { db } from '../config/firebase'
+import { useTheme } from '../context/ThemeContext'
+import aiInsightsService, { MODULES } from '../services/aiInsightsService'
+import AIInsightCard from '../components/AIInsightCard'
+
+const MODULE_TABS = [
+  { key: 'all',            label: 'All',       icon: LayoutGrid },
+  { key: MODULES.HEALTH,   label: 'Health',    icon: Heart },
+  { key: MODULES.FOOD_AID, label: 'Food Aid',  icon: Package },
+  { key: MODULES.EVENTS,   label: 'Events',    icon: Calendar },
+  { key: MODULES.EMERGENCY,label: 'Emergency', icon: AlertTriangle },
+]
+
+const AIInsightsPage = () => {
+  const { isDarkMode } = useTheme()
+  const [insights, setInsights] = useState([])
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [activeTab, setActiveTab] = useState('all')
+  const [showHistory, setShowHistory] = useState(false)
+  const [lastGenerated, setLastGenerated] = useState(null)
+  const [actionedIds, setActionedIds] = useState({}) // local UX state for ack/dismiss
+
+  const debounceRef = useRef(null)
+
+  const runGeneration = useCallback(async (opts) => {
+    try {
+      const result = await aiInsightsService.generateAllInsights(opts)
+      setInsights(result)
+      setLastGenerated(new Date().toISOString())
+    } catch (err) {
+      console.error('Failed to generate AI insights:', err)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [])
+
+  const loadHistory = useCallback(async () => {
+    const items = await aiInsightsService.getInsightHistory(50)
+    setHistory(items)
+  }, [])
+
+  // Initial load
+  useEffect(() => {
+    runGeneration({ persistHistory: true })
+  }, [runGeneration])
+
+  // REAL-TIME AI: whenever health, food aid, event, or emergency data changes in
+  // Firestore, automatically regenerate insights (debounced so a burst of writes
+  // doesn't trigger a storm of regenerations).
+  useEffect(() => {
+    const scheduleRegen = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => {
+        setRefreshing(true)
+        runGeneration({ persistHistory: false }) // don't spam history on every live tick
+      }, 2500)
+    }
+
+    const unsubs = [
+      onSnapshot(collection(db, 'health_requests'), scheduleRegen, () => {}),
+      onSnapshot(collection(db, 'foodAid'), scheduleRegen, () => {}),
+      onSnapshot(collection(db, 'events'), scheduleRegen, () => {}),
+      onSnapshot(collection(db, 'emergencies'), scheduleRegen, () => {}),
+    ]
+
+    return () => {
+      unsubs.forEach(u => u())
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [runGeneration])
+
+  const handleManualRefresh = () => {
+    setRefreshing(true)
+    runGeneration({ persistHistory: true })
+  }
+
+  const handleToggleHistory = () => {
+    if (!showHistory) loadHistory()
+    setShowHistory(s => !s)
+  }
+
+  const handleAcknowledge = (insight) => setActionedIds(m => ({ ...m, [insight.id]: 'acted_on' }))
+  const handleDismiss = (insight) => setActionedIds(m => ({ ...m, [insight.id]: 'dismissed' }))
+
+  const visibleInsights = activeTab === 'all'
+    ? insights
+    : insights.filter(i => i.module === activeTab)
+
+  const highCount = insights.filter(i => i.priority === 'high').length
+  const mediumCount = insights.filter(i => i.priority === 'medium').length
+
+  const textPrimary = isDarkMode ? 'text-gray-100' : 'text-gray-800'
+  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500'
+
+  return (
+    <div className={`min-h-screen p-4 lg:p-8 ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
+      <div className="max-w-6xl mx-auto space-y-6">
+
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-3 rounded-2xl ${isDarkMode ? 'bg-indigo-500/10' : 'bg-indigo-50'}`}>
+              <Brain className={`w-6 h-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+            </div>
+            <div>
+              <h1 className={`text-2xl font-bold ${textPrimary}`}>AI Decision Support</h1>
+              <p className={`text-sm ${textSecondary}`}>
+                Live recommendations for Barangay Ilihan officials, BHWs, and coordinators. The AI explains â€” it never decides.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleToggleHistory}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border ${
+                isDarkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <History className="w-4 h-4" /> {showHistory ? 'Hide History' : 'View History'}
+            </button>
+            <button
+              onClick={handleManualRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Analyzingâ€¦' : 'Refresh Insights'}
+            </button>
+          </div>
+        </div>
+
+        {/* Summary strip */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'High Priority', value: highCount, color: 'text-red-500' },
+            { label: 'Medium Priority', value: mediumCount, color: 'text-amber-500' },
+            { label: 'Total Insights', value: insights.length, color: textPrimary },
+          ].map(s => (
+            <div key={s.label} className={`rounded-2xl p-4 border text-center ${isDarkMode ? 'bg-gray-900/60 border-gray-800' : 'bg-white border-gray-100'}`}>
+              <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
+              <div className={`text-xs mt-1 ${textSecondary}`}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {lastGenerated && (
+          <p className={`text-xs ${textSecondary}`}>
+            Last analyzed {new Date(lastGenerated).toLocaleString()} Â· updates automatically when Firestore data changes
+          </p>
+        )}
+
+        {/* Module tabs */}
+        <div className="flex flex-wrap gap-2">
+          {MODULE_TABS.map(tab => {
+            const Icon = tab.icon
+            const count = tab.key === 'all' ? insights.length : insights.filter(i => i.module === tab.key).length
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                  activeTab === tab.key
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : isDarkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Icon className="w-4 h-4" /> {tab.label}
+                <span className={`text-[11px] px-1.5 rounded-full ${activeTab === tab.key ? 'bg-white/20' : isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Cards */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Loader2 className={`w-8 h-8 animate-spin ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+            <p className={textSecondary}>Analyzing Firestore data across all modulesâ€¦</p>
+          </div>
+        ) : visibleInsights.length === 0 ? (
+          <div className={`rounded-2xl p-10 text-center border ${isDarkMode ? 'bg-gray-900/60 border-gray-800' : 'bg-white border-gray-100'}`}>
+            <p className={textPrimary}>No recommendations right now.</p>
+            <p className={`text-sm mt-1 ${textSecondary}`}>The AI didn't detect anything needing attention in this module.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {visibleInsights.map(insight => (
+              <AIInsightCard
+                key={insight.id}
+                insight={insight}
+                isDarkMode={isDarkMode}
+                status={actionedIds[insight.id]}
+                onAcknowledge={handleAcknowledge}
+                onDismiss={handleDismiss}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* History panel */}
+        {showHistory && (
+          <div className={`rounded-2xl p-5 border ${isDarkMode ? 'bg-gray-900/60 border-gray-800' : 'bg-white border-gray-100'}`}>
+            <h2 className={`font-semibold mb-3 ${textPrimary}`}>AI Recommendation History</h2>
+            {history.length === 0 ? (
+              <p className={`text-sm ${textSecondary}`}>No history recorded yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                {history.map(h => (
+                  <div key={h.id} className={`flex items-center justify-between text-sm py-2 border-b last:border-0 ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
+                    <div>
+                      <span className={textPrimary}>{h.title}</span>
+                      <span className={`ml-2 text-xs ${textSecondary}`}>({h.module})</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className={textSecondary}>{h.confidence}</span>
+                      <span className={textSecondary}>{h.createdAt ? new Date(h.createdAt).toLocaleDateString() : ''}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default AIInsightsPage
+
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\BHWDashboard.jsx ==
 
 import FoodAidProjectionChart from '../components/FoodAidProjectionChart'
 import EventAttendanceChart from '../components/EventAttendanceChart'
@@ -5371,7 +6091,7 @@ setSelectedRequest(null)
                 <Stethoscope className="h-3.5 w-3.5 text-emerald-300" />
                 BHW Workspace
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Community Health Operations</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Barangay Ilihan Health Operations</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70 sm:text-base">
                 Review requests, triage residents, and schedule follow-up visits from a secure, role-specific dashboard.
               </p>
@@ -6207,7 +6927,7 @@ Continue Review â†’
 
 export default BHWDashboard
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\CreateEventPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\CreateEventPage.jsx ==
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -6223,10 +6943,11 @@ const DURATION_OPTIONS = ['30 minutes', '1 hour', '2 hours', '3 hours', '4 hours
 
 // Venue characteristics for AI analysis
 const VENUE_DATA = {
-  'Barangay Court': { capacity: 200, type: 'outdoor', facilities: ['sports', 'seating', 'lighting'], covered: false },
-  'Barangay Hall': { capacity: 150, type: 'indoor', facilities: ['chairs', 'stage', 'sound_system', 'AC'], covered: true },
+  'Barangay Ilihan Court': { capacity: 200, type: 'outdoor', facilities: ['sports', 'seating', 'lighting'], covered: false },
+  'Barangay Ilihan Hall': { capacity: 150, type: 'indoor', facilities: ['chairs', 'stage', 'sound_system', 'AC'], covered: true },
+  'Barangay Ilihan Health Center': { capacity: 80, type: 'indoor', facilities: ['chairs', 'medical', 'AC'], covered: true },
   'Community Center': { capacity: 100, type: 'indoor', facilities: ['tables', 'chairs', 'kitchen'], covered: true },
-  'Barangay Plaza': { capacity: 300, type: 'outdoor', facilities: ['stage', 'seating'], covered: false },
+  'Barangay Ilihan Plaza': { capacity: 300, type: 'outdoor', facilities: ['stage', 'seating'], covered: false },
   'Multi-Purpose Hall': { capacity: 250, type: 'indoor', facilities: ['stage', 'sound_system', 'chairs', 'AC'], covered: true }
 }
 
@@ -6736,7 +7457,7 @@ const CreateEventPage = () => {
       const result = await eventsService.createEvent(eventData)
       console.log('Event created successfully:', result)
 
-      // â”€â”€ Mirror to Community Board feed so residents can see the event â”€â”€
+      // â”€â”€ Mirror to Barangay Ilihan Board feed so residents can see the event â”€â”€
       try {
         const feedContent = [
           formData.description && formData.description.trim(),
@@ -6756,7 +7477,7 @@ const CreateEventPage = () => {
           authorName: user?.fullName || 'Official',
           authorRole: user?.role || 'barangay_official'
         })
-        console.log('âœ… Event mirrored to Community Board feed')
+        console.log('âœ… Event mirrored to Barangay Ilihan Board feed')
       } catch (feedErr) {
         // Non-fatal â€” event itself was created successfully
         console.warn('âš ï¸ Could not mirror event to feed:', feedErr.message)
@@ -6970,7 +7691,7 @@ const CreateEventPage = () => {
                 name="venue"
                 value={formData.venue}
                 onChange={handleInputChange}
-                placeholder="e.g., Barangay Court"
+                placeholder="e.g., Barangay Ilihan Court"
                 className={`w-full pl-10 pr-3 py-2 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-500' 
@@ -7475,7 +8196,7 @@ const CreateEventPage = () => {
 
 export default CreateEventPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\EmergencyManagementPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\EmergencyManagementPage.jsx ==
 
 import { useState, useEffect } from 'react'
 import {
@@ -8015,7 +8736,7 @@ const EmergencyManagementPage = () => {
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl lg:text-2xl font-bold">Emergency Management</h2>
+                <h2 className="text-xl lg:text-2xl font-bold">Barangay Ilihan Emergency Management</h2>
                 <p className="text-red-100 text-sm">Respond, dispatch assistance, and manage false reports</p>
               </div>
             </div>
@@ -8092,7 +8813,7 @@ const EmergencyManagementPage = () => {
 
 export default EmergencyManagementPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\EventsPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\EventsPage.jsx ==
 
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -8367,7 +9088,221 @@ const EventsPage = () => {
 
 export default EventsPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\FoodAidPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\Foodaidmyassignmentspage.jsx ==
+
+import { useState, useEffect } from 'react'
+import { Truck, Clock, Users, MapPin, CheckCircle2, PlayCircle, Package, Loader2 } from 'lucide-react'
+import toledoImage from '../assets/Toledo.jpg'
+import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
+import foodAidService, { WORKFLOW_LABELS } from '../services/foodAidService'
+
+// â”€â”€ Individual assignment card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function AssignmentCard({ dist, card, busy, past, onStart, onUpdate }) {
+  const p = dist.progress || {}
+  const stage = p.workflowStatus
+
+  return (
+    <div className={`${card} p-4`}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0">
+          <h4 className="font-bold text-white">
+            {dist.barangay ? `${dist.barangay} Â· ${dist.purok || ''}` : dist.purok}
+          </h4>
+          <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-white/60">
+            <div className="flex items-center space-x-1">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{dist.date}{dist.timeSlot ? ' Â· ' + dist.timeSlot : ''}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Users className="w-3.5 h-3.5" />
+              <span>{p.householdsTarget || 0} households</span>
+            </div>
+            {dist.packageType && (
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/70">ðŸ“¦ {dist.packageType}</span>
+            )}
+          </div>
+        </div>
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ml-2 bg-white/10 text-white/70">
+          {WORKFLOW_LABELS[stage] || 'Assigned'}
+        </span>
+      </div>
+
+      {/* Progress */}
+      <div className="mb-3 pt-3 border-t border-white/10">
+        <div className="flex items-center justify-between text-xs mb-1.5 text-white/50">
+          <span>Progress</span>
+          <span className="font-semibold">{p.householdsServed || 0} / {p.householdsTarget || 0} households</span>
+        </div>
+        <div className="w-full h-2 rounded-full overflow-hidden bg-white/10">
+          <div
+            className="h-2 rounded-full bg-emerald-400 transition-all duration-500"
+            style={{ width: `${p.percentage || 0}%` }}
+          />
+        </div>
+        <p className="text-xs mt-1 text-right text-white/40">
+          {p.percentage || 0}% complete Â· {p.householdsRemaining || 0} remaining
+        </p>
+      </div>
+
+      {dist.estimatedCompletion && (
+        <p className="text-xs text-white/50 mb-3 flex items-center gap-1">
+          <MapPin className="w-3.5 h-3.5" />
+          Est. completion: {dist.estimatedCompletion}
+        </p>
+      )}
+
+      {/* Actions â€” only for active assignments */}
+      {!past && (
+        <div className="flex gap-2">
+          {stage === 'volunteer_assigned' && (
+            <button
+              disabled={busy}
+              onClick={onStart}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition bg-blue-500/80 hover:bg-blue-500 text-white disabled:opacity-50"
+            >
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+              <span>Start Distribution</span>
+            </button>
+          )}
+          {(stage === 'distribution_started' || stage === 'in_progress') && (
+            <button
+              disabled={busy}
+              onClick={onUpdate}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition bg-emerald-500/80 hover:bg-emerald-500 text-white disabled:opacity-50"
+            >
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              <span>Update Progress</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const FoodAidMyAssignmentsPage = () => {
+  const { isDarkMode } = useTheme()
+  const { user } = useAuth()
+
+  const [assignments, setAssignments] = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [busyId, setBusyId]           = useState(null)
+
+  useEffect(() => {
+    if (!user?.id) { setLoading(false); return }
+    setLoading(true)
+    const unsubscribe = foodAidService.subscribeToVolunteerAssignments(user.id, list => {
+      setAssignments(list)
+      setLoading(false)
+    })
+    return () => unsubscribe()
+  }, [user?.id])
+
+  const handleStart = async id => {
+    try {
+      setBusyId(id)
+      await foodAidService.startDistribution(id)
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleUpdateProgress = async (id, current) => {
+    const val = prompt('Households served so far?', String(current || 0))
+    if (val == null) return
+    try {
+      setBusyId(id)
+      await foodAidService.updateHouseholdProgress(id, parseInt(val) || 0)
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const card =
+    'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
+
+  const activeAssignments = assignments.filter(a => !['completed', 'archived', 'cancelled'].includes(a.progress?.workflowStatus))
+  const pastAssignments   = assignments.filter(a => ['completed', 'archived', 'cancelled'].includes(a.progress?.workflowStatus))
+
+  return (
+    <div className="min-h-screen relative">
+      {/* Background â€” matches FoodAidPage's hero shell */}
+      <div className="fixed inset-0 bg-cover bg-center -z-10" style={{ backgroundImage: `url(${toledoImage})` }}>
+        <div className={`absolute inset-0 ${isDarkMode
+          ? 'bg-gradient-to-br from-slate-900/95 via-blue-950/95 to-indigo-950/95'
+          : 'bg-gradient-to-br from-blue-600/90 via-indigo-600/90 to-blue-800/90'}`}
+        />
+      </div>
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
+        <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-violet-500/15 blur-3xl" />
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '32px 32px' }}
+        />
+      </div>
+
+      <div className="mx-auto max-w-4xl space-y-5 p-4 pb-24 sm:space-y-6 sm:p-6 lg:p-8">
+        {/* Hero header */}
+        <section className={`${card} overflow-hidden bg-gradient-to-r from-emerald-500/30 via-green-500/20 to-teal-500/30 p-5 sm:p-7`}>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+            <Truck className="h-3.5 w-3.5 text-yellow-300" />
+            Volunteer Portal
+          </div>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">My Food Aid Assignments</h2>
+          <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
+            Track the distributions you've been assigned to and update progress in real time.
+          </p>
+        </section>
+
+        {loading ? (
+          <div className={`${card} p-10 text-center`}>
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-300" />
+            <p className="mt-3 text-sm text-white/60">Loading your assignmentsâ€¦</p>
+          </div>
+        ) : assignments.length === 0 ? (
+          <div className={`${card} p-8 text-center`}>
+            <Package className="mx-auto mb-3 h-12 w-12 text-white/30" />
+            <p className="mb-1 text-sm font-semibold text-white">No assignments yet</p>
+            <p className="text-xs text-white/50">A barangay official will assign you to a food aid distribution when one comes up.</p>
+          </div>
+        ) : (
+          <>
+            {activeAssignments.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-wide text-white/60">Active</h3>
+                {activeAssignments.map(a => (
+                  <AssignmentCard
+                    key={a.id} dist={a} card={card} busy={busyId === a.id}
+                    onStart={() => handleStart(a.id)}
+                    onUpdate={() => handleUpdateProgress(a.id, a.progress?.householdsServed)}
+                  />
+                ))}
+              </div>
+            )}
+            {pastAssignments.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-wide text-white/60">Past</h3>
+                {pastAssignments.map(a => <AssignmentCard key={a.id} dist={a} card={card} past />)}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default FoodAidMyAssignmentsPage
+
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\FoodAidPage.jsx ==
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -8382,7 +9317,8 @@ import {
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import foodAidService from '../services/foodAidService'
+import foodAidService, { WORKFLOW_LABELS } from '../services/foodAidService'
+import adminService from '../services/adminService'
 import LocationPicker from '../components/LocationPicker'
 import {
   TOLEDO_BARANGAYS, PUROKS_LIST, PUROK_COORDS,
@@ -8933,7 +9869,185 @@ function RouteModal({ dist, userCoords, userBarangay, isDarkMode, onClose }) {
   )
 }
 
+  
+
 // â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Admin: Assign Volunteer Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const VOLUNTEER_ROLE_OPTIONS = [
+  { value: 'bhw',               label: 'BHW' },
+  { value: 'resident',          label: 'Resident' },
+  { value: 'barangay_official', label: 'Barangay Official' },
+  { value: 'custom',            label: '+ Add Custom' },
+]
+
+function AssignVolunteerModal({ isDarkMode, onClose, onAssign }) {
+  const [roleFilter,     setRoleFilter]     = useState('bhw')
+  const [users,          setUsers]          = useState([])
+  const [loadingUsers,   setLoadingUsers]   = useState(true)
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [customName,     setCustomName]     = useState('')
+  const [submitting,     setSubmitting]     = useState(false)
+
+  useEffect(() => {
+    adminService.getAllUsers()
+      .then(all => setUsers(all))
+      .finally(() => setLoadingUsers(false))
+  }, [])
+
+  const filteredUsers = users.filter(u => u.role === roleFilter)
+
+  const handleRoleChange = val => {
+    setRoleFilter(val)
+    setSelectedUserId('')
+    setCustomName('')
+  }
+
+  const handleSubmit = async () => {
+    let volunteer = null
+    if (roleFilter === 'custom') {
+      if (!customName.trim()) { alert('Please enter a name.'); return }
+      volunteer = { id: 'custom_' + Date.now(), name: customName.trim() }
+    } else {
+      const u = filteredUsers.find(u => u.id === selectedUserId)
+      if (!u) { alert('Please select a volunteer from the list.'); return }
+      volunteer = { id: u.id, name: u.fullName || u.name || u.email || 'Unnamed' }
+    }
+    try {
+      setSubmitting(true)
+      await onAssign(volunteer)
+      onClose()
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const inputCls = 'w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ' +
+    (isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-300 text-gray-900')
+  const labelCls = 'block text-xs font-semibold mb-1.5 uppercase tracking-wide ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className={
+        'relative w-full sm:max-w-sm max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl shadow-2xl p-5 ' +
+        (isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white')
+      }>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className={'font-bold text-base ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Assign Volunteer</h3>
+          <button onClick={onClose} className={'p-1.5 rounded-lg ' + (isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500')}>
+            <XCircle className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className={labelCls}>Volunteer Type</label>
+            <select value={roleFilter} onChange={e => handleRoleChange(e.target.value)} className={inputCls}>
+              {VOLUNTEER_ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
+          {roleFilter === 'custom' ? (
+            <div>
+              <label className={labelCls}>Custom Volunteer Name</label>
+              <input type="text" value={customName} onChange={e => setCustomName(e.target.value)}
+                placeholder="e.g. Juan Dela Cruz (community volunteer)" className={inputCls} />
+              <p className={'text-xs mt-1.5 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
+                Use this for volunteers who don't have a SmartCo account.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label className={labelCls}>Select {VOLUNTEER_ROLE_OPTIONS.find(o => o.value === roleFilter)?.label}</label>
+              {loadingUsers ? (
+                <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>Loading usersâ€¦</p>
+              ) : filteredUsers.length === 0 ? (
+                <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
+                  No {VOLUNTEER_ROLE_OPTIONS.find(o => o.value === roleFilter)?.label} accounts found. Try "+ Add Custom" instead.
+                </p>
+              ) : (
+                <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className={inputCls}>
+                  <option value="">Selectâ€¦</option>
+                  {filteredUsers.map(u => (
+                    <option key={u.id} value={u.id}>{u.fullName || u.name || u.email || u.id}{u.purok ? ` Â· ${u.purok}` : ''}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          <button onClick={handleSubmit} disabled={submitting}
+            className={
+              'w-full py-3 rounded-xl font-bold text-white transition flex items-center justify-center space-x-2 shadow-lg disabled:opacity-50 ' +
+              (isDarkMode ? 'bg-green-700 hover:bg-green-600' : 'bg-green-500 hover:bg-green-600')
+            }>
+            {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Assigningâ€¦</span></> : <span>Assign Volunteer</span>}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// â”€â”€ Admin: Workflow Actions (Approve â†’ AI Schedule â†’ Assign Volunteer â†’ Start â†’ Progress â†’ Archive) â”€â”€
+function FoodAidWorkflowActions({ dist }) {
+  const { isDarkMode: isDarkModeCtx } = useTheme()
+  const [busy, setBusy] = useState(false)
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const stage = dist.progress?.workflowStatus || 'approved'
+  const btnCls = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/80 hover:bg-blue-500 text-white transition disabled:opacity-50'
+
+  const run = async (fn) => {
+    try {
+      setBusy(true)
+      await fn()
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  // Real-time listener on the page refreshes the card automatically after each action.
+
+  if (stage === 'pending_approval')
+    return <button disabled={busy} onClick={() => run(() => foodAidService.approveDistribution(dist.id))} className={btnCls}>âœ“ Approve</button>
+
+  if (stage === 'approved')
+    return <button disabled={busy} onClick={() => run(() => foodAidService.generateAISchedule(dist.id))} className={btnCls}>âœ¨ Generate AI Schedule</button>
+
+  if (stage === 'ai_scheduled')
+    return (
+      <>
+        <button disabled={busy} onClick={() => setShowAssignModal(true)} className={btnCls}>ðŸ§‘â€ðŸ¤â€ðŸ§‘ Assign Volunteer</button>
+        {showAssignModal && (
+          <AssignVolunteerModal
+            isDarkMode={isDarkModeCtx}
+            onClose={() => setShowAssignModal(false)}
+            onAssign={volunteer => run(() => foodAidService.assignVolunteer(dist.id, volunteer))}
+          />
+        )}
+      </>
+    )
+
+  if (stage === 'volunteer_assigned')
+    return <button disabled={busy} onClick={() => run(() => foodAidService.startDistribution(dist.id))} className={btnCls}>ðŸšš Start Distribution</button>
+
+  if (stage === 'distribution_started' || stage === 'in_progress')
+    return <button disabled={busy} onClick={() => {
+      const val = prompt('Households served so far?', String(dist.progress?.householdsServed || 0))
+      if (val == null) return
+      run(() => foodAidService.updateHouseholdProgress(dist.id, parseInt(val) || 0))
+    }} className={btnCls}>ðŸ“‹ Update Progress</button>
+
+  if (stage === 'completed')
+    return <button disabled={busy} onClick={() => run(() => foodAidService.archiveDistribution(dist.id))} className={btnCls}>ðŸ—„ Archive</button>
+
+  return null
+}
+
+// â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FoodAidPage = () => {
   const { isDarkMode } = useTheme()
   const { user }       = useAuth()
@@ -8956,7 +10070,23 @@ const FoodAidPage = () => {
   const [showPostModal, setShowPostModal] = useState(false)
   const [routeDist,     setRouteDist]     = useState(null)
 
-  useEffect(() => { detectLocation(); fetchDistributions() }, [])
+  useEffect(() => {
+    detectLocation()
+    setLoading(true)
+    const unsubscribe = foodAidService.subscribeToFoodAid(all => {
+      const enriched = all.map(d => {
+        if (d.barangayLat && d.barangayLng) return d
+        const b  = TOLEDO_BARANGAYS.find(b => b.name === d.barangay || b.id === d.barangayId)
+        if (b) return { ...d, barangayLat: b.lat, barangayLng: b.lng }
+        const pc = PUROK_COORDS[d.purok]
+        if (pc) return { ...d, barangayLat: pc.lat, barangayLng: pc.lng }
+        return { ...d, barangayLat: 10.3737, barangayLng: 123.6384 }
+      })
+      setDistributions(enriched)
+      setLoading(false)
+    })
+    return () => unsubscribe()
+  }, [])
 
   const detectLocation = async () => {
     setLocationStatus('detecting')
@@ -8976,25 +10106,9 @@ const FoodAidPage = () => {
     if (b) setUserBarangay(b)
   }
 
-  const fetchDistributions = async () => {
-    try {
-      setLoading(true)
-      const all = await foodAidService.getAllFoodAidSchedules()
-      const enriched = all.map(d => {
-        if (d.barangayLat && d.barangayLng) return d
-        const b  = TOLEDO_BARANGAYS.find(b => b.name === d.barangay || b.id === d.barangayId)
-        if (b) return { ...d, barangayLat: b.lat, barangayLng: b.lng }
-        const pc = PUROK_COORDS[d.purok]
-        if (pc) return { ...d, barangayLat: pc.lat, barangayLng: pc.lng }
-        return { ...d, barangayLat: 10.3737, barangayLng: 123.6384 }
-      })
-      setDistributions(enriched)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // No-op: the onSnapshot listener registered above already keeps `distributions`
+  // in sync in real time, including right after a new post succeeds.
+  const fetchDistributions = () => {}
 
   const getFiltered = () => {
   let list = [...distributions]
@@ -9358,6 +10472,21 @@ const FoodAidPage = () => {
                       </span>
                     </div>
 
+                    {/* Workflow stage Â· assigned volunteer Â· admin actions */}
+                    {isAdmin && (
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white/70">
+                          {WORKFLOW_LABELS[d.progress?.workflowStatus] || 'Approved'}
+                        </span>
+                        {d.assignedVolunteer?.name && (
+                          <span className="rounded-full bg-emerald-500/20 px-2.5 py-1 text-xs font-semibold text-emerald-200">
+                            ðŸ‘¤ {d.assignedVolunteer.name}
+                          </span>
+                        )}
+                        <FoodAidWorkflowActions dist={d} />
+                      </div>
+                    )}
+
                     {/* Delivery progress bar */}
                     {d.totalFamilies > 0 && (
                       <div className="mb-3 pt-3 border-t border-white/10">
@@ -9425,7 +10554,7 @@ const FoodAidPage = () => {
 
 export default FoodAidPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\HealthPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\HealthPage.jsx ==
 
 import { useState, useEffect } from 'react'
 import {
@@ -9621,7 +10750,7 @@ const HealthPage = () => {
                 Health Management
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-                Monitor community health and chat with AI for guidance.
+                Monitor Barangay Ilihan health and chat with AI for guidance.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
@@ -9812,7 +10941,7 @@ const HealthPage = () => {
 
 export default HealthPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\HelpSupportPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\HelpSupportPage.jsx ==
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -9993,7 +11122,7 @@ const HelpSupportPage = () => {
 
 export default HelpSupportPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\HomePage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\HomePage.jsx ==
 
 import FoodAidProjectionChart from '../components/FoodAidProjectionChart'
 import EventAttendanceChart from '../components/EventAttendanceChart'
@@ -10031,14 +11160,15 @@ const HomePage = () => {
   useEffect(() => { fetchDashboardData() }, [])
 
   const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-      const [healthRecords, events, foodAidSchedules, notifications] = await Promise.all([
-        healthService.getHealthRecords(),
-        eventsService.getEvents(),
-        foodAidService.getFoodAidSchedules(),
-        notificationService.getNotifications(),
-      ])
+  try {
+    setLoading(true)
+    const [healthRecords, events, foodAidSchedules, notifications] = await Promise.all([
+      healthService.getHealthRecords(user?.purok),
+      eventsService.getEvents(), // barangay-wide â€” see note below
+      foodAidService.getFoodAidSchedules(user?.purok),
+      notificationService.getNotifications(),
+    ])
+    // ...rest unchanged
       const upcomingEvents = events.filter((e) => e.status === 'upcoming').length
       const totalFamiliesServed = foodAidSchedules.reduce((sum, item) => sum + (item.deliveredFamilies || 0), 0)
       setStats({ healthRecords: healthRecords.length, aidDistributed: totalFamiliesServed, upcomingEvents, activeUsers: 342 })
@@ -10168,7 +11298,7 @@ const HomePage = () => {
   {
     label: 'Record Checkup',
     description: 'Log a new resident health update',
-    path: '/health/record',
+    path: '/health',
     icon: Heart,
     gradient: 'from-sky-500/60 via-blue-500/40 to-cyan-600/25',
     glow: 'hover:shadow-sky-500/30',
@@ -10186,9 +11316,9 @@ const HomePage = () => {
     : []),
 
   {
-    label: 'Create Event',
+    label: 'Check Event',
     description: 'Publish a barangay activity',
-    path: '/events/create',
+    path: '/events',
     icon: Calendar,
     gradient: 'from-violet-500/60 via-fuchsia-500/40 to-purple-700/25',
     glow: 'hover:shadow-violet-500/30',
@@ -10259,8 +11389,14 @@ const HomePage = () => {
               {greeting}, {user?.fullName?.split(' ')[0] || 'there'} ðŸ˜Š
             </h2>
             <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-              Keep tabs on health updates, food aid progress, and community events  all in one modern dashboard.
-            </p>
+  Keep tabs on health updates, food aid progress, and Barangay Ilihan events â€” all in one modern dashboard.
+</p>
+{user?.purok && (
+  <p className="mt-1 text-xs font-semibold text-white/60">
+    <MapPin className="inline h-3 w-3 mr-1" />
+    Showing {user.purok} data
+  </p>
+)}
             <div className="mt-5 flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/health')}
@@ -10333,7 +11469,7 @@ const HomePage = () => {
               <Activity className="h-4 w-4 text-sky-200" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-white/50">Community health trend</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-white/50">Barangay Ilihan health trend</p>
               <p className="text-base font-semibold text-white">Weekly pulse of resident checkups</p>
             </div>
           </div>
@@ -10549,7 +11685,7 @@ bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.25),transparent_55%)]
 
 export default HomePage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\LoginPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\LoginPage.jsx ==
 
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
@@ -10596,7 +11732,7 @@ const LoginPage = () => {
   const featureItems = [
     { icon: Heart, label: 'Health Monitoring' },
     { icon: Package, label: 'Food Aid Distribution' },
-    { icon: Calendar, label: 'Community Events' },
+    { icon: Calendar, label: 'Barangay Ilihan Events' },
     { icon: Users, label: 'Resident Management' },
   ]
 
@@ -10822,7 +11958,7 @@ const LoginPage = () => {
 
 export default LoginPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\MyProfilePage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\MyProfilePage.jsx ==
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -11217,7 +12353,7 @@ const MyProfilePage = () => {
 
 export default MyProfilePage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\NotificationsPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\NotificationsPage.jsx ==
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -11569,7 +12705,7 @@ const NotificationsPage = () => {
 
 export default NotificationsPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\OptimizeSchedulePage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\OptimizeSchedulePage.jsx ==
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -12345,7 +13481,7 @@ const OptimizeSchedulePage = () => {
 
 export default OptimizeSchedulePage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\PrivacySecurityPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\PrivacySecurityPage.jsx ==
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -12600,7 +13736,7 @@ const PrivacySecurityPage = () => {
 
 export default PrivacySecurityPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\RecordCheckupPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\RecordCheckupPage.jsx ==
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -13407,13 +14543,15 @@ const RecordCheckupPage = () => {
 
 export default RecordCheckupPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\RegisterPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\RegisterPage.jsx ==
 
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, Loader2, CheckCircle, Shield, Zap, Bell } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useAuth } from '../context/AuthContext'
+import BARANGAY_CONFIG from '../config/barangayConfig'
+import { PUROKS_ILIHAN } from '../constants/puroks'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
@@ -13523,13 +14661,13 @@ const RegisterPage = () => {
           </div>
 
           <h1 className="text-4xl font-bold text-white leading-tight mb-4">
-            Join the Future of<br />
+            Join Barangay Ilihan's<br />
             <span className="bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent">
-              Barangay Governance
+              Smart Governance
             </span>
           </h1>
           <p className="text-blue-200 text-base mb-10 max-w-sm">
-            Create your account and start managing community services smarter, faster, and more efficiently.
+            Create your account and start managing Barangay Ilihan services smarter, faster, and more efficiently.
           </p>
 
           <div className="space-y-4">
@@ -13606,6 +14744,15 @@ const RegisterPage = () => {
               )}
 
               <form className="space-y-4" onSubmit={handleSubmit}>
+                {/* Barangay Information - Fixed */}
+                <div className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-3 mb-4">
+                  <p className="text-xs font-medium text-cyan-200 mb-2">Registration Area</p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-white font-semibold">{BARANGAY_CONFIG.fullBarangayName}</p>
+                    <p className="text-xs text-white/70">{BARANGAY_CONFIG.municipality}, {BARANGAY_CONFIG.province}, {BARANGAY_CONFIG.country}</p>
+                  </div>
+                </div>
+
                 {/* Full Name */}
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1.5">Full Name</label>
@@ -13689,12 +14836,12 @@ const RegisterPage = () => {
                       className={selectClass}
                       required
                     >
-                      <option value="">Select purok</option>
-                      <option value="purok1">Purok 1</option>
-                      <option value="purok2">Purok 2</option>
-                      <option value="purok3">Purok 3</option>
-                      <option value="purok4">Purok 4</option>
-                      <option value="purok5">Purok 5</option>
+                      <option value="">Select your purok</option>
+                      {PUROKS_ILIHAN.map((purok, index) => (
+                        <option key={index} value={`Purok ${index + 1}`}>
+                          {purok}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -13791,7 +14938,7 @@ const RegisterPage = () => {
 
 export default RegisterPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\ReportEmergencyPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\ReportEmergencyPage.jsx ==
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -14299,7 +15446,7 @@ const ReportEmergencyPage = () => {
 
 export default ReportEmergencyPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\RequestAdminPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\RequestAdminPage.jsx ==
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -14643,7 +15790,7 @@ const RequestAdminPage = () => {
 
 export default RequestAdminPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\SettingsPage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\SettingsPage.jsx ==
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -14919,7 +16066,7 @@ const ToggleItem = ({ label, description, checked, onChange, small, icon }) => {
 
 export default SettingsPage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\pages\WelcomePage.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\WelcomePage.jsx ==
 
 import { useNavigate } from 'react-router-dom'
 import {
@@ -14943,7 +16090,7 @@ const WelcomePage = () => {
     {
       icon: Heart,
       title: 'Health Care',
-      description: 'Track and manage community health records, checkups, and medical alerts in real time.',
+      description: 'Track and manage Barangay Ilihan health records, checkups, and medical alerts in real time.',
       iconBg: 'bg-gradient-to-br from-rose-500 via-pink-500 to-red-500',
       iconRing: 'ring-rose-300/40',
     },
@@ -15086,7 +16233,7 @@ const WelcomePage = () => {
 
           <p className="text-white/70 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
             A unified digital platform for health tracking, food aid distribution,
-            community events, and administrative governance â€” all in one place.
+            Barangay Ilihan events, and administrative governance â€” all in one place.
           </p>
 
           {/* CTA Buttons */}
@@ -15253,7 +16400,7 @@ const WelcomePage = () => {
               <span className="text-white/60 font-semibold">SmartCo</span>
             </div>
             <p className="text-white/40 text-sm">
-              Â© 2026 SmartCo. All rights reserved. Â· Barangay Toledo Management System
+              Â© 2026 SmartCo. All rights reserved. Â· Barangay Ilihan Management System
             </p>
             <div className="flex items-center space-x-4 text-white/40 text-sm">
               <span className="hover:text-white/70 cursor-pointer transition">Privacy</span>
@@ -15269,7 +16416,7 @@ const WelcomePage = () => {
 
 export default WelcomePage
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\adminRequestService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\adminRequestService.js ==
 
 import {
   collection, addDoc, getDocs, getDoc,
@@ -15408,7 +16555,7 @@ class AdminRequestService {
 
 export default new AdminRequestService()
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\adminService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\adminService.js ==
 
 import { collection, getDocs, getDoc, doc, updateDoc, query, where, orderBy } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
@@ -16016,7 +17163,7 @@ class AdminService {
 
 export default new AdminService()
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\aiHealthService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\aiHealthService.js ==
 
 /**
  * AI Health Service â€” powered by Groq (llama-3.3-70b-versatile)
@@ -16037,9 +17184,9 @@ const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 const MODELS = ['llama-3.3-70b-versatile', 'llama3-8b-8192', 'gemma2-9b-it']
 
-const SYSTEM_PROMPT = `You are HealthBot, a compassionate and professional AI health assistant embedded in SmartCo Barangay Management System in Toledo, Cebu, Philippines.
+const SYSTEM_PROMPT = `You are HealthBot, a compassionate and professional AI health assistant embedded in SmartCo, the Smart Barangay Management System for Barangay Ilihan, Toledo City, Cebu, Philippines.
 
-Your role is to help barangay residents understand their health concerns and guide them toward appropriate care.
+Your role is to help Barangay Ilihan residents understand their health concerns and guide them toward appropriate care at the Barangay Ilihan Health Center.
 
 CONVERSATION FLOW:
 1. Greet the user warmly and ask how they feel today.
@@ -16189,7 +17336,558 @@ export function buildConversationSummary(messages) {
   return summary.slice(0, 1200)
 }
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\announcementsService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\aiInsightsService.js ==
+
+/**
+ * AI Insights Service â€” the engine behind the "AI Decision Support" dashboard.
+ *
+ * DESIGN NOTE (read me before editing):
+ * This service intentionally does NOT dump raw Firestore data into an LLM prompt
+ * and ask it to "figure things out." That produces vague, unreliable, hard-to-audit
+ * recommendations. Instead it follows a two-layer approach:
+ *
+ *   Layer 1 â€” Deterministic analysis (this file): reads live Firestore data through
+ *   the EXISTING services (healthService/bhwService, foodAidService, eventsService,
+ *   emergencyService) and computes concrete signals â€” overdue puroks, low inventory,
+ *   volunteer shortages, hotspots, conflicts, trends. This layer always works, even
+ *   with no AI key configured, and every number it produces is traceable back to a
+ *   specific Firestore field.
+ *
+ *   Layer 2 â€” AI explanation (Groq, reusing the same client pattern as
+ *   aiHealthService.js): turns the computed signals into a clear, human-readable
+ *   "why" for officials, in the required Summary / Reason / Confidence / Suggested
+ *   Action format. If the AI call fails or no key is configured, a rule-based
+ *   explanation is used instead so the dashboard never breaks.
+ *
+ * This keeps the AI explainable ("what was analyzed, why, how confident, what to do")
+ * and prevents the AI from ever making a decision â€” it only ever recommends.
+ */
+
+import { collection, getDocs, addDoc, query, where, orderBy, limit as fbLimit } from 'firebase/firestore'
+import { db } from '../config/firebase'
+import foodAidService from './foodAidService'
+import eventsService from './eventsService'
+import emergencyService from './emergencyService'
+import { PUROKS_ILIHAN, getShortPurokName } from '../constants/puroks'
+
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
+const MODELS = ['llama-3.3-70b-versatile', 'llama3-8b-8192', 'gemma2-9b-it']
+
+const AI_HISTORY_COLLECTION = 'aiInsightsHistory'
+const HEALTH_REQUESTS_COLLECTION = 'health_requests'
+
+export const MODULES = {
+  HEALTH: 'health',
+  FOOD_AID: 'food_aid',
+  EVENTS: 'events',
+  EMERGENCY: 'emergency',
+}
+
+export const PRIORITY = {
+  HIGH: 'high',
+  MEDIUM: 'medium',
+  LOW: 'low',
+}
+
+// â”€â”€ Shared Groq caller (mirrors aiHealthService.js so we don't duplicate retry logic twice) â”€â”€
+async function callGroqJSON(systemPrompt, userPrompt) {
+  if (!GROQ_API_KEY) return null
+
+  for (const model of MODELS) {
+    try {
+      const res = await fetch(GROQ_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.3,
+          max_tokens: 400,
+          response_format: { type: 'json_object' },
+        }),
+      })
+
+      if (!res.ok) {
+        if (res.status === 429) continue // rate-limited, try next model
+        return null
+      }
+
+      const data = await res.json()
+      const text = data.choices?.[0]?.message?.content
+      if (!text) return null
+      return JSON.parse(text)
+    } catch (err) {
+      console.warn(`[aiInsightsService] Groq model ${model} failed:`, err.message)
+      continue
+    }
+  }
+  return null
+}
+
+/**
+ * Ask the AI to phrase the reasoning for a signal we already computed.
+ * Falls back to the deterministic text if the AI is unavailable â€” the
+ * recommendation itself never depends on the AI being reachable.
+ */
+async function explain(signal) {
+  const fallback = {
+    summary: signal.summary,
+    reason: signal.reason,
+    suggestedAction: signal.suggestedAction,
+  }
+
+  const aiResult = await callGroqJSON(
+    `You are the AI Decision Support engine inside SmartCo, the barangay management system for Barangay Ilihan, Toledo City, Cebu. ` +
+    `You assist Barangay Officials, Barangay Health Workers, and Food Aid Coordinators. You NEVER make decisions and NEVER diagnose â€” ` +
+    `you only explain data-driven recommendations so a human can decide. Respond ONLY with a JSON object with exactly these keys: ` +
+    `"summary" (1 sentence), "reason" (1-2 sentences explaining why, citing the numbers given), "suggestedAction" (1 short actionable sentence). ` +
+    `Do not invent numbers that were not given to you.`,
+    `Signal type: ${signal.title}\nData analyzed: ${JSON.stringify(signal.dataAnalyzed)}\nDraft summary: ${signal.summary}\nDraft reason: ${signal.reason}\nDraft action: ${signal.suggestedAction}`
+  )
+
+  if (aiResult?.summary && aiResult?.reason && aiResult?.suggestedAction) {
+    return { ...fallback, ...aiResult, aiGenerated: true }
+  }
+  return { ...fallback, aiGenerated: false }
+}
+
+function makeInsight({ module, title, priority, confidence, dataAnalyzed, summary, reason, suggestedAction }) {
+  return {
+    id: `${module}-${title.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+    module,
+    title,
+    priority,       // 'high' | 'medium' | 'low'
+    confidence,     // 'High' | 'Medium' | 'Low'
+    dataAnalyzed,   // raw numbers this insight is based on, for transparency
+    summary,
+    reason,
+    suggestedAction,
+    timestamp: new Date().toISOString(),
+  }
+}
+
+const daysSince = (isoDate) => {
+  if (!isoDate) return Infinity
+  return Math.floor((Date.now() - new Date(isoDate).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// HEALTH AI â€” reads the existing `health_requests` collection (already used by
+// the BHW dashboard) so we don't duplicate data or add new collections.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function analyzeHealth() {
+  const signals = []
+  let requests = []
+
+  try {
+    const snapshot = await getDocs(collection(db, HEALTH_REQUESTS_COLLECTION))
+    requests = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+  } catch (err) {
+    console.error('[aiInsightsService] Failed to read health requests:', err)
+    return signals
+  }
+
+  if (requests.length === 0) return signals
+
+  // Residents needing immediate follow-up: critical/urgent assessments still pending review
+  const urgentPending = requests.filter(r =>
+    (r.healthAssessment?.overallStatus === 'critical' || r.healthAssessment?.urgencyLevel === 'urgent') &&
+    r.status !== 'completed' && r.status !== 'rejected'
+  )
+  if (urgentPending.length > 0) {
+    signals.push({
+      module: MODULES.HEALTH,
+      title: 'Residents needing immediate follow-up',
+      priority: PRIORITY.HIGH,
+      confidence: 'High',
+      dataAnalyzed: { urgentPendingCount: urgentPending.length, names: urgentPending.slice(0, 5).map(r => r.residentName) },
+      summary: `${urgentPending.length} resident${urgentPending.length > 1 ? 's have' : ' has'} critical or urgent health flags still awaiting BHW review.`,
+      reason: `These records were flagged critical/urgent by the health checkup assessment and have not yet been marked completed.`,
+      suggestedAction: 'Prioritize BHW review and schedule same-day visits for these residents.',
+    })
+  }
+
+  // Overdue for checkups / multiple missed appointments â€” approximate using stale pending requests
+  const stalePending = requests.filter(r => r.status === 'pending_review' && daysSince(r.createdAt) >= 3)
+  if (stalePending.length > 0) {
+    signals.push({
+      module: MODULES.HEALTH,
+      title: 'Residents overdue for BHW review',
+      priority: stalePending.length >= 5 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      confidence: 'Medium',
+      dataAnalyzed: { staleCount: stalePending.length, oldestDays: Math.max(...stalePending.map(r => daysSince(r.createdAt))) },
+      summary: `${stalePending.length} health request${stalePending.length > 1 ? 's have' : ' has'} been waiting 3+ days without review.`,
+      reason: `These requests are still in "pending review" status well past the typical review window.`,
+      suggestedAction: 'Assign a BHW to clear the review backlog this week.',
+    })
+  }
+
+  // Health trend per purok â€” concerning/critical rate
+  const byPurok = {}
+  requests.forEach(r => {
+    const p = r.purok || 'Unspecified'
+    byPurok[p] = byPurok[p] || { total: 0, concerning: 0 }
+    byPurok[p].total += 1
+    if (['concerning', 'critical'].includes(r.healthAssessment?.overallStatus)) byPurok[p].concerning += 1
+  })
+  const trendPurok = Object.entries(byPurok)
+    .filter(([, v]) => v.total >= 3)
+    .map(([p, v]) => ({ purok: p, rate: v.concerning / v.total, ...v }))
+    .sort((a, b) => b.rate - a.rate)[0]
+
+  if (trendPurok && trendPurok.rate >= 0.3) {
+    signals.push({
+      module: MODULES.HEALTH,
+      title: 'Health trend summary',
+      priority: trendPurok.rate >= 0.5 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      confidence: 'Medium',
+      dataAnalyzed: { purok: trendPurok.purok, concerning: trendPurok.concerning, total: trendPurok.total, rate: Math.round(trendPurok.rate * 100) },
+      summary: `${trendPurok.purok} shows ${Math.round(trendPurok.rate * 100)}% of recent health requests flagged concerning or critical.`,
+      reason: `${trendPurok.concerning} out of ${trendPurok.total} recent health requests from this purok were flagged concerning/critical, higher than other puroks.`,
+      suggestedAction: `Consider a targeted BHW health monitoring visit to ${trendPurok.purok}.`,
+    })
+  }
+
+  // Possible outbreak signal â€” many requests in a short window mentioning similar symptoms
+  const recent = requests.filter(r => daysSince(r.createdAt) <= 7)
+  if (recent.length >= 6) {
+    const symptomWords = recent
+      .map(r => (r.symptoms || '').toLowerCase())
+      .join(' ')
+    const commonSymptoms = ['fever', 'cough', 'colds', 'diarrhea', 'vomiting', 'flu', 'sore throat']
+      .map(sym => ({ sym, count: (symptomWords.match(new RegExp(sym, 'g')) || []).length }))
+      .filter(s => s.count >= 3)
+      .sort((a, b) => b.count - a.count)[0]
+
+    if (commonSymptoms) {
+      signals.push({
+        module: MODULES.HEALTH,
+        title: 'Possible outbreak pattern',
+        priority: PRIORITY.HIGH,
+        confidence: 'Medium',
+        dataAnalyzed: { symptom: commonSymptoms.sym, mentions: commonSymptoms.count, windowDays: 7, totalRequests: recent.length },
+        summary: `"${commonSymptoms.sym}" mentioned in ${commonSymptoms.count} of ${recent.length} health requests filed in the last 7 days.`,
+        reason: `A cluster of similar symptom reports in a short time window can indicate a spreading illness in the barangay.`,
+        suggestedAction: 'BHWs should verify affected households and consider a community health advisory. This is a pattern flag, not a diagnosis.',
+      })
+    }
+  }
+
+  return signals
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// FOOD AID AI â€” builds on the existing `_buildAIRecommendation`/priority-purok
+// logic already in foodAidService, and adds inventory/volunteer/risk analysis.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function analyzeFoodAid() {
+  const signals = []
+  const all = await foodAidService.getAllFoodAidSchedules()
+  if (all.length === 0) return signals
+
+  // Priority purok: longest since last completed distribution (reuse same logic style as foodAidService)
+  const lastServedByPurok = {}
+  all.forEach(d => {
+    const completedAt = d.completedAt || (d.progress?.workflowStatus === 'completed' ? d.updatedAt : null)
+    if (completedAt && (!lastServedByPurok[d.purok] || completedAt > lastServedByPurok[d.purok])) {
+      lastServedByPurok[d.purok] = completedAt
+    }
+  })
+  const priorityRanking = [...PUROKS_ILIHAN]
+    .map(p => ({ purok: getShortPurokName(p), lastServed: lastServedByPurok[p] || null, days: daysSince(lastServedByPurok[p]) }))
+    .sort((a, b) => b.days - a.days)
+
+  const topPriority = priorityRanking[0]
+  if (topPriority && topPriority.days > 14) {
+    signals.push({
+      module: MODULES.FOOD_AID,
+      title: "Today's priority purok",
+      priority: topPriority.days > 30 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      confidence: 'High',
+      dataAnalyzed: { purok: topPriority.purok, daysSinceLastServed: topPriority.days === Infinity ? 'never' : topPriority.days },
+      summary: `${topPriority.purok} has ${topPriority.days === Infinity ? 'no recorded' : `gone ${topPriority.days} days without a`} completed distribution.`,
+      reason: `Ranked highest among all puroks by time since last completed food aid distribution.`,
+      suggestedAction: `Schedule the next distribution in ${topPriority.purok} within the next planning cycle.`,
+    })
+  }
+
+  // Active distributions needing attention: pending approval too long, or in-progress with low completion rate
+  const pendingApproval = all.filter(d => d.progress?.workflowStatus === 'pending_approval')
+  if (pendingApproval.length > 0) {
+    signals.push({
+      module: MODULES.FOOD_AID,
+      title: 'Distribution approval recommendations',
+      priority: pendingApproval.length >= 3 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      confidence: 'High',
+      dataAnalyzed: { pendingCount: pendingApproval.length, puroks: pendingApproval.map(d => d.purok) },
+      summary: `${pendingApproval.length} food aid distribution${pendingApproval.length > 1 ? 's are' : ' is'} awaiting official approval.`,
+      reason: `These distributions cannot proceed to AI scheduling or volunteer assignment until approved.`,
+      suggestedAction: 'Review and approve pending distributions to avoid delays.',
+    })
+  }
+
+  // Volunteer shortage: distributions approved/ai_scheduled with no volunteer assigned
+  const needsVolunteer = all.filter(d => ['approved', 'ai_scheduled'].includes(d.progress?.workflowStatus) && !d.assignedVolunteer)
+  if (needsVolunteer.length > 0) {
+    const totalHouseholds = needsVolunteer.reduce((s, d) => s + (d.progress?.householdsTarget || 0), 0)
+    const estimatedVolunteersNeeded = Math.max(needsVolunteer.length, Math.ceil(totalHouseholds / 15))
+    signals.push({
+      module: MODULES.FOOD_AID,
+      title: 'Volunteer shortage warning',
+      priority: needsVolunteer.length >= 3 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      confidence: 'Medium',
+      dataAnalyzed: { unassignedDistributions: needsVolunteer.length, totalHouseholds, estimatedVolunteersNeeded },
+      summary: `${needsVolunteer.length} scheduled distribution${needsVolunteer.length > 1 ? 's have' : ' has'} no volunteer assigned yet.`,
+      reason: `Estimated ~1 volunteer per 15 households across ${totalHouseholds} target households means roughly ${estimatedVolunteersNeeded} volunteers are needed.`,
+      suggestedAction: 'Recruit or assign volunteers before the scheduled distribution date.',
+    })
+  }
+
+  // Distribution risk: in_progress with completion far behind expected pace
+  const atRisk = all.filter(d => {
+    if (d.progress?.workflowStatus !== 'in_progress' || !d.date) return false
+    const daysIntoEvent = daysSince(d.date)
+    return daysIntoEvent >= 1 && d.progress.percentage < 50
+  })
+  if (atRisk.length > 0) {
+    signals.push({
+      module: MODULES.FOOD_AID,
+      title: 'Distribution risk assessment',
+      priority: PRIORITY.HIGH,
+      confidence: 'Medium',
+      dataAnalyzed: { atRiskCount: atRisk.length, puroks: atRisk.map(d => `${d.purok} (${d.progress.percentage}%)`) },
+      summary: `${atRisk.length} in-progress distribution${atRisk.length > 1 ? 's are' : ' is'} behind schedule (under 50% complete a day after the start date).`,
+      reason: `These distributions started but have low household completion rates relative to elapsed time, suggesting delays.`,
+      suggestedAction: 'Check in with the assigned volunteer coordinator and consider reallocating manpower.',
+    })
+  }
+
+  // Inventory sufficiency â€” approximate via householdsTarget vs householdsCompleted gap across all active items
+  const totalTarget = all.reduce((s, d) => s + (d.progress?.householdsTarget || 0), 0)
+  const totalServed = all.reduce((s, d) => s + (d.progress?.householdsServed || 0), 0)
+  const upcoming = all.filter(d => ['approved', 'ai_scheduled', 'volunteer_assigned'].includes(d.progress?.workflowStatus))
+  const upcomingHouseholds = upcoming.reduce((s, d) => s + (d.progress?.householdsTarget || 0), 0)
+  if (upcomingHouseholds > 0) {
+    signals.push({
+      module: MODULES.FOOD_AID,
+      title: 'Inventory sufficiency analysis',
+      priority: PRIORITY.LOW,
+      confidence: 'Low',
+      dataAnalyzed: { totalTarget, totalServed, upcomingHouseholds },
+      summary: `${upcomingHouseholds} households are expected to be served across ${upcoming.length} upcoming distribution${upcoming.length > 1 ? 's' : ''}.`,
+      reason: `Based on households targeted in approved/scheduled distributions not yet completed. SmartCo does not yet track a dedicated inventory count field, so this is a demand estimate rather than a stock check.`,
+      suggestedAction: 'Confirm actual food stock on hand covers the upcoming household count before distribution day.',
+    })
+  }
+
+  return signals
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// EVENT MANAGEMENT AI
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function analyzeEvents() {
+  const signals = []
+  const events = await eventsService.getEvents().catch(() => [])
+  if (!events || events.length === 0) return signals
+
+  const upcoming = events.filter(e => e.status === 'upcoming' && e.date)
+
+  // Conflict detection: two+ upcoming events on the same date
+  const byDate = {}
+  upcoming.forEach(e => {
+    byDate[e.date] = byDate[e.date] || []
+    byDate[e.date].push(e)
+  })
+  const conflicts = Object.entries(byDate).filter(([, list]) => list.length > 1)
+  if (conflicts.length > 0) {
+    const [date, list] = conflicts[0]
+    signals.push({
+      module: MODULES.EVENTS,
+      title: 'Upcoming event conflict detected',
+      priority: PRIORITY.MEDIUM,
+      confidence: 'High',
+      dataAnalyzed: { date, events: list.map(e => e.title) },
+      summary: `${list.length} events are scheduled on ${date}: ${list.map(e => e.title).join(', ')}.`,
+      reason: `Multiple events on the same date can split volunteer availability and attendance.`,
+      suggestedAction: 'Consider rescheduling one event or coordinating shared resources in advance.',
+    })
+  }
+
+  // Estimated attendance / volunteer requirements for the next event using historical average
+  const past = events.filter(e => e.status !== 'upcoming' && Array.isArray(e.attendees))
+  if (upcoming.length > 0 && past.length > 0) {
+    const avgAttendance = Math.round(past.reduce((s, e) => s + e.attendees.length, 0) / past.length)
+    const nextEvent = [...upcoming].sort((a, b) => a.date.localeCompare(b.date))[0]
+    signals.push({
+      module: MODULES.EVENTS,
+      title: 'Estimated attendance & volunteer needs',
+      priority: PRIORITY.LOW,
+      confidence: 'Medium',
+      dataAnalyzed: { nextEvent: nextEvent.title, avgAttendance, historicalEventsUsed: past.length },
+      summary: `"${nextEvent.title}" is projected to draw around ${avgAttendance} attendees, based on ${past.length} past events.`,
+      reason: `Average attendance across past recorded events was used as the estimate for the next upcoming event.`,
+      suggestedAction: `Plan for roughly ${avgAttendance} attendees and ${Math.max(2, Math.ceil(avgAttendance / 20))} volunteers.`,
+    })
+  }
+
+  return signals
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// EMERGENCY AI
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function analyzeEmergency() {
+  const signals = []
+  const emergencies = await emergencyService.getEmergencies().catch(() => [])
+  if (!emergencies || emergencies.length === 0) return signals
+
+  const recent = emergencies.filter(e => daysSince(e.createdAt) <= 30)
+
+  // Hotspot detection: purok with the most reports in the last 30 days
+  const byPurok = {}
+  recent.forEach(e => {
+    const p = e.purok || 'Unspecified'
+    byPurok[p] = (byPurok[p] || 0) + 1
+  })
+  const hotspot = Object.entries(byPurok).sort((a, b) => b[1] - a[1])[0]
+  if (hotspot && hotspot[1] >= 3) {
+    signals.push({
+      module: MODULES.EMERGENCY,
+      title: 'Emergency hotspot detected',
+      priority: hotspot[1] >= 5 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      confidence: 'High',
+      dataAnalyzed: { purok: hotspot[0], reportsLast30Days: hotspot[1] },
+      summary: `${hotspot[0]} recorded ${hotspot[1]} emergency reports in the last 30 days â€” the highest of any purok.`,
+      reason: `Report frequency by purok over a 30-day rolling window flags this area as a recurring hotspot.`,
+      suggestedAction: `Recommend increased tanod patrol presence in ${hotspot[0]}.`,
+    })
+  }
+
+  // Incident type trend
+  const byType = {}
+  recent.forEach(e => { byType[e.type] = (byType[e.type] || 0) + 1 })
+  const topType = Object.entries(byType).sort((a, b) => b[1] - a[1])[0]
+  if (topType && topType[1] >= 3) {
+    signals.push({
+      module: MODULES.EMERGENCY,
+      title: 'Emergency trend analysis',
+      priority: PRIORITY.MEDIUM,
+      confidence: 'Medium',
+      dataAnalyzed: { type: topType[0], count: topType[1], windowDays: 30 },
+      summary: `"${topType[0]}" is the most frequently reported emergency type this month (${topType[1]} reports).`,
+      reason: `This incident type occurred more often than any other in the last 30 days of reports.`,
+      suggestedAction: `Plan a preparedness activity or advisory focused on ${topType[0]}.`,
+    })
+  }
+
+  // Unresolved/pending emergencies needing dispatch
+  const pending = emergencies.filter(e => e.status === 'pending')
+  if (pending.length > 0) {
+    signals.push({
+      module: MODULES.EMERGENCY,
+      title: 'Pending emergencies need dispatch',
+      priority: PRIORITY.HIGH,
+      confidence: 'High',
+      dataAnalyzed: { pendingCount: pending.length },
+      summary: `${pending.length} emergency report${pending.length > 1 ? 's are' : ' is'} still pending response.`,
+      reason: `These reports have not yet been responded to, dispatched, or resolved.`,
+      suggestedAction: 'Review and dispatch tanod or responders immediately.',
+    })
+  }
+
+  return signals
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// AI HISTORY â€” persists generated recommendations for later review
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export async function saveInsightToHistory(insight) {
+  try {
+    await addDoc(collection(db, AI_HISTORY_COLLECTION), {
+      module: insight.module,
+      title: insight.title,
+      summary: insight.summary,
+      reason: insight.reason,
+      suggestedAction: insight.suggestedAction,
+      confidence: insight.confidence,
+      priority: insight.priority,
+      status: 'generated', // generated | acknowledged | acted_on | dismissed
+      createdAt: insight.timestamp,
+    })
+  } catch (err) {
+    console.warn('[aiInsightsService] Could not save insight history:', err.message)
+  }
+}
+
+export async function getInsightHistory(max = 50) {
+  try {
+    let snapshot
+    try {
+      const q = query(collection(db, AI_HISTORY_COLLECTION), orderBy('createdAt', 'desc'), fbLimit(max))
+      snapshot = await getDocs(q)
+    } catch {
+      snapshot = await getDocs(collection(db, AI_HISTORY_COLLECTION))
+    }
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+      .slice(0, max)
+  } catch (err) {
+    console.error('[aiInsightsService] Failed to load insight history:', err)
+    return []
+  }
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// PUBLIC: generate all insights, enrich with AI-phrased explanations, and log history
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export async function generateAllInsights({ persistHistory = true } = {}) {
+  const [health, foodAid, events, emergency] = await Promise.all([
+    analyzeHealth().catch(err => { console.error('Health AI failed:', err); return [] }),
+    analyzeFoodAid().catch(err => { console.error('Food Aid AI failed:', err); return [] }),
+    analyzeEvents().catch(err => { console.error('Events AI failed:', err); return [] }),
+    analyzeEmergency().catch(err => { console.error('Emergency AI failed:', err); return [] }),
+  ])
+
+  const rawSignals = [...health, ...foodAid, ...events, ...emergency]
+
+  const priorityOrder = { high: 0, medium: 1, low: 2 }
+  rawSignals.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
+
+  // Enrich each signal with AI-phrased explanation (bounded concurrency isn't needed â€”
+  // dashboard-scale insight counts are small, typically under 15)
+  const insights = await Promise.all(
+    rawSignals.map(async (signal) => {
+      const explained = await explain(signal)
+      return makeInsight({ ...signal, ...explained })
+    })
+  )
+
+  if (persistHistory) {
+    // fire-and-forget; don't block the dashboard on history writes
+    insights.forEach(i => saveInsightToHistory(i))
+  }
+
+  return insights
+}
+
+export default {
+  generateAllInsights,
+  getInsightHistory,
+  saveInsightToHistory,
+  MODULES,
+  PRIORITY,
+}
+
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\announcementsService.js ==
 
 import {
   collection, addDoc, getDocs, getDoc, doc,
@@ -16295,7 +17993,7 @@ class AnnouncementsService {
       type: 'info',
       category: 'community',
       message: isEvent
-        ? `ðŸ“… New event posted: "${title}" â€” check the Community Board for details.`
+        ? `ðŸ“… New event posted: "${title}" â€” check the Barangay Ilihan Board for details.`
         : `ðŸ“¢ New announcement from ${authorName || 'an official'}: "${title}"`,
       relatedId: ref.id,
       relatedType: 'announcement'
@@ -16434,7 +18132,7 @@ class AnnouncementsService {
 
 export default new AnnouncementsService()
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\authService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\authService.js ==
 
 import { 
   signInWithEmailAndPassword,
@@ -16622,7 +18320,7 @@ class AuthService {
 
 export default new AuthService()
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\bhwService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\bhwService.js ==
 
 
 import { collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore'
@@ -16773,7 +18471,7 @@ export const updateHealthRequestStatus = async (requestId, updates) => {
 }
 
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\emergencyService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\emergencyService.js ==
 
 import {
   collection, addDoc, getDocs, getDoc, doc, updateDoc,
@@ -17196,7 +18894,7 @@ class EmergencyService {
 
 export default new EmergencyService()
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\eventsService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\eventsService.js ==
 
 import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, orderBy, arrayUnion, where } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
@@ -17451,39 +19149,157 @@ class EventsService {
 
 export default new EventsService()
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\foodAidService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\foodAidService.js ==
 
-import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore'
+import {
+  collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc,
+  query, where, onSnapshot
+} from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
+import { PUROKS_ILIHAN, getShortPurokName } from '../constants/puroks'
+
+// â”€â”€ Distribution Workflow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Pending Approval â†’ Approved â†’ AI Schedule Generated â†’ Volunteer Assigned â†’
+// Distribution Started â†’ In Progress â†’ Completed â†’ Archived
+// ('cancelled' is a lateral terminal state, reachable from any pre-completion stage)
+export const WORKFLOW_STAGES = [
+  'pending_approval',
+  'approved',
+  'ai_scheduled',
+  'volunteer_assigned',
+  'distribution_started',
+  'in_progress',
+  'completed',
+  'archived',
+]
+
+export const WORKFLOW_LABELS = {
+  pending_approval:     'Pending Approval',
+  approved:             'Approved',
+  ai_scheduled:         'AI Schedule Generated',
+  volunteer_assigned:   'Volunteer Assigned',
+  distribution_started: 'Distribution Started',
+  in_progress:          'In Progress',
+  completed:            'Completed',
+  archived:             'Archived',
+  cancelled:            'Cancelled',
+}
+
+/**
+ * Back-compat: older docs (created before this workflow existed) won't have a
+ * `workflowStatus` field. Derive a reasonable stage from the legacy
+ * `status` / `approvalStatus` fields so nothing already saved in Firestore breaks.
+ */
+function deriveWorkflowStatus(d) {
+  if (d.workflowStatus) return d.workflowStatus
+  if (d.approvalStatus === 'pending')  return 'pending_approval'
+  if (d.approvalStatus === 'rejected') return 'cancelled'
+
+  const s = (d.status || 'scheduled').toLowerCase().replace(/\s+/g, '-')
+  if (s === 'completed')    return 'completed'
+  if (s === 'in-progress')  return 'in_progress'
+  if (d.assignedVolunteer)  return 'volunteer_assigned'
+  if (d.aiRecommendation)   return 'ai_scheduled'
+  return 'approved'
+}
+
+/**
+ * Calculate live distribution progress from actual data.
+ * progress = householdsCompleted / householdsTarget Ã— 100
+ * Falls back to legacy `deliveredFamilies` / `totalFamilies` fields so old docs still work.
+ */
+export function calculateProgress(dist) {
+  const target    = dist.householdsTarget ?? dist.totalFamilies ?? 0
+  const completed = dist.householdsCompleted ?? dist.deliveredFamilies ?? 0
+  const percentage = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0
+
+  return {
+    percentage,
+    householdsServed:    completed,
+    householdsRemaining: Math.max(0, target - completed),
+    householdsTarget:    target,
+    workflowStatus:       deriveWorkflowStatus(dist),
+  }
+}
 
 class FoodAidService {
-  // â”€â”€ Public: all schedules visible to every authenticated user â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Public: all schedules visible to every authenticated user â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async getAllFoodAidSchedules() {
     try {
       const snapshot = await getDocs(collection(db, 'foodAid'))
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      return snapshot.docs.map(doc => this._enrich({ id: doc.id, ...doc.data() }))
     } catch (error) {
       console.error('Error fetching all food aid schedules:', error)
       return []
     }
   }
 
-  // â”€â”€ Admin / Barangay Official: post a public distribution event â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Attach derived, always-up-to-date progress + workflow info without mutating Firestore
+  _enrich(dist) {
+    return { ...dist, progress: calculateProgress(dist) }
+  }
+
+  // â”€â”€ Real-time subscriptions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  /**
+   * Subscribe to all food aid distributions in real time. Returns an unsubscribe fn.
+   * Use in a component's useEffect, e.g.:
+   *   useEffect(() => foodAidService.subscribeToFoodAid(setDistributions), [])
+   */
+  subscribeToFoodAid(callback) {
+    return onSnapshot(collection(db, 'foodAid'), snapshot => {
+      const items = snapshot.docs.map(doc => this._enrich({ id: doc.id, ...doc.data() }))
+      callback(items)
+    }, error => {
+      console.error('Error in food aid real-time listener:', error)
+      callback([])
+    })
+  }
+
+  /**
+   * Subscribe to distributions assigned to a specific volunteer in real time.
+   */
+  subscribeToVolunteerAssignments(volunteerId, callback) {
+    const q = query(collection(db, 'foodAid'), where('assignedVolunteer.id', '==', volunteerId))
+    return onSnapshot(q, snapshot => {
+      const items = snapshot.docs.map(doc => this._enrich({ id: doc.id, ...doc.data() }))
+      callback(items)
+    }, error => {
+      console.error('Error in volunteer assignment listener:', error)
+      callback([])
+    })
+  }
+
+  // â”€â”€ Admin / Barangay Official: post a public distribution event â”€â”€â”€â”€â”€â”€â”€â”€
   async postDistribution(distributionData) {
     try {
       const userId = auth.currentUser?.uid
       if (!userId) throw new Error('User not authenticated')
 
+      const now = new Date().toISOString()
+      const householdsTarget = distributionData.totalFamilies || distributionData.householdsTarget || 0
+
       const newDist = {
         ...distributionData,
         status:         'scheduled',
         approvalStatus: 'approved',
-        deliveredFamilies: 0,
+        workflowStatus: 'approved',
+        deliveredFamilies:   0,
+        householdsTarget,
+        householdsCompleted: 0,
+        assignedVolunteer:   null,
+        estimatedCompletion: distributionData.date || null,
+        completedAt:         null,
+        remarks:             distributionData.remarks || '',
+        aiRecommendation:    null,
+        timeline: {
+          createdAt:  now,
+          approvedAt: now,
+        },
         isPublicPost:   true,
         createdBy:      userId,
-        createdAt:      new Date().toISOString(),
-        updatedAt:      new Date().toISOString(),
+        createdAt:      now,
+        updatedAt:      now,
       }
 
       const docRef = await addDoc(collection(db, 'foodAid'), newDist)
@@ -17542,33 +19358,35 @@ class FoodAidService {
     }
   }
 
-  async getFoodAidSchedules() {
-    try {
-      const userId = auth.currentUser?.uid
-      if (!userId) {
-        console.log('No authenticated user for food aid schedules')
-        return []
-      }
-
-      const q = query(
-        collection(db, 'foodAid'),
-        where('createdBy', '==', userId)
-      )
-      const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-    } catch (error) {
-      console.error('Error fetching food aid schedules:', error)
+  async getFoodAidSchedules(purok = null) {
+  try {
+    const userId = auth.currentUser?.uid
+    if (!userId) {
+      console.log('No authenticated user for food aid schedules')
       return []
     }
+
+    // If a purok is passed, show every schedule for that purok
+    // (not just ones this user created). Otherwise fall back to "my own".
+    const q = purok
+      ? query(collection(db, 'foodAid'), where('purok', '==', purok))
+      : query(collection(db, 'foodAid'), where('createdBy', '==', userId))
+
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(doc => this._enrich({ id: doc.id, ...doc.data() }))
+  } catch (error) {
+    console.error('Error fetching food aid schedules:', error)
+    return []
   }
+}
 
   async getFoodAidById(id) {
     try {
       const docRef = doc(db, 'foodAid', id)
       const docSnap = await getDoc(docRef)
-      
+
       if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() }
+        return this._enrich({ id: docSnap.id, ...docSnap.data() })
       }
       return null
     } catch (error) {
@@ -17584,14 +19402,26 @@ class FoodAidService {
         throw new Error('User not authenticated')
       }
 
+      const now = new Date().toISOString()
+      const householdsTarget = scheduleData.totalFamilies || scheduleData.householdsTarget || 0
+
       const newSchedule = {
         ...scheduleData,
         status: 'scheduled',
         deliveredFamilies: 0,
         approvalStatus: 'pending',
+        workflowStatus: 'pending_approval',
+        householdsTarget,
+        householdsCompleted: 0,
+        assignedVolunteer:   null,
+        estimatedCompletion: scheduleData.date || null,
+        completedAt:         null,
+        remarks:             scheduleData.remarks || '',
+        aiRecommendation:    null,
+        timeline: { createdAt: now },
         createdBy: userId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: now,
+        updatedAt: now
       }
 
       const docRef = await addDoc(collection(db, 'foodAid'), newSchedule)
@@ -17616,7 +19446,7 @@ class FoodAidService {
       })
 
       const updatedDoc = await getDoc(docRef)
-      return { success: true, schedule: { id: updatedDoc.id, ...updatedDoc.data() } }
+      return { success: true, schedule: this._enrich({ id: updatedDoc.id, ...updatedDoc.data() }) }
     } catch (error) {
       console.error('Error updating food aid schedule:', error)
       throw new Error('Food aid schedule not found')
@@ -17624,35 +19454,8 @@ class FoodAidService {
   }
 
   async updateDeliveryStatus(id, deliveredCount) {
-    try {
-      const docRef = doc(db, 'foodAid', id)
-      const docSnap = await getDoc(docRef)
-
-      if (!docSnap.exists()) {
-        throw new Error('Food aid schedule not found')
-      }
-
-      const schedule = docSnap.data()
-      let status = 'scheduled'
-
-      if (deliveredCount >= schedule.totalFamilies) {
-        status = 'completed'
-      } else if (deliveredCount > 0) {
-        status = 'in-progress'
-      }
-
-      await updateDoc(docRef, {
-        deliveredFamilies: deliveredCount,
-        status,
-        updatedAt: new Date().toISOString()
-      })
-
-      const updatedDoc = await getDoc(docRef)
-      return { success: true, schedule: { id: updatedDoc.id, ...updatedDoc.data() } }
-    } catch (error) {
-      console.error('Error updating delivery status:', error)
-      throw error
-    }
+    // Kept for backward compatibility â€” now delegates to updateHouseholdProgress
+    return this.updateHouseholdProgress(id, deliveredCount)
   }
 
   async deleteFoodAidSchedule(id) {
@@ -17665,19 +19468,334 @@ class FoodAidService {
     }
   }
 
+  // â”€â”€ Workflow: Approval â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  async approveDistribution(id, remarks = '') {
+    try {
+      const docRef = doc(db, 'foodAid', id)
+      const now = new Date().toISOString()
+      const docSnap = await getDoc(docRef)
+      const timeline = { ...(docSnap.data()?.timeline || {}), approvedAt: now }
+
+      await updateDoc(docRef, {
+        approvalStatus: 'approved',
+        workflowStatus: 'approved',
+        remarks:        remarks || docSnap.data()?.remarks || '',
+        timeline,
+        updatedAt: now,
+      })
+
+      const updatedDoc = await getDoc(docRef)
+      const schedule = this._enrich({ id: updatedDoc.id, ...updatedDoc.data() })
+      await this._createFoodAidNotification(schedule, 'approved')
+      return { success: true, schedule }
+    } catch (error) {
+      console.error('Error approving distribution:', error)
+      throw new Error('Failed to approve distribution')
+    }
+  }
+
+  async rejectDistribution(id, remarks = '') {
+    try {
+      const docRef = doc(db, 'foodAid', id)
+      const now = new Date().toISOString()
+      await updateDoc(docRef, {
+        approvalStatus: 'rejected',
+        workflowStatus: 'cancelled',
+        remarks,
+        updatedAt: now,
+      })
+      const updatedDoc = await getDoc(docRef)
+      return { success: true, schedule: this._enrich({ id: updatedDoc.id, ...updatedDoc.data() }) }
+    } catch (error) {
+      console.error('Error rejecting distribution:', error)
+      throw new Error('Failed to reject distribution')
+    }
+  }
+
+  // â”€â”€ Workflow: AI Scheduling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  /**
+   * Generate AI-assisted scheduling recommendations for a distribution.
+   * Uses the same rule-based heuristic approach as OptimizeSchedulePage
+   * (no external AI call â€” analyzes existing distribution history + purok
+   * household targets already stored in Firestore).
+   *
+   * Recommends: priority puroks, suggested distribution order,
+   * suggested schedule, estimated duration, estimated manpower.
+   */
+  async generateAISchedule(id) {
+    try {
+      const docRef  = doc(db, 'foodAid', id)
+      const docSnap = await getDoc(docRef)
+      if (!docSnap.exists()) throw new Error('Distribution not found')
+      const dist = docSnap.data()
+
+      const recommendation = await this._buildAIRecommendation(dist)
+      const now = new Date().toISOString()
+      const timeline = { ...(dist.timeline || {}), aiScheduledAt: now }
+
+      await updateDoc(docRef, {
+        aiRecommendation: recommendation,
+        workflowStatus:   'ai_scheduled',
+        estimatedCompletion: recommendation.suggestedSchedule?.[0]?.date || dist.date || null,
+        timeline,
+        updatedAt: now,
+      })
+
+      const updatedDoc = await getDoc(docRef)
+      return { success: true, schedule: this._enrich({ id: updatedDoc.id, ...updatedDoc.data() }) }
+    } catch (error) {
+      console.error('Error generating AI schedule:', error)
+      throw new Error('Failed to generate AI schedule')
+    }
+  }
+
+  /** Builds the AI recommendation object from live Firestore distribution history. */
+  async _buildAIRecommendation(dist) {
+    const snapshot = await getDocs(collection(db, 'foodAid'))
+    const history  = snapshot.docs.map(d => d.data())
+
+    // Priority puroks: puroks (from the central Ilihan purok list) that have
+    // gone the longest without a completed distribution, or have never had one.
+    const lastServedByPurok = {}
+    history.forEach(h => {
+      const p = h.purok
+      if (!p) return
+      const completedAt = h.completedAt || (h.status === 'completed' ? h.updatedAt : null)
+      if (completedAt && (!lastServedByPurok[p] || completedAt > lastServedByPurok[p])) {
+        lastServedByPurok[p] = completedAt
+      }
+    })
+
+    const priorityPuroks = [...PUROKS_ILIHAN]
+      .map(p => ({ purok: p, shortLabel: getShortPurokName(p), lastServed: lastServedByPurok[p] || null }))
+      .sort((a, b) => {
+        if (!a.lastServed && !b.lastServed) return 0
+        if (!a.lastServed) return -1
+        if (!b.lastServed) return 1
+        return a.lastServed.localeCompare(b.lastServed)
+      })
+      .slice(0, 3)
+      .map(p => p.shortLabel)
+
+    // Suggested distribution order: target purok first, then remaining priority puroks
+    const suggestedOrder = [dist.purok, ...priorityPuroks.filter(p => p !== dist.purok)].filter(Boolean)
+
+    // Suggested schedule: spread across consecutive days starting from the requested date
+    const baseDate = dist.date ? new Date(dist.date) : new Date()
+    const suggestedSchedule = suggestedOrder.map((purok, i) => {
+      const d = new Date(baseDate)
+      d.setDate(d.getDate() + i)
+      return { purok, date: d.toISOString().split('T')[0], timeSlot: i % 2 === 0 ? 'Morning (8AM-10AM)' : 'Afternoon (2PM-4PM)' }
+    })
+
+    // Manpower: ~1 volunteer per 15 households, minimum 2
+    const householdsTarget = dist.householdsTarget || dist.totalFamilies || 0
+    const estimatedManpower = Math.max(2, Math.ceil(householdsTarget / 15))
+
+    // Duration: ~4 minutes per household + 30 min setup, in minutes
+    const estimatedDuration = Math.round(householdsTarget * 4 + 30)
+
+    return {
+      priorityPuroks,
+      suggestedOrder,
+      suggestedSchedule,
+      estimatedDuration,   // minutes
+      estimatedManpower,   // volunteer count
+      generatedAt: new Date().toISOString(),
+    }
+  }
+
+  // â”€â”€ Workflow: Volunteer Assignment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  async assignVolunteer(id, volunteer) {
+    try {
+      if (!volunteer?.id || !volunteer?.name) throw new Error('Volunteer id and name are required')
+
+      const docRef  = doc(db, 'foodAid', id)
+      const docSnap = await getDoc(docRef)
+      if (!docSnap.exists()) throw new Error('Distribution not found')
+
+      const now = new Date().toISOString()
+      const timeline = { ...(docSnap.data()?.timeline || {}), volunteerAssignedAt: now }
+
+      await updateDoc(docRef, {
+        assignedVolunteer: { id: volunteer.id, name: volunteer.name },
+        workflowStatus:    'volunteer_assigned',
+        timeline,
+        updatedAt: now,
+      })
+
+      const updatedDoc = await getDoc(docRef)
+      const schedule = this._enrich({ id: updatedDoc.id, ...updatedDoc.data() })
+
+      // Notify the assigned volunteer
+      await notificationService.createNotification({
+        userId:    volunteer.id,
+        type:      'info',
+        category:  'foodaid',
+        message:   `You've been assigned to a food aid distribution in ${schedule.purok || schedule.barangay} on ${schedule.date}.`,
+        relatedId: schedule.id,
+      })
+
+      return { success: true, schedule }
+    } catch (error) {
+      console.error('Error assigning volunteer:', error)
+      throw new Error('Failed to assign volunteer')
+    }
+  }
+
+  async unassignVolunteer(id) {
+    try {
+      const docRef = doc(db, 'foodAid', id)
+      await updateDoc(docRef, {
+        assignedVolunteer: null,
+        workflowStatus:    'approved',
+        updatedAt: new Date().toISOString(),
+      })
+      const updatedDoc = await getDoc(docRef)
+      return { success: true, schedule: this._enrich({ id: updatedDoc.id, ...updatedDoc.data() }) }
+    } catch (error) {
+      console.error('Error unassigning volunteer:', error)
+      throw new Error('Failed to unassign volunteer')
+    }
+  }
+
+  /** Get all distributions assigned to a given volunteer (one-time fetch). */
+  async getVolunteerAssignments(volunteerId) {
+    try {
+      const q = query(collection(db, 'foodAid'), where('assignedVolunteer.id', '==', volunteerId))
+      const snapshot = await getDocs(q)
+      return snapshot.docs.map(doc => this._enrich({ id: doc.id, ...doc.data() }))
+    } catch (error) {
+      console.error('Error fetching volunteer assignments:', error)
+      return []
+    }
+  }
+
+  // â”€â”€ Workflow: Distribution Start / Progress / Completion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  async startDistribution(id) {
+    try {
+      const docRef  = doc(db, 'foodAid', id)
+      const docSnap = await getDoc(docRef)
+      if (!docSnap.exists()) throw new Error('Distribution not found')
+
+      const now = new Date().toISOString()
+      const timeline = { ...(docSnap.data()?.timeline || {}), startedAt: now }
+
+      await updateDoc(docRef, {
+        workflowStatus: 'distribution_started',
+        status:         'in-progress', // legacy field kept in sync
+        timeline,
+        updatedAt: now,
+      })
+
+      const updatedDoc = await getDoc(docRef)
+      return { success: true, schedule: this._enrich({ id: updatedDoc.id, ...updatedDoc.data() }) }
+    } catch (error) {
+      console.error('Error starting distribution:', error)
+      throw new Error('Failed to start distribution')
+    }
+  }
+
+  /**
+   * Update households served so far. Automatically transitions the workflow
+   * status (in_progress â†’ completed) based on progress vs. target, and
+   * stamps the timeline/completedAt fields when finished.
+   */
+  async updateHouseholdProgress(id, householdsCompleted, remarks = '') {
+    try {
+      const docRef  = doc(db, 'foodAid', id)
+      const docSnap = await getDoc(docRef)
+      if (!docSnap.exists()) throw new Error('Food aid schedule not found')
+
+      const dist   = docSnap.data()
+      const target = dist.householdsTarget || dist.totalFamilies || 0
+      const clamped = Math.max(0, Math.min(householdsCompleted, target || householdsCompleted))
+
+      const now = new Date().toISOString()
+      let workflowStatus = 'in_progress'
+      let status         = 'in-progress' // legacy
+      const timeline = { ...(dist.timeline || {}) }
+      let completedAt = dist.completedAt || null
+
+      if (target > 0 && clamped >= target) {
+        workflowStatus = 'completed'
+        status         = 'completed'
+        completedAt    = now
+        timeline.completedAt = now
+      } else if (clamped > 0 && !timeline.startedAt) {
+        timeline.startedAt = now
+      }
+
+      await updateDoc(docRef, {
+        householdsCompleted: clamped,
+        deliveredFamilies:   clamped, // legacy field kept in sync
+        workflowStatus,
+        status,
+        completedAt,
+        remarks: remarks || dist.remarks || '',
+        timeline,
+        updatedAt: now,
+      })
+
+      const updatedDoc = await getDoc(docRef)
+      const schedule = this._enrich({ id: updatedDoc.id, ...updatedDoc.data() })
+
+      if (workflowStatus === 'completed') {
+        await this._createFoodAidNotification(schedule, 'completed')
+      }
+
+      return { success: true, schedule }
+    } catch (error) {
+      console.error('Error updating household progress:', error)
+      throw error
+    }
+  }
+
+  async archiveDistribution(id) {
+    try {
+      const docRef  = doc(db, 'foodAid', id)
+      const docSnap = await getDoc(docRef)
+      const now = new Date().toISOString()
+      const timeline = { ...(docSnap.data()?.timeline || {}), archivedAt: now }
+
+      await updateDoc(docRef, {
+        workflowStatus: 'archived',
+        timeline,
+        updatedAt: now,
+      })
+      const updatedDoc = await getDoc(docRef)
+      return { success: true, schedule: this._enrich({ id: updatedDoc.id, ...updatedDoc.data() }) }
+    } catch (error) {
+      console.error('Error archiving distribution:', error)
+      throw new Error('Failed to archive distribution')
+    }
+  }
+
+  async cancelDistribution(id, remarks = '') {
+    try {
+      const docRef = doc(db, 'foodAid', id)
+      await updateDoc(docRef, {
+        workflowStatus: 'cancelled',
+        remarks,
+        updatedAt: new Date().toISOString(),
+      })
+      const updatedDoc = await getDoc(docRef)
+      return { success: true, schedule: this._enrich({ id: updatedDoc.id, ...updatedDoc.data() }) }
+    } catch (error) {
+      console.error('Error cancelling distribution:', error)
+      throw new Error('Failed to cancel distribution')
+    }
+  }
+
+  // â”€â”€ Stats & Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async getFoodAidStats() {
     try {
       const userId = auth.currentUser?.uid
       if (!userId) {
         console.log('No authenticated user for food aid stats')
         return {
-          total: 0,
-          totalFamilies: 0,
-          deliveredFamilies: 0,
-          progress: 0,
-          pending: 0,
-          inProgress: 0,
-          completed: 0
+          total: 0, totalFamilies: 0, deliveredFamilies: 0, progress: 0,
+          pending: 0, inProgress: 0, completed: 0
         }
       }
 
@@ -17687,9 +19805,9 @@ class FoodAidService {
       )
       const snapshot = await getDocs(q)
       const foodAid = snapshot.docs.map(doc => doc.data())
-      
-      const totalFamilies = foodAid.reduce((sum, item) => sum + (item.totalFamilies || 0), 0)
-      const deliveredFamilies = foodAid.reduce((sum, item) => sum + (item.deliveredFamilies || 0), 0)
+
+      const totalFamilies = foodAid.reduce((sum, item) => sum + (item.householdsTarget ?? item.totalFamilies ?? 0), 0)
+      const deliveredFamilies = foodAid.reduce((sum, item) => sum + (item.householdsCompleted ?? item.deliveredFamilies ?? 0), 0)
       const pending = foodAid.filter(item => item.status === 'scheduled').length
       const inProgress = foodAid.filter(item => item.status === 'in-progress').length
       const completed = foodAid.filter(item => item.status === 'completed').length
@@ -17706,13 +19824,8 @@ class FoodAidService {
     } catch (error) {
       console.error('Error fetching food aid stats:', error)
       return {
-        total: 0,
-        totalFamilies: 0,
-        deliveredFamilies: 0,
-        progress: 0,
-        pending: 0,
-        inProgress: 0,
-        completed: 0
+        total: 0, totalFamilies: 0, deliveredFamilies: 0, progress: 0,
+        pending: 0, inProgress: 0, completed: 0
       }
     }
   }
@@ -17743,8 +19856,8 @@ class FoodAidService {
           }
         }
 
-        purokData[item.purok].totalFamilies += item.totalFamilies || 0
-        purokData[item.purok].deliveredFamilies += item.deliveredFamilies || 0
+        purokData[item.purok].totalFamilies += (item.householdsTarget ?? item.totalFamilies ?? 0)
+        purokData[item.purok].deliveredFamilies += (item.householdsCompleted ?? item.deliveredFamilies ?? 0)
         purokData[item.purok].schedules += 1
       })
 
@@ -17752,6 +19865,78 @@ class FoodAidService {
     } catch (error) {
       console.error('Error fetching distribution by purok:', error)
       return []
+    }
+  }
+
+  /**
+   * Barangay-wide dashboard analytics (all distributions, not just the
+   * current user's), computed live from Firestore for the Distribution
+   * Analytics dashboard: workflow-stage counts, household totals,
+   * progress by purok, and volunteer performance.
+   */
+  async getDashboardAnalytics() {
+    try {
+      const snapshot = await getDocs(collection(db, 'foodAid'))
+      const all = snapshot.docs.map(d => this._enrich({ id: d.id, ...d.data() }))
+
+      const byStage = {}
+      WORKFLOW_STAGES.concat('cancelled').forEach(s => { byStage[s] = 0 })
+      all.forEach(d => { byStage[d.progress.workflowStatus] = (byStage[d.progress.workflowStatus] || 0) + 1 })
+
+      const totalHouseholds   = all.reduce((s, d) => s + d.progress.householdsTarget, 0)
+      const householdsServed  = all.reduce((s, d) => s + d.progress.householdsServed, 0)
+      const householdsRemaining = Math.max(0, totalHouseholds - householdsServed)
+
+      // Progress by purok (uses the central Ilihan purok list so every purok shows up, even with 0 activity)
+      const progressByPurok = PUROKS_ILIHAN.map(purok => {
+        const shortLabel = getShortPurokName(purok)
+        const items = all.filter(d => d.purok === purok || d.purok === shortLabel)
+        const target = items.reduce((s, d) => s + d.progress.householdsTarget, 0)
+        const served = items.reduce((s, d) => s + d.progress.householdsServed, 0)
+        return {
+          purok: shortLabel,
+          distributions: items.length,
+          householdsTarget: target,
+          householdsServed: served,
+          percentage: target > 0 ? Math.round((served / target) * 100) : 0,
+        }
+      })
+
+      // Volunteer performance
+      const volunteerMap = {}
+      all.forEach(d => {
+        const v = d.assignedVolunteer
+        if (!v?.id) return
+        if (!volunteerMap[v.id]) {
+          volunteerMap[v.id] = { id: v.id, name: v.name, assigned: 0, completed: 0, householdsServed: 0 }
+        }
+        volunteerMap[v.id].assigned += 1
+        volunteerMap[v.id].householdsServed += d.progress.householdsServed
+        if (d.progress.workflowStatus === 'completed') volunteerMap[v.id].completed += 1
+      })
+
+      return {
+        totalDistributions: all.length,
+        pending:    byStage.pending_approval,
+        approved:   byStage.approved,
+        scheduled:  byStage.ai_scheduled,
+        inProgress: byStage.in_progress + byStage.distribution_started,
+        completed:  byStage.completed,
+        cancelled:  byStage.cancelled,
+        archived:   byStage.archived,
+        totalHouseholds,
+        householdsServed,
+        householdsRemaining,
+        progressByPurok,
+        volunteerPerformance: Object.values(volunteerMap).sort((a, b) => b.completed - a.completed),
+      }
+    } catch (error) {
+      console.error('Error computing dashboard analytics:', error)
+      return {
+        totalDistributions: 0, pending: 0, approved: 0, scheduled: 0, inProgress: 0,
+        completed: 0, cancelled: 0, archived: 0, totalHouseholds: 0, householdsServed: 0,
+        householdsRemaining: 0, progressByPurok: [], volunteerPerformance: [],
+      }
     }
   }
 
@@ -17763,6 +19948,8 @@ class FoodAidService {
       let message = ''
       if (action === 'scheduled') {
         message = `Food aid scheduled for ${schedule.purok} on ${schedule.date}`
+      } else if (action === 'approved') {
+        message = `Food aid distribution for ${schedule.purok} was approved`
       } else if (action === 'completed') {
         message = `Food aid distribution completed for ${schedule.purok}`
       }
@@ -17782,51 +19969,54 @@ class FoodAidService {
 
 export default new FoodAidService()
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\healthService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\healthService.js ==
 
 import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
 
 class HealthService {
-  async getHealthRecords() {
-    try {
-      const userId = auth.currentUser?.uid
-      if (!userId) {
-        console.log('No authenticated user for health records')
-        return []
-      }
-
-      let snapshot
-      try {
-        // Try with orderBy first (requires composite index)
-        const q = query(
-          collection(db, 'healthRecords'),
-          where('userId', '==', userId),
-          orderBy('createdAt', 'desc')
-        )
-        snapshot = await getDocs(q)
-      } catch (error) {
-        console.log('orderBy failed, trying without it:', error.message)
-        // If orderBy fails (no index), fetch without it and sort in memory
-        const q = query(
-          collection(db, 'healthRecords'),
-          where('userId', '==', userId)
-        )
-        snapshot = await getDocs(q)
-      }
-
-      const records = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      
-      console.log('Total health records:', records.length)
-      return records
-    } catch (error) {
-      console.error('Error fetching health records:', error)
+  async getHealthRecords(purok = null) {
+  try {
+    const userId = auth.currentUser?.uid
+    if (!userId) {
+      console.log('No authenticated user for health records')
       return []
     }
+
+    // If a purok is passed, scope to everyone in that purok.
+    // Otherwise fall back to the caller's own records.
+    const filterField = purok ? 'userPurok' : 'userId'
+    const filterValue = purok || userId
+
+    let snapshot
+    try {
+      const q = query(
+        collection(db, 'healthRecords'),
+        where(filterField, '==', filterValue),
+        orderBy('createdAt', 'desc')
+      )
+      snapshot = await getDocs(q)
+    } catch (error) {
+      console.log('orderBy failed, trying without it:', error.message)
+      const q = query(
+        collection(db, 'healthRecords'),
+        where(filterField, '==', filterValue)
+      )
+      snapshot = await getDocs(q)
+    }
+
+    const records = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+
+    console.log('Total health records:', records.length)
+    return records
+  } catch (error) {
+    console.error('Error fetching health records:', error)
+    return []
   }
+}
 
   async getHealthRecordById(id) {
     try {
@@ -18115,10 +20305,11 @@ class HealthService {
 
 export default new HealthService()
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\initializeDemoData.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\initializeDemoData.js ==
 
 import { collection, getDocs, addDoc, query, where } from 'firebase/firestore'
 import { db } from '../config/firebase'
+import { PUROKS_SHORT } from '../constants/puroks'
 
 // Helper to check if demo data exists
 async function isDemoDataInitialized() {
@@ -18160,9 +20351,9 @@ export const initializeDemoData = async () => {
         date: '2026-02-15',
         time: '09:00',
         duration: 'Full day',
-        venue: 'Barangay Court',
+        venue: 'Barangay Ilihan Court',
         expectedAttendees: 50,
-        description: 'Annual basketball tournament for all puroks',
+        description: 'Annual basketball tournament for all puroks of Barangay Ilihan',
         status: 'upcoming',
         attendees: [],
         createdBy: 'demo',
@@ -18175,9 +20366,9 @@ export const initializeDemoData = async () => {
         date: '2026-02-01',
         time: '08:00',
         duration: 'Half day',
-        venue: 'Barangay Hall',
+        venue: 'Barangay Ilihan Hall',
         expectedAttendees: 60,
-        description: 'Free health checkup for senior citizens',
+        description: 'Free health checkup for senior citizens in Barangay Ilihan',
         status: 'upcoming',
         attendees: [],
         createdBy: 'demo',
@@ -18185,14 +20376,14 @@ export const initializeDemoData = async () => {
         updatedAt: new Date('2026-01-18').toISOString()
       },
       {
-        title: 'Community Clean-up',
+        title: 'Barangay Ilihan Clean-up',
         category: 'Community Service',
         date: '2026-02-08',
         time: '06:00',
         duration: '3 hours',
         venue: 'All Puroks',
         expectedAttendees: 80,
-        description: 'Monthly community cleanup drive',
+        description: 'Monthly community cleanup drive for Barangay Ilihan',
         status: 'upcoming',
         attendees: [],
         createdBy: 'demo',
@@ -18285,7 +20476,7 @@ export const initializeDemoData = async () => {
   }
 }
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\notificationService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\notificationService.js ==
 
 import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
@@ -18434,7 +20625,7 @@ class NotificationService {
 
 export default new NotificationService()
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\services\storageService.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\storageService.js ==
 
 // localStorage wrapper for data persistence
 // This can be easily replaced with real API calls later
@@ -18484,7 +20675,9 @@ class StorageService {
 export default new StorageService()
 export { STORAGE_KEYS }
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\utils\locationUtils.js ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\utils\locationUtils.js ==
+
+import { PUROKS_SHORT } from '../constants/puroks.js'
 
 // Toledo City, Cebu â€“ Barangay GPS data
 export const TOLEDO_BARANGAYS = [
@@ -18510,10 +20703,10 @@ export const TOLEDO_BARANGAYS = [
   { id: 'talavera',        name: 'Talavera',               lat: 10.3601, lng: 123.6561, terrain: 'flat',        accessibility: 'excellent' },
 ]
 
-export const PUROKS_LIST = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6']
+export const PUROKS_LIST = PUROKS_SHORT
 
-// Distribution hub (Barangay Hall at Poblacion)
-export const DISTRIBUTION_HUB = { lat: 10.3737, lng: 123.6384, name: 'Poblacion (Barangay Hall)' }
+// Distribution hub (Barangay Ilihan Hall)
+export const DISTRIBUTION_HUB = { lat: 10.3321, lng: 123.6187, name: 'Barangay Ilihan Hall' }
 
 // Purok â†’ approximate barangay coordinates (for enriching legacy data)
 export const PUROK_COORDS = {
@@ -18730,7 +20923,8 @@ export const getPositionAsync = () =>
     )
   })
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\App.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\App.jsx ==
+
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
@@ -18743,6 +20937,7 @@ import HomePage from './pages/HomePage'
 import HealthPage from './pages/HealthPage'
 import RecordCheckupPage from './pages/RecordCheckupPage'
 import FoodAidPage from './pages/FoodAidPage'
+import FoodAidMyAssignmentsPage from './pages/FoodAidMyAssignmentsPage'
 import OptimizeSchedulePage from './pages/OptimizeSchedulePage'
 import EventsPage from './pages/EventsPage'
 import CreateEventPage from './pages/CreateEventPage'
@@ -18757,6 +20952,7 @@ import AdminApprovalsPage from './pages/AdminApprovalsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminRequestsPage from './pages/AdminRequestsPage'
 import RequestAdminPage from './pages/RequestAdminPage'
+import AIInsightsPage from './pages/AIInsightsPage'
 import ReportEmergencyPage from './pages/ReportEmergencyPage'
 import EmergencyManagementPage from './pages/EmergencyManagementPage'
 import BHWDashboard from './pages/BHWDashboard'
@@ -18819,6 +21015,16 @@ function App() {
                 <OptimizeSchedulePage />
               </Layout>
             </AdminRoute>
+          }
+        />
+        <Route
+          path="/food-aid/my-assignments"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <FoodAidMyAssignmentsPage />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route
@@ -18894,6 +21100,18 @@ function App() {
           }
         />
 
+        {/* AI Decision Support - accessible by admin, barangay officials, and BHWs */}
+        <Route
+          path="/ai-insights"
+          element={
+            <AdminRoute>
+              <Layout>
+                <AIInsightsPage />
+              </Layout>
+            </AdminRoute>
+          }
+        />
+
         {/* Admin Routes - Only accessible by admin and barangay officials */}
         <Route
           path="/admin"
@@ -18955,7 +21173,7 @@ function App() {
 
 export default App
 
-== FILE: C:\Users\Admin\Documents\SmartCo\src\main.jsx ==
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\main.jsx ==
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

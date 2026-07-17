@@ -1,9 +1,43 @@
 
 import { useState, useEffect } from 'react'
-import { X, Calendar, Clock, FileText, CheckCircle, Loader2, CalendarCheck } from 'lucide-react'
+import { X, Calendar, Clock, FileText, CheckCircle, Loader2, CalendarCheck, AlertTriangle } from 'lucide-react'
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import healthService from '../services/healthService'
+import { db } from '../config/firebase'
+
+const TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']
+
+// A request only blocks its slot while it's still "in play" — once a BHW
+// rejects it or marks it completed, the slot frees back up for others.
+const ACTIVE_STATUSES = ['pending_review', 'scheduled', 'inreview']
+
+// Truncates the checkup notes for the dashboard's vitalsSummary preview.
+// A blind slice(0, n) can land mid-word (e.g. "AI Health Analysis" -> "AI
+// Anal"), so this prefers to drop the trailing "AI Health Analysis:" block
+// entirely when it wouldn't fully fit, and otherwise backs off to the last
+// whole word before the limit.
+const truncateForSummary = (text, maxLen = 140) => {
+  if (!text) return ''
+  if (text.length <= maxLen) return text
+
+  const analysisMarker = '\n\nAI Health Analysis:'
+  const analysisIdx = text.indexOf(analysisMarker)
+
+  // If including the analysis label would cut it off partway, just drop it
+  // and summarize the symptoms alone instead.
+  const base = analysisIdx !== -1 && analysisIdx <= maxLen
+    ? text.slice(0, analysisIdx)
+    : text.slice(0, maxLen)
+
+  if (base.length <= maxLen) return `${base.trim()}...`
+
+  const cut = base.slice(0, maxLen)
+  const lastSpace = cut.lastIndexOf(' ')
+  const safeCut = lastSpace > 40 ? cut.slice(0, lastSpace) : cut
+  return `${safeCut.trim()}...`
+}
 
 const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversation = [] }) => {
   const { isDarkMode } = useTheme()
@@ -20,6 +54,8 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
   const [loading, setLoading] = useState(false)
   const [done, setDone]     = useState(false)
   const [error, setError]   = useState('')
+  const [bookedSlots, setBookedSlots] = useState({})   // { '2026-07-10': Set(['09:00','14:00']) }
+  const [slotsLoading, setSlotsLoading] = useState(true)
 
   // Sync form state every time the modal opens so the latest
   // AI analysis (passed via symptomsSummary) is always shown.
@@ -34,14 +70,80 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
     }
   }, [isOpen, symptomsSummary])
 
+  // Real-time availability: listen to every appointment request in the
+  // bookable window so residents see slots fill up / free up live, instead
+  // of finding out only after submitting and waiting for BHW review.
+  useEffect(() => {
+    if (!isOpen) return
+
+    setSlotsLoading(true)
+    const q = query(
+      collection(db, 'health_requests'),
+      where('preferredAppointmentDate', '>=', today),
+      where('preferredAppointmentDate', '<=', maxDateStr)
+    )
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const map = {}
+        snapshot.docs.forEach((docSnap) => {
+          const req = docSnap.data()
+          if (!req.preferredAppointmentDate || !req.preferredAppointmentTime) return
+          if (!ACTIVE_STATUSES.includes(req.status)) return
+          if (!map[req.preferredAppointmentDate]) map[req.preferredAppointmentDate] = new Set()
+          map[req.preferredAppointmentDate].add(req.preferredAppointmentTime)
+        })
+        setBookedSlots(map)
+        setSlotsLoading(false)
+      },
+      (err) => {
+        console.error('Error listening for appointment availability:', err)
+        setSlotsLoading(false)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [isOpen, today, maxDateStr])
+
+  const takenTimesForDate = date ? (bookedSlots[date] || new Set()) : new Set()
+  const availableTimesForDate = TIME_SLOTS.filter((t) => !takenTimesForDate.has(t))
+  const isDateFullyBooked = Boolean(date) && !slotsLoading && availableTimesForDate.length === 0
+
+  // If the picked time gets taken by someone else live, or the date changes,
+  // snap to the next open time instead of leaving a taken one selected.
+  useEffect(() => {
+    if (!date) return
+    if (takenTimesForDate.has(time)) {
+      setTime(availableTimesForDate[0] || '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, bookedSlots])
+
   if (!isOpen) return null
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!date) { setError('Please select a date.'); return }
+    if (isDateFullyBooked) { setError('This date is fully booked. Please choose another date.'); return }
+    if (!time) { setError('Please select an available time.'); return }
     setError('')
     setLoading(true)
     try {
+      // Final real-time safety check right before submitting, in case someone
+      // else grabbed this exact slot in the moment between picking and submitting.
+      const conflictSnap = await getDocs(query(
+        collection(db, 'health_requests'),
+        where('preferredAppointmentDate', '==', date),
+        where('preferredAppointmentTime', '==', time)
+      ))
+      const stillTaken = conflictSnap.docs.some((d) => ACTIVE_STATUSES.includes(d.data().status))
+      if (stillTaken) {
+        setError('Sorry, that slot was just taken. Please pick another time.')
+        setLoading(false)
+        return
+      }
+
       await healthService.createHealthRecord({
         type: 'scheduled_checkup',
         userName: user?.fullName,
@@ -61,7 +163,7 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
         })),
         message: `AI-recommended barangay checkup on ${date} at ${time}`,
         healthAssessment: {
-          vitalsSummary: `Scheduled checkup: ${notes.slice(0, 120)}`,
+          vitalsSummary: `Scheduled checkup: ${truncateForSummary(notes)}`,
           overallStatus: 'scheduled',
           urgencyLevel: 'routine'
         }
@@ -154,12 +256,27 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
               <input
                 type="date"
                 value={date}
-                onChange={e => setDate(e.target.value)}
+                onChange={e => { setDate(e.target.value); setError('') }}
                 min={today}
                 max={maxDateStr}
                 className={inputCls}
                 required
               />
+              {date && (
+                <p className={`mt-1.5 flex items-center gap-1 text-xs ${
+                  isDateFullyBooked
+                    ? 'text-red-500'
+                    : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                  {slotsLoading ? (
+                    'Checking availability…'
+                  ) : isDateFullyBooked ? (
+                    <><AlertTriangle className="w-3.5 h-3.5" /> Fully booked — please pick another date.</>
+                  ) : (
+                    `${availableTimesForDate.length} of ${TIME_SLOTS.length} time slots open on this date`
+                  )}
+                </p>
+              )}
             </div>
 
             {/* Time */}
@@ -167,12 +284,21 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
               <label className={`flex items-center gap-1.5 text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 <Clock className="w-3.5 h-3.5" /> Preferred Time
               </label>
-              <select value={time} onChange={e => setTime(e.target.value)} className={inputCls}>
-                {['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00'].map(t => (
-                  <option key={t} value={t}>
-                    {new Date(`2000-01-01T${t}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                  </option>
-                ))}
+             <select
+                value={time}
+                onChange={e => setTime(e.target.value)}
+                className={inputCls}
+                disabled={isDateFullyBooked}
+              >
+                {TIME_SLOTS.map(t => {
+                  const taken = takenTimesForDate.has(t)
+                  return (
+                    <option key={t} value={t} disabled={taken}>
+                      {new Date(`2000-01-01T${t}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      {taken ? ' — Booked' : ''}
+                    </option>
+                  )
+                })}
               </select>
             </div>
 
@@ -190,17 +316,17 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
               />
               {symptomsSummary && (
                 <p className={`text-xs mt-1 flex items-center gap-1 ${isDarkMode ? 'text-green-500' : 'text-green-600'}`}>
-                  <span>âœ¦</span> Pre-filled from your AI health conversation
+                  <span></span> Pre-filled from your AI health conversation
                 </p>
               )}
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isDateFullyBooked}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Schedulingâ€¦</span></> : <><CalendarCheck className="w-4 h-4" /><span>Confirm Schedule</span></>}
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Scheduling</span></> : <><CalendarCheck className="w-4 h-4" /><span>Confirm Schedule</span></>}
             </button>
           </form>
         )}

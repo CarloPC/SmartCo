@@ -192,7 +192,7 @@ const HealthPage = () => {
                 Health Management
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-                Monitor community health and chat with AI for guidance.
+                Monitor Barangay Ilihan health and chat with AI for guidance.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <button

@@ -171,7 +171,7 @@ const HomePage = () => {
   {
     label: 'Record Checkup',
     description: 'Log a new resident health update',
-    path: '/health/record',
+    path: '/health',
     icon: Heart,
     gradient: 'from-sky-500/60 via-blue-500/40 to-cyan-600/25',
     glow: 'hover:shadow-sky-500/30',
@@ -189,9 +189,9 @@ const HomePage = () => {
     : []),
 
   {
-    label: 'Create Event',
+    label: 'Check Event',
     description: 'Publish a barangay activity',
-    path: '/events/create',
+    path: '/events',
     icon: Calendar,
     gradient: 'from-violet-500/60 via-fuchsia-500/40 to-purple-700/25',
     glow: 'hover:shadow-violet-500/30',
@@ -262,7 +262,7 @@ const HomePage = () => {
               {greeting}, {user?.fullName?.split(' ')[0] || 'there'} 😊
             </h2>
             <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-              Keep tabs on health updates, food aid progress, and community events  all in one modern dashboard.
+              Keep tabs on health updates, food aid progress, and Barangay Ilihan events  all in one modern dashboard.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <button
@@ -336,7 +336,7 @@ const HomePage = () => {
               <Activity className="h-4 w-4 text-sky-200" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-white/50">Community health trend</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-white/50">Barangay Ilihan health trend</p>
               <p className="text-base font-semibold text-white">Weekly pulse of resident checkups</p>
             </div>
           </div>

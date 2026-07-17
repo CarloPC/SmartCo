@@ -11,7 +11,8 @@ import {
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import foodAidService from '../services/foodAidService'
+import foodAidService, { WORKFLOW_LABELS } from '../services/foodAidService'
+import adminService from '../services/adminService'
 import LocationPicker from '../components/LocationPicker'
 import {
   TOLEDO_BARANGAYS, PUROKS_LIST, PUROK_COORDS,
@@ -562,7 +563,185 @@ function RouteModal({ dist, userCoords, userBarangay, isDarkMode, onClose }) {
   )
 }
 
+  
+
 // ── Main Page ────────────────────────────────────────────────────────────────
+// ── Admin: Assign Volunteer Modal ──────────────────────────────────────────────────────────
+const VOLUNTEER_ROLE_OPTIONS = [
+  { value: 'bhw',               label: 'BHW' },
+  { value: 'resident',          label: 'Resident' },
+  { value: 'barangay_official', label: 'Barangay Official' },
+  { value: 'custom',            label: '+ Add Custom' },
+]
+
+function AssignVolunteerModal({ isDarkMode, onClose, onAssign }) {
+  const [roleFilter,     setRoleFilter]     = useState('bhw')
+  const [users,          setUsers]          = useState([])
+  const [loadingUsers,   setLoadingUsers]   = useState(true)
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [customName,     setCustomName]     = useState('')
+  const [submitting,     setSubmitting]     = useState(false)
+
+  useEffect(() => {
+    adminService.getAllUsers()
+      .then(all => setUsers(all))
+      .finally(() => setLoadingUsers(false))
+  }, [])
+
+  const filteredUsers = users.filter(u => u.role === roleFilter)
+
+  const handleRoleChange = val => {
+    setRoleFilter(val)
+    setSelectedUserId('')
+    setCustomName('')
+  }
+
+  const handleSubmit = async () => {
+    let volunteer = null
+    if (roleFilter === 'custom') {
+      if (!customName.trim()) { alert('Please enter a name.'); return }
+      volunteer = { id: 'custom_' + Date.now(), name: customName.trim() }
+    } else {
+      const u = filteredUsers.find(u => u.id === selectedUserId)
+      if (!u) { alert('Please select a volunteer from the list.'); return }
+      volunteer = { id: u.id, name: u.fullName || u.name || u.email || 'Unnamed' }
+    }
+    try {
+      setSubmitting(true)
+      await onAssign(volunteer)
+      onClose()
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const inputCls = 'w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ' +
+    (isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-300 text-gray-900')
+  const labelCls = 'block text-xs font-semibold mb-1.5 uppercase tracking-wide ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className={
+        'relative w-full sm:max-w-sm max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl shadow-2xl p-5 ' +
+        (isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white')
+      }>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className={'font-bold text-base ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Assign Volunteer</h3>
+          <button onClick={onClose} className={'p-1.5 rounded-lg ' + (isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500')}>
+            <XCircle className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className={labelCls}>Volunteer Type</label>
+            <select value={roleFilter} onChange={e => handleRoleChange(e.target.value)} className={inputCls}>
+              {VOLUNTEER_ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
+          {roleFilter === 'custom' ? (
+            <div>
+              <label className={labelCls}>Custom Volunteer Name</label>
+              <input type="text" value={customName} onChange={e => setCustomName(e.target.value)}
+                placeholder="e.g. Juan Dela Cruz (community volunteer)" className={inputCls} />
+              <p className={'text-xs mt-1.5 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
+                Use this for volunteers who don't have a SmartCo account.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label className={labelCls}>Select {VOLUNTEER_ROLE_OPTIONS.find(o => o.value === roleFilter)?.label}</label>
+              {loadingUsers ? (
+                <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>Loading users…</p>
+              ) : filteredUsers.length === 0 ? (
+                <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
+                  No {VOLUNTEER_ROLE_OPTIONS.find(o => o.value === roleFilter)?.label} accounts found. Try "+ Add Custom" instead.
+                </p>
+              ) : (
+                <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className={inputCls}>
+                  <option value="">Select…</option>
+                  {filteredUsers.map(u => (
+                    <option key={u.id} value={u.id}>{u.fullName || u.name || u.email || u.id}{u.purok ? ` · ${u.purok}` : ''}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          <button onClick={handleSubmit} disabled={submitting}
+            className={
+              'w-full py-3 rounded-xl font-bold text-white transition flex items-center justify-center space-x-2 shadow-lg disabled:opacity-50 ' +
+              (isDarkMode ? 'bg-green-700 hover:bg-green-600' : 'bg-green-500 hover:bg-green-600')
+            }>
+            {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Assigning…</span></> : <span>Assign Volunteer</span>}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Admin: Workflow Actions (Approve → AI Schedule → Assign Volunteer → Start → Progress → Archive) ──
+function FoodAidWorkflowActions({ dist }) {
+  const { isDarkMode: isDarkModeCtx } = useTheme()
+  const [busy, setBusy] = useState(false)
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const stage = dist.progress?.workflowStatus || 'approved'
+  const btnCls = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/80 hover:bg-blue-500 text-white transition disabled:opacity-50'
+
+  const run = async (fn) => {
+    try {
+      setBusy(true)
+      await fn()
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  // Real-time listener on the page refreshes the card automatically after each action.
+
+  if (stage === 'pending_approval')
+    return <button disabled={busy} onClick={() => run(() => foodAidService.approveDistribution(dist.id))} className={btnCls}>✓ Approve</button>
+
+  if (stage === 'approved')
+    return <button disabled={busy} onClick={() => run(() => foodAidService.generateAISchedule(dist.id))} className={btnCls}>✨ Generate AI Schedule</button>
+
+  if (stage === 'ai_scheduled')
+    return (
+      <>
+        <button disabled={busy} onClick={() => setShowAssignModal(true)} className={btnCls}>🧑‍🤝‍🧑 Assign Volunteer</button>
+        {showAssignModal && (
+          <AssignVolunteerModal
+            isDarkMode={isDarkModeCtx}
+            onClose={() => setShowAssignModal(false)}
+            onAssign={volunteer => run(() => foodAidService.assignVolunteer(dist.id, volunteer))}
+          />
+        )}
+      </>
+    )
+
+  if (stage === 'volunteer_assigned')
+    return <button disabled={busy} onClick={() => run(() => foodAidService.startDistribution(dist.id))} className={btnCls}>🚚 Start Distribution</button>
+
+  if (stage === 'distribution_started' || stage === 'in_progress')
+    return <button disabled={busy} onClick={() => {
+      const val = prompt('Households served so far?', String(dist.progress?.householdsServed || 0))
+      if (val == null) return
+      run(() => foodAidService.updateHouseholdProgress(dist.id, parseInt(val) || 0))
+    }} className={btnCls}>📋 Update Progress</button>
+
+  if (stage === 'completed')
+    return <button disabled={busy} onClick={() => run(() => foodAidService.archiveDistribution(dist.id))} className={btnCls}>🗄 Archive</button>
+
+  return null
+}
+
+// ── Main Page ────────────────────────────────────────────────────────────────────────────
 const FoodAidPage = () => {
   const { isDarkMode } = useTheme()
   const { user }       = useAuth()
@@ -585,7 +764,23 @@ const FoodAidPage = () => {
   const [showPostModal, setShowPostModal] = useState(false)
   const [routeDist,     setRouteDist]     = useState(null)
 
-  useEffect(() => { detectLocation(); fetchDistributions() }, [])
+  useEffect(() => {
+    detectLocation()
+    setLoading(true)
+    const unsubscribe = foodAidService.subscribeToFoodAid(all => {
+      const enriched = all.map(d => {
+        if (d.barangayLat && d.barangayLng) return d
+        const b  = TOLEDO_BARANGAYS.find(b => b.name === d.barangay || b.id === d.barangayId)
+        if (b) return { ...d, barangayLat: b.lat, barangayLng: b.lng }
+        const pc = PUROK_COORDS[d.purok]
+        if (pc) return { ...d, barangayLat: pc.lat, barangayLng: pc.lng }
+        return { ...d, barangayLat: 10.3737, barangayLng: 123.6384 }
+      })
+      setDistributions(enriched)
+      setLoading(false)
+    })
+    return () => unsubscribe()
+  }, [])
 
   const detectLocation = async () => {
     setLocationStatus('detecting')
@@ -605,25 +800,9 @@ const FoodAidPage = () => {
     if (b) setUserBarangay(b)
   }
 
-  const fetchDistributions = async () => {
-    try {
-      setLoading(true)
-      const all = await foodAidService.getAllFoodAidSchedules()
-      const enriched = all.map(d => {
-        if (d.barangayLat && d.barangayLng) return d
-        const b  = TOLEDO_BARANGAYS.find(b => b.name === d.barangay || b.id === d.barangayId)
-        if (b) return { ...d, barangayLat: b.lat, barangayLng: b.lng }
-        const pc = PUROK_COORDS[d.purok]
-        if (pc) return { ...d, barangayLat: pc.lat, barangayLng: pc.lng }
-        return { ...d, barangayLat: 10.3737, barangayLng: 123.6384 }
-      })
-      setDistributions(enriched)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // No-op: the onSnapshot listener registered above already keeps `distributions`
+  // in sync in real time, including right after a new post succeeds.
+  const fetchDistributions = () => {}
 
   const getFiltered = () => {
   let list = [...distributions]
@@ -986,6 +1165,21 @@ const FoodAidPage = () => {
                         {badge.label}
                       </span>
                     </div>
+
+                    {/* Workflow stage · assigned volunteer · admin actions */}
+                    {isAdmin && (
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white/70">
+                          {WORKFLOW_LABELS[d.progress?.workflowStatus] || 'Approved'}
+                        </span>
+                        {d.assignedVolunteer?.name && (
+                          <span className="rounded-full bg-emerald-500/20 px-2.5 py-1 text-xs font-semibold text-emerald-200">
+                            👤 {d.assignedVolunteer.name}
+                          </span>
+                        )}
+                        <FoodAidWorkflowActions dist={d} />
+                      </div>
+                    )}
 
                     {/* Delivery progress bar */}
                     {d.totalFamilies > 0 && (

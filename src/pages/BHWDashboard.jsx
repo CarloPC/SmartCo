@@ -329,7 +329,7 @@ setSelectedRequest(null)
                 <Stethoscope className="h-3.5 w-3.5 text-emerald-300" />
                 BHW Workspace
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Community Health Operations</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Barangay Ilihan Health Operations</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70 sm:text-base">
                 Review requests, triage residents, and schedule follow-up visits from a secure, role-specific dashboard.
               </p>

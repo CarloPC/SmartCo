@@ -1,6 +1,7 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Boxes } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
+import { PUROKS_ILIHAN } from '../constants/puroks'
 
 /**
  * FoodAidProjectionChart
@@ -11,12 +12,14 @@ import { useTheme } from '../context/ThemeContext'
  */
 
 // Drop this in alongside initializeDemoData() if you need quick mock data
-export const buildFoodAidProjectionDemoData = (puroks = []) =>
-  (puroks.length ? puroks : ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6']).map((name) => {
+export const buildFoodAidProjectionDemoData = (puroks = []) => {
+  const purokList = puroks.length ? puroks : PUROKS_ILIHAN.map((p, i) => `Purok ${i + 1}`)
+  return purokList.map((name) => {
     const targetHouseholds = 80 + Math.floor(Math.random() * 80)
     const servedHouseholds = Math.max(0, targetHouseholds - Math.floor(Math.random() * 35))
     return { name, targetHouseholds, servedHouseholds }
   })
+}
 
 const CustomTooltip = ({ active, payload, label, isDarkMode }) => {
   if (!active || !payload || !payload.length) return null

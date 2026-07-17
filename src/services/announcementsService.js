@@ -102,7 +102,7 @@ class AnnouncementsService {
       type: 'info',
       category: 'community',
       message: isEvent
-        ? `📅 New event posted: "${title}" — check the Community Board for details.`
+        ? `📅 New event posted: "${title}" — check the Barangay Ilihan Board for details.`
         : `📢 New announcement from ${authorName || 'an official'}: "${title}"`,
       relatedId: ref.id,
       relatedType: 'announcement'

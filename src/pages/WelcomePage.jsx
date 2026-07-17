@@ -20,7 +20,7 @@ const WelcomePage = () => {
     {
       icon: Heart,
       title: 'Health Care',
-      description: 'Track and manage community health records, checkups, and medical alerts in real time.',
+      description: 'Track and manage Barangay Ilihan health records, checkups, and medical alerts in real time.',
       iconBg: 'bg-gradient-to-br from-rose-500 via-pink-500 to-red-500',
       iconRing: 'ring-rose-300/40',
     },
@@ -163,7 +163,7 @@ const WelcomePage = () => {
 
           <p className="text-white/70 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
             A unified digital platform for health tracking, food aid distribution,
-            community events, and administrative governance — all in one place.
+            Barangay Ilihan events, and administrative governance — all in one place.
           </p>
 
           {/* CTA Buttons */}
@@ -330,7 +330,7 @@ const WelcomePage = () => {
               <span className="text-white/60 font-semibold">SmartCo</span>
             </div>
             <p className="text-white/40 text-sm">
-              © 2026 SmartCo. All rights reserved. · Barangay Toledo Management System
+              © 2026 SmartCo. All rights reserved. · Barangay Ilihan Management System
             </p>
             <div className="flex items-center space-x-4 text-white/40 text-sm">
               <span className="hover:text-white/70 cursor-pointer transition">Privacy</span>

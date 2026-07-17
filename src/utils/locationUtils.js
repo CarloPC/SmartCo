@@ -1,3 +1,5 @@
+import { PUROKS_SHORT } from '../constants/puroks.js'
+
 // Toledo City, Cebu – Barangay GPS data
 export const TOLEDO_BARANGAYS = [
   { id: 'poblacion',       name: 'Poblacion',              lat: 10.3737, lng: 123.6384, terrain: 'flat',        accessibility: 'excellent', hub: true },
@@ -22,10 +24,10 @@ export const TOLEDO_BARANGAYS = [
   { id: 'talavera',        name: 'Talavera',               lat: 10.3601, lng: 123.6561, terrain: 'flat',        accessibility: 'excellent' },
 ]
 
-export const PUROKS_LIST = ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6']
+export const PUROKS_LIST = PUROKS_SHORT
 
-// Distribution hub (Barangay Hall at Poblacion)
-export const DISTRIBUTION_HUB = { lat: 10.3737, lng: 123.6384, name: 'Poblacion (Barangay Hall)' }
+// Distribution hub (Barangay Ilihan Hall)
+export const DISTRIBUTION_HUB = { lat: 10.3321, lng: 123.6187, name: 'Barangay Ilihan Hall' }
 
 // Purok → approximate barangay coordinates (for enriching legacy data)
 export const PUROK_COORDS = {

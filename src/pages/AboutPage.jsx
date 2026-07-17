@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Heart, Shield, Zap, Users, Globe, Award, Sparkles } from 'lucide-react'
+import BARANGAY_CONFIG from '../config/barangayConfig'
 
 const AboutPage = () => {
   const navigate = useNavigate()
@@ -66,8 +67,8 @@ const AboutPage = () => {
           S
         </div>
         <h2 className="mb-1 text-2xl font-bold text-white">SmartCo</h2>
-        <p className="text-white/70">Barangay Management System</p>
-        <p className="mt-0.5 text-sm text-white/40">Version 1.0.0</p>
+        <p className="text-white/70">{BARANGAY_CONFIG.applicationTagline}</p>
+        <p className="text-sm text-white/40">For Barangay Ilihan, Toledo City, Cebu</p>
         <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
           <Sparkles className="h-3.5 w-3.5 text-yellow-300" />
           Powered by AI Technology
@@ -78,10 +79,10 @@ const AboutPage = () => {
       <div className={`${card} p-6`}>
         {sectionHeader(Heart, 'Why we exist', 'Our Mission')}
         <p className="leading-relaxed text-white/70">
-          SmartCo is designed to revolutionize barangay management through technology.
-          We aim to streamline health services, food aid distribution, and community engagement
-          by leveraging AI-powered solutions to create a more efficient, transparent, and
-          responsive barangay governance system.
+          SmartCo was developed specifically for Barangay Ilihan, Toledo City, Cebu to revolutionize
+          local barangay management through technology. We aim to streamline health services, food aid distribution,
+          and community engagement by leveraging AI-powered solutions to create a more efficient, transparent, and
+          responsive governance system for our Barangay Ilihan residents.
         </p>
       </div>
 
@@ -147,8 +148,9 @@ const AboutPage = () => {
             </button>
           ))}
           <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
-            <p><span className="font-semibold text-white">Contact:</span> support@smartco.ph</p>
-            <p className="mt-1"><span className="font-semibold text-white">Location:</span> Toledo City, Cebu, Philippines</p>
+            <p><span className="font-semibold text-white">Contact:</span> {BARANGAY_CONFIG.contactEmail}</p>
+            <p className="mt-1"><span className="font-semibold text-white">Location:</span> {BARANGAY_CONFIG.fullAddress}</p>
+            <p className="mt-1"><span className="font-semibold text-white">Health Center:</span> {BARANGAY_CONFIG.healthCenterName}</p>
           </div>
         </div>
       </div>
@@ -156,7 +158,7 @@ const AboutPage = () => {
       {/* Footer */}
       <div className="py-4 text-center">
         <p className="text-sm text-white/50">© 2026 SmartCo. All rights reserved.</p>
-        <p className="mt-1 text-xs text-blue-200/70">Made with heart for the community of Toledo City</p>
+        <p className="mt-1 text-xs text-blue-200/70">Developed with heart for Barangay Ilihan, Toledo City, Cebu</p>
       </div>
     </div>
   )

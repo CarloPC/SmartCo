@@ -1,3 +1,4 @@
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -9,6 +10,7 @@ import HomePage from './pages/HomePage'
 import HealthPage from './pages/HealthPage'
 import RecordCheckupPage from './pages/RecordCheckupPage'
 import FoodAidPage from './pages/FoodAidPage'
+import FoodAidMyAssignmentsPage from './pages/FoodAidMyAssignmentsPage'
 import OptimizeSchedulePage from './pages/OptimizeSchedulePage'
 import EventsPage from './pages/EventsPage'
 import CreateEventPage from './pages/CreateEventPage'
@@ -23,6 +25,7 @@ import AdminApprovalsPage from './pages/AdminApprovalsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminRequestsPage from './pages/AdminRequestsPage'
 import RequestAdminPage from './pages/RequestAdminPage'
+import AIInsightsPage from './pages/AIInsightsPage'
 import ReportEmergencyPage from './pages/ReportEmergencyPage'
 import EmergencyManagementPage from './pages/EmergencyManagementPage'
 import BHWDashboard from './pages/BHWDashboard'
@@ -85,6 +88,16 @@ function App() {
                 <OptimizeSchedulePage />
               </Layout>
             </AdminRoute>
+          }
+        />
+        <Route
+          path="/food-aid/my-assignments"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <FoodAidMyAssignmentsPage />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route
@@ -155,6 +168,18 @@ function App() {
             <AdminRoute>
               <Layout>
                 <EmergencyManagementPage />
+              </Layout>
+            </AdminRoute>
+          }
+        />
+
+        {/* AI Decision Support - accessible by admin, barangay officials, and BHWs */}
+        <Route
+          path="/ai-insights"
+          element={
+            <AdminRoute>
+              <Layout>
+                <AIInsightsPage />
               </Layout>
             </AdminRoute>
           }
