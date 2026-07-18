@@ -1,26 +1,27 @@
+
 /**
- * AI Insights Service — the engine behind the "AI Decision Support" dashboard.
+ * AI Insights Service â€” the engine behind the "AI Decision Support" dashboard.
  *
  * DESIGN NOTE (read me before editing):
  * This service intentionally does NOT dump raw Firestore data into an LLM prompt
  * and ask it to "figure things out." That produces vague, unreliable, hard-to-audit
  * recommendations. Instead it follows a two-layer approach:
  *
- *   Layer 1 — Deterministic analysis (this file): reads live Firestore data through
+ *   Layer 1 â€” Deterministic analysis (this file): reads live Firestore data through
  *   the EXISTING services (healthService/bhwService, foodAidService, eventsService,
- *   emergencyService) and computes concrete signals — overdue puroks, low inventory,
+ *   emergencyService) and computes concrete signals â€” overdue puroks, low inventory,
  *   volunteer shortages, hotspots, conflicts, trends. This layer always works, even
  *   with no AI key configured, and every number it produces is traceable back to a
  *   specific Firestore field.
  *
- *   Layer 2 — AI explanation (Groq, reusing the same client pattern as
+ *   Layer 2 â€” AI explanation (Groq, reusing the same client pattern as
  *   aiHealthService.js): turns the computed signals into a clear, human-readable
  *   "why" for officials, in the required Summary / Reason / Confidence / Suggested
  *   Action format. If the AI call fails or no key is configured, a rule-based
  *   explanation is used instead so the dashboard never breaks.
  *
  * This keeps the AI explainable ("what was analyzed, why, how confident, what to do")
- * and prevents the AI from ever making a decision — it only ever recommends.
+ * and prevents the AI from ever making a decision â€” it only ever recommends.
  */
 
 import { collection, getDocs, addDoc, query, where, orderBy, limit as fbLimit } from 'firebase/firestore'
@@ -28,6 +29,7 @@ import { db } from '../config/firebase'
 import foodAidService from './foodAidService'
 import eventsService from './eventsService'
 import emergencyService from './emergencyService'
+import documentRequestService from './documentRequestService'
 import { PUROKS_ILIHAN, getShortPurokName } from '../constants/puroks'
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
@@ -42,6 +44,7 @@ export const MODULES = {
   FOOD_AID: 'food_aid',
   EVENTS: 'events',
   EMERGENCY: 'emergency',
+  DOCUMENT: 'document',
 }
 
 export const PRIORITY = {
@@ -50,7 +53,7 @@ export const PRIORITY = {
   LOW: 'low',
 }
 
-// ── Shared Groq caller (mirrors aiHealthService.js so we don't duplicate retry logic twice) ──
+// â”€â”€ Shared Groq caller (mirrors aiHealthService.js so we don't duplicate retry logic twice) â”€â”€
 async function callGroqJSON(systemPrompt, userPrompt) {
   if (!GROQ_API_KEY) return null
 
@@ -93,7 +96,7 @@ async function callGroqJSON(systemPrompt, userPrompt) {
 
 /**
  * Ask the AI to phrase the reasoning for a signal we already computed.
- * Falls back to the deterministic text if the AI is unavailable — the
+ * Falls back to the deterministic text if the AI is unavailable â€” the
  * recommendation itself never depends on the AI being reachable.
  */
 async function explain(signal) {
@@ -105,8 +108,10 @@ async function explain(signal) {
 
   const aiResult = await callGroqJSON(
     `You are the AI Decision Support engine inside SmartCo, the barangay management system for Barangay Ilihan, Toledo City, Cebu. ` +
-    `You assist Barangay Officials, Barangay Health Workers, and Food Aid Coordinators. You NEVER make decisions and NEVER diagnose — ` +
-    `you only explain data-driven recommendations so a human can decide. Respond ONLY with a JSON object with exactly these keys: ` +
+    `You assist Barangay Officials, Barangay Health Workers, and Food Aid Coordinators. You NEVER make decisions and NEVER diagnose â€” ` +
+    `you only explain data-driven recommendations so a human can decide. For document request signals, give only administrative ` +
+    `workload guidance (staffing, backlog, processing time) and NEVER give legal advice about whether a specific document should be ` +
+    `approved or denied. Respond ONLY with a JSON object with exactly these keys: ` +
     `"summary" (1 sentence), "reason" (1-2 sentences explaining why, citing the numbers given), "suggestedAction" (1 short actionable sentence). ` +
     `Do not invent numbers that were not given to you.`,
     `Signal type: ${signal.title}\nData analyzed: ${JSON.stringify(signal.dataAnalyzed)}\nDraft summary: ${signal.summary}\nDraft reason: ${signal.reason}\nDraft action: ${signal.suggestedAction}`
@@ -138,10 +143,10 @@ const daysSince = (isoDate) => {
   return Math.floor((Date.now() - new Date(isoDate).getTime()) / (1000 * 60 * 60 * 24))
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HEALTH AI — reads the existing `health_requests` collection (already used by
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// HEALTH AI â€” reads the existing `health_requests` collection (already used by
 // the BHW dashboard) so we don't duplicate data or add new collections.
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function analyzeHealth() {
   const signals = []
   let requests = []
@@ -174,7 +179,7 @@ async function analyzeHealth() {
     })
   }
 
-  // Overdue for checkups / multiple missed appointments — approximate using stale pending requests
+  // Overdue for checkups / multiple missed appointments â€” approximate using stale pending requests
   const stalePending = requests.filter(r => r.status === 'pending_review' && daysSince(r.createdAt) >= 3)
   if (stalePending.length > 0) {
     signals.push({
@@ -189,7 +194,7 @@ async function analyzeHealth() {
     })
   }
 
-  // Health trend per purok — concerning/critical rate
+  // Health trend per purok â€” concerning/critical rate
   const byPurok = {}
   requests.forEach(r => {
     const p = r.purok || 'Unspecified'
@@ -215,7 +220,7 @@ async function analyzeHealth() {
     })
   }
 
-  // Possible outbreak signal — many requests in a short window mentioning similar symptoms
+  // Possible outbreak signal â€” many requests in a short window mentioning similar symptoms
   const recent = requests.filter(r => daysSince(r.createdAt) <= 7)
   if (recent.length >= 6) {
     const symptomWords = recent
@@ -243,10 +248,10 @@ async function analyzeHealth() {
   return signals
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FOOD AID AI — builds on the existing `_buildAIRecommendation`/priority-purok
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// FOOD AID AI â€” builds on the existing `_buildAIRecommendation`/priority-purok
 // logic already in foodAidService, and adds inventory/volunteer/risk analysis.
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function analyzeFoodAid() {
   const signals = []
   const all = await foodAidService.getAllFoodAidSchedules()
@@ -329,7 +334,7 @@ async function analyzeFoodAid() {
     })
   }
 
-  // Inventory sufficiency — approximate via householdsTarget vs householdsCompleted gap across all active items
+  // Inventory sufficiency â€” approximate via householdsTarget vs householdsCompleted gap across all active items
   const totalTarget = all.reduce((s, d) => s + (d.progress?.householdsTarget || 0), 0)
   const totalServed = all.reduce((s, d) => s + (d.progress?.householdsServed || 0), 0)
   const upcoming = all.filter(d => ['approved', 'ai_scheduled', 'volunteer_assigned'].includes(d.progress?.workflowStatus))
@@ -350,9 +355,9 @@ async function analyzeFoodAid() {
   return signals
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // EVENT MANAGEMENT AI
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function analyzeEvents() {
   const signals = []
   const events = await eventsService.getEvents().catch(() => [])
@@ -401,9 +406,100 @@ async function analyzeEvents() {
   return signals
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // EMERGENCY AI
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// DOCUMENT REQUEST AI — reads the existing `documentRequests` collection
+// through documentRequestService. This is administrative decision support
+// only (workload, backlog, staffing) and must NEVER produce legal advice
+// about whether a document should be issued.
+async function analyzeDocuments() {
+  const signals = []
+  const requests = await documentRequestService.getAllRequests().catch(() => [])
+  if (!requests || requests.length === 0) return signals
+
+  // High number of pending document requests
+  const pending = requests.filter(r => r.status === 'pending')
+  if (pending.length >= 3) {
+    signals.push({
+      module: MODULES.DOCUMENT,
+      title: 'High number of pending document requests',
+      priority: pending.length >= 8 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      confidence: 'High',
+      dataAnalyzed: { pendingCount: pending.length },
+      summary: `${pending.length} document request${pending.length > 1 ? 's are' : ' is'} currently pending review.`,
+      reason: `The number of unreviewed document requests has reached a level that may cause delays for residents.`,
+      suggestedAction: 'Assign another official to process document requests during peak periods.',
+    })
+  }
+
+  // Most requested document type
+  const byType = {}
+  requests.forEach(r => {
+    const label = r.documentType === 'Other' && r.otherDocument ? r.otherDocument : r.documentType
+    if (!label) return
+    byType[label] = (byType[label] || 0) + 1
+  })
+  const topType = Object.entries(byType).sort((a, b) => b[1] - a[1])[0]
+  if (topType && topType[1] >= 3) {
+    signals.push({
+      module: MODULES.DOCUMENT,
+      title: 'Most requested document type',
+      priority: PRIORITY.LOW,
+      confidence: 'High',
+      dataAnalyzed: { documentType: topType[0], count: topType[1], totalRequests: requests.length },
+      summary: `"${topType[0]}" is the most requested document, with ${topType[1]} of ${requests.length} total requests.`,
+      reason: `This document type appears more often than any other across all recorded requests.`,
+      suggestedAction: `Consider pre-preparing templates or streamlining processing for "${topType[0]}" requests.`,
+    })
+  }
+
+  // Most active purok for document requests
+  const byPurok = {}
+  requests.forEach(r => {
+    const p = r.purok || 'Unspecified'
+    byPurok[p] = (byPurok[p] || 0) + 1
+  })
+  const topPurok = Object.entries(byPurok).sort((a, b) => b[1] - a[1])[0]
+  if (topPurok && topPurok[1] >= 3) {
+    signals.push({
+      module: MODULES.DOCUMENT,
+      title: 'Most active purok',
+      priority: PRIORITY.LOW,
+      confidence: 'Medium',
+      dataAnalyzed: { purok: topPurok[0], count: topPurok[1] },
+      summary: `${topPurok[0]} has filed the most document requests (${topPurok[1]} total).`,
+      reason: `Request volume grouped by purok shows this area submitting more requests than others.`,
+      suggestedAction: `Monitor ${topPurok[0]} for continued demand and plan staffing accordingly.`,
+    })
+  }
+
+  // Average approval time
+  const approved = requests.filter(r => r.status === 'approved' || r.status === 'completed')
+    .filter(r => r.requestedAt && r.approvedAt)
+  if (approved.length >= 3) {
+    const avgHours = approved.reduce((sum, r) => {
+      const hours = (new Date(r.approvedAt) - new Date(r.requestedAt)) / (1000 * 60 * 60)
+      return sum + Math.max(hours, 0)
+    }, 0) / approved.length
+    const avgDays = avgHours / 24
+    signals.push({
+      module: MODULES.DOCUMENT,
+      title: 'Average approval time',
+      priority: avgDays >= 3 ? PRIORITY.MEDIUM : PRIORITY.LOW,
+      confidence: 'Medium',
+      dataAnalyzed: { averageDays: Math.round(avgDays * 10) / 10, sampleSize: approved.length },
+      summary: `Approved document requests take an average of ${avgDays >= 1 ? `${Math.round(avgDays * 10) / 10} day(s)` : `${Math.round(avgHours)} hour(s)`} to process.`,
+      reason: `Calculated from the time between submission and approval across ${approved.length} recently approved requests.`,
+      suggestedAction: avgDays >= 3
+        ? 'Assign another official to process document requests during peak periods.'
+        : 'Current processing time is within a reasonable range; continue monitoring.',
+    })
+  }
+
+  return signals
+}
+
 async function analyzeEmergency() {
   const signals = []
   const emergencies = await emergencyService.getEmergencies().catch(() => [])
@@ -425,7 +521,7 @@ async function analyzeEmergency() {
       priority: hotspot[1] >= 5 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
       confidence: 'High',
       dataAnalyzed: { purok: hotspot[0], reportsLast30Days: hotspot[1] },
-      summary: `${hotspot[0]} recorded ${hotspot[1]} emergency reports in the last 30 days — the highest of any purok.`,
+      summary: `${hotspot[0]} recorded ${hotspot[1]} emergency reports in the last 30 days â€” the highest of any purok.`,
       reason: `Report frequency by purok over a 30-day rolling window flags this area as a recurring hotspot.`,
       suggestedAction: `Recommend increased tanod patrol presence in ${hotspot[0]}.`,
     })
@@ -466,9 +562,9 @@ async function analyzeEmergency() {
   return signals
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AI HISTORY — persists generated recommendations for later review
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// AI HISTORY â€” persists generated recommendations for later review
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function saveInsightToHistory(insight) {
   try {
     await addDoc(collection(db, AI_HISTORY_COLLECTION), {
@@ -506,23 +602,24 @@ export async function getInsightHistory(max = 50) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // PUBLIC: generate all insights, enrich with AI-phrased explanations, and log history
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function generateAllInsights({ persistHistory = true } = {}) {
-  const [health, foodAid, events, emergency] = await Promise.all([
+  const [health, foodAid, events, emergency, document] = await Promise.all([
     analyzeHealth().catch(err => { console.error('Health AI failed:', err); return [] }),
     analyzeFoodAid().catch(err => { console.error('Food Aid AI failed:', err); return [] }),
     analyzeEvents().catch(err => { console.error('Events AI failed:', err); return [] }),
     analyzeEmergency().catch(err => { console.error('Emergency AI failed:', err); return [] }),
+    analyzeDocuments().catch(err => { console.error('Document AI failed:', err); return [] }),
   ])
 
-  const rawSignals = [...health, ...foodAid, ...events, ...emergency]
+  const rawSignals = [...health, ...foodAid, ...events, ...emergency, ...document]
 
   const priorityOrder = { high: 0, medium: 1, low: 2 }
   rawSignals.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
 
-  // Enrich each signal with AI-phrased explanation (bounded concurrency isn't needed —
+  // Enrich each signal with AI-phrased explanation (bounded concurrency isn't needed â€”
   // dashboard-scale insight counts are small, typically under 15)
   const insights = await Promise.all(
     rawSignals.map(async (signal) => {

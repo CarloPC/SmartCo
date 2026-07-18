@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
-import { Brain, RefreshCw, History, LayoutGrid, Heart, Package, Calendar, AlertTriangle, Loader2 } from 'lucide-react'
+import { Brain, RefreshCw, History, LayoutGrid, Heart, Package, Calendar, AlertTriangle, FileText, Loader2 } from 'lucide-react'
 import { db } from '../config/firebase'
 import { useTheme } from '../context/ThemeContext'
 import aiInsightsService, { MODULES } from '../services/aiInsightsService'
@@ -12,6 +13,7 @@ const MODULE_TABS = [
   { key: MODULES.FOOD_AID, label: 'Food Aid',  icon: Package },
   { key: MODULES.EVENTS,   label: 'Events',    icon: Calendar },
   { key: MODULES.EMERGENCY,label: 'Emergency', icon: AlertTriangle },
+  { key: MODULES.DOCUMENT, label: 'Documents', icon: FileText },
 ]
 
 const AIInsightsPage = () => {
@@ -67,6 +69,7 @@ const AIInsightsPage = () => {
       onSnapshot(collection(db, 'foodAid'), scheduleRegen, () => {}),
       onSnapshot(collection(db, 'events'), scheduleRegen, () => {}),
       onSnapshot(collection(db, 'emergencies'), scheduleRegen, () => {}),
+      onSnapshot(collection(db, 'documentRequests'), scheduleRegen, () => {}),
     ]
 
     return () => {
@@ -111,7 +114,7 @@ const AIInsightsPage = () => {
             <div>
               <h1 className={`text-2xl font-bold ${textPrimary}`}>AI Decision Support</h1>
               <p className={`text-sm ${textSecondary}`}>
-                Live recommendations for Barangay Ilihan officials, BHWs, and coordinators. The AI explains — it never decides.
+                Live recommendations for Barangay Ilihan officials, BHWs, and coordinators. The AI explains” it never decides.
               </p>
             </div>
           </div>
@@ -130,7 +133,7 @@ const AIInsightsPage = () => {
               disabled={refreshing}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Analyzing…' : 'Refresh Insights'}
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Analyzingâ€¦' : 'Refresh Insights'}
             </button>
           </div>
         </div>
@@ -151,7 +154,7 @@ const AIInsightsPage = () => {
 
         {lastGenerated && (
           <p className={`text-xs ${textSecondary}`}>
-            Last analyzed {new Date(lastGenerated).toLocaleString()} · updates automatically when Firestore data changes
+            Last analyzed {new Date(lastGenerated).toLocaleString()} Â· updates automatically when Firestore data changes
           </p>
         )}
 
@@ -183,7 +186,7 @@ const AIInsightsPage = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className={`w-8 h-8 animate-spin ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
-            <p className={textSecondary}>Analyzing Firestore data across all modules…</p>
+            <p className={textSecondary}>Analyzing Firestore data across all modulesâ€¦</p>
           </div>
         ) : visibleInsights.length === 0 ? (
           <div className={`rounded-2xl p-10 text-center border ${isDarkMode ? 'bg-gray-900/60 border-gray-800' : 'bg-white border-gray-100'}`}>

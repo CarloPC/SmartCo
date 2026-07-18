@@ -1,7 +1,8 @@
 
+
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Stethoscope, Truck, Brain } from 'lucide-react'
+import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Stethoscope, Truck, Brain, FileText } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import adminService from '../services/adminService'
@@ -14,7 +15,7 @@ const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
   const isAdmin = adminService.isAdmin(user)
   const [assignmentCount, setAssignmentCount] = useState(0)
 
-  // Only show "My Assignments" once this user actually has a food aid assignment â€”
+  // Only show "My Assignments" once this user actually has a food aid assignment Ã¢â‚¬â€
   // keeps the sidebar clean for people who've never volunteered.
   useEffect(() => {
     if (!user?.id) return
@@ -31,6 +32,11 @@ const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
     { icon: Heart,         label: 'Health',           path: '/health' },
     { icon: Package,       label: 'Food Aid',         path: '/food-aid' },
     { icon: Calendar,      label: 'Events',           path: '/events' },
+    {
+      icon: FileText,
+      label: 'Document Requests',
+      path: (user?.role === 'admin' || user?.role === 'barangay_official') ? '/documents/manage' : '/documents',
+    },
     {
       icon: AlertTriangle,
       label: isAdmin ? 'Emergencies' : 'Report Emergency',

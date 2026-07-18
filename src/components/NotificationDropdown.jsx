@@ -1,10 +1,14 @@
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, AlertCircle, Bell, Loader2, Calendar, Heart, Package, AlertTriangle, ChevronRight } from 'lucide-react'
+import { X, AlertCircle, Bell, Loader2, Calendar, Heart, Package, AlertTriangle, FileText, ChevronRight } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 import notificationService from '../services/notificationService'
 
-const getNotificationPath = (notification) => {
+const isOfficial = (user) => user?.role === 'admin' || user?.role === 'barangay_official'
+
+const getNotificationPath = (notification, user) => {
   const category = notification.category || notification.type
   switch (category) {
     case 'events':
@@ -16,6 +20,8 @@ const getNotificationPath = (notification) => {
       return '/food-aid'
     case 'emergency':
       return '/emergency/report'
+    case 'document':
+      return isOfficial(user) ? '/documents/manage' : '/documents'
     case 'community':
     default:
       return '/home'
@@ -35,6 +41,8 @@ const getCategoryIcon = (category, type) => {
       return <Package className={`${cls} text-green-500`} />
     case 'emergency':
       return <AlertTriangle className={`${cls} text-red-500`} />
+    case 'document':
+      return <FileText className={`${cls} text-blue-500`} />
     default:
       return <AlertCircle className={`${cls} text-gray-400`} />
   }
@@ -42,6 +50,7 @@ const getCategoryIcon = (category, type) => {
 
 const NotificationDropdown = ({ onClose, onNotificationRead }) => {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { isDarkMode } = useTheme()
   const [notifications, setNotifications] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -99,7 +108,7 @@ const NotificationDropdown = ({ onClose, onNotificationRead }) => {
       }
     }
     onClose()
-    navigate(getNotificationPath(notification))
+    navigate(getNotificationPath(notification, user))
   }
 
   return (

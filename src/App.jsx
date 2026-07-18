@@ -29,6 +29,9 @@ import AIInsightsPage from './pages/AIInsightsPage'
 import ReportEmergencyPage from './pages/ReportEmergencyPage'
 import EmergencyManagementPage from './pages/EmergencyManagementPage'
 import BHWDashboard from './pages/BHWDashboard'
+import DocumentRequestsPage from './pages/DocumentRequestsPage'
+import RequestDocumentPage from './pages/RequestDocumentPage'
+import ManageDocumentRequestsPage from './pages/ManageDocumentRequestsPage'
 
 function App() {
   return (
@@ -168,6 +171,38 @@ function App() {
             <AdminRoute>
               <Layout>
                 <EmergencyManagementPage />
+              </Layout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Document Request Routes */}
+        <Route
+          path="/documents"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DocumentRequestsPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/documents/new"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RequestDocumentPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/documents/manage"
+          element={
+            <AdminRoute>
+              <Layout>
+                <ManageDocumentRequestsPage />
               </Layout>
             </AdminRoute>
           }

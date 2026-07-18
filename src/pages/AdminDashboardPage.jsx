@@ -1,10 +1,12 @@
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Users, Activity, Package, Calendar, AlertCircle, Clock, Loader2 } from 'lucide-react'
+import { LayoutDashboard, Users, Activity, Package, Calendar, AlertCircle, Clock, Loader2, FileText } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import adminService from '../services/adminService'
 import foodAidService from '../services/foodAidService'
+import documentRequestService from '../services/documentRequestService'
 
 const StatGroup = ({ icon: Icon, title, total, pending, approved, totalLabel, pendingLabel, approvedLabel, isDarkMode, onManage, manageLabel }) => {
   const card = `${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border`
@@ -48,17 +50,20 @@ const AdminDashboardPage = () => {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [foodAidAnalytics, setFoodAidAnalytics] = useState(null)
+  const [docStats, setDocStats] = useState(null)
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setIsLoading(true)
-        const [adminStats, faAnalytics] = await Promise.all([
+        const [adminStats, faAnalytics, documentStats] = await Promise.all([
           adminService.getAdminStats(),
           foodAidService.getDashboardAnalytics(),
+          documentRequestService.getDashboardStats(),
         ])
         setStats(adminStats)
         setFoodAidAnalytics(faAnalytics)
+        setDocStats(documentStats)
       } catch (error) {
         console.error('Error fetching admin stats:', error)
       } finally {
@@ -108,7 +113,7 @@ const AdminDashboardPage = () => {
                     <AlertCircle className={`w-6 h-6 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
                     <div>
                       <p className={`font-semibold ${isDarkMode ? 'text-orange-300' : 'text-orange-800'}`}>
-                        {stats.totalPending} Pending Approval{stats.totalPending > 1 ? 's' : ''} — Click to review
+                        {stats.totalPending} Pending Approval{stats.totalPending > 1 ? 's' : ''} ” Click to review
                       </p>
                       <p className={`text-sm ${isDarkMode ? 'text-orange-400' : 'text-orange-700'}`}>Requires your attention</p>
                     </div>
@@ -234,8 +239,46 @@ const AdminDashboardPage = () => {
               </div>
             )}
 
+            {/* Document Requests */}
+            {docStats && (
+              <div className={`${card} p-5 lg:p-6`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`font-semibold flex items-center space-x-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                    <FileText className="w-5 h-5" /><span>Document Requests</span>
+                  </h3>
+                  <button onClick={() => navigate('/documents/manage')} className={`text-sm font-medium ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}>Manage</button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                  {[
+                    { value: docStats.pending, label: 'Pending', color: 'text-orange-500' },
+                    { value: docStats.approvedToday, label: 'Approved Today', color: 'text-green-500' },
+                    { value: docStats.rejectedToday, label: 'Rejected Today', color: 'text-red-500' },
+                    { value: docStats.total, label: 'Total Requests', color: isDarkMode ? 'text-gray-100' : 'text-gray-800' },
+                  ].map((s) => (
+                    <div key={s.label} className="text-center">
+                      <div className={`text-2xl lg:text-3xl font-bold ${s.color}`}>{s.value}</div>
+                      <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {docStats.recent.length > 0 && (
+                  <div>
+                    <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Recent Requests</p>
+                    <div className="space-y-1.5">
+                      {docStats.recent.map(r => (
+                        <div key={r.id} className={`flex items-center justify-between text-xs rounded-lg px-3 py-2 ${isDarkMode ? 'bg-gray-800/60 text-gray-300' : 'bg-gray-50 text-gray-700'}`}>
+                          <span className="font-medium truncate">{r.residentName || 'Unknown'} · {r.documentType === 'Other' ? r.otherDocument : r.documentType}</span>
+                          <span className="capitalize flex-shrink-0 ml-2">{r.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 onClick={() => navigate('/admin/approvals')}
                 className={`${isDarkMode ? 'bg-orange-900/90 hover:bg-orange-800 border-gray-700/50' : 'bg-orange-500/90 hover:bg-orange-600 border-white/20'} backdrop-blur-sm text-white font-semibold py-5 rounded-2xl flex items-center justify-center space-x-3 transition shadow-xl border`}
@@ -249,6 +292,13 @@ const AdminDashboardPage = () => {
               >
                 <Users className="w-6 h-6" />
                 <span className="text-base">Manage Users</span>
+              </button>
+              <button
+                onClick={() => navigate('/documents/manage')}
+                className={`${isDarkMode ? 'bg-blue-900/90 hover:bg-blue-800 border-gray-700/50' : 'bg-blue-500/90 hover:bg-blue-600 border-white/20'} backdrop-blur-sm text-white font-semibold py-5 rounded-2xl flex items-center justify-center space-x-3 transition shadow-xl border`}
+              >
+                <FileText className="w-6 h-6" />
+                <span className="text-base">Document Requests</span>
               </button>
             </div>
           </>

@@ -1,8 +1,12 @@
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Bell, Trash2, Check, X, Loader2, AlertTriangle, Calendar, Heart, Package, AlertCircle, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Bell, Trash2, Check, X, Loader2, AlertTriangle, Calendar, Heart, Package, AlertCircle, FileText, ExternalLink } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
-const getNotificationPath = (notification) => {
+const isOfficial = (user) => user?.role === 'admin' || user?.role === 'barangay_official'
+
+const getNotificationPath = (notification, user) => {
   const category = notification.category || notification.type
   switch (category) {
     case 'events':
@@ -14,6 +18,8 @@ const getNotificationPath = (notification) => {
       return '/food-aid'
     case 'emergency':
       return '/emergency/report'
+    case 'document':
+      return isOfficial(user) ? '/documents/manage' : '/documents'
     case 'community':
     default:
       return '/home'
@@ -32,6 +38,8 @@ const getNotificationLabel = (notification) => {
       return 'View Food Aid'
     case 'emergency':
       return 'View Emergency'
+    case 'document':
+      return 'View Document Requests'
     case 'community':
       return 'View Community'
     default:
@@ -42,18 +50,19 @@ import notificationService from '../services/notificationService'
 
 const NotificationsPage = () => {
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [notifications, setNotifications] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  /* glass card â€” matches HomePage panels */
+  /* glass card Ã¢â‚¬â€ matches HomePage panels */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
 
   // Fetch notifications from Firebase
   useEffect(() => {
-    console.log('ðŸ”” [NotificationsPage] Fetching notifications...')
+    console.log('Ã°Å¸â€â€ [NotificationsPage] Fetching notifications...')
     fetchNotifications()
   }, [])
 
@@ -62,13 +71,13 @@ const NotificationsPage = () => {
       setIsLoading(true)
       setError(null)
 
-      console.log('ðŸ“‹ [NotificationsPage] Calling notificationService.getNotifications()')
+      console.log('Ã°Å¸â€œâ€¹ [NotificationsPage] Calling notificationService.getNotifications()')
       const fetchedNotifications = await notificationService.getNotifications()
 
-      console.log(`âœ… [NotificationsPage] Received ${fetchedNotifications.length} notifications`)
+      console.log(`Ã¢Å“â€¦ [NotificationsPage] Received ${fetchedNotifications.length} notifications`)
       setNotifications(fetchedNotifications)
     } catch (err) {
-      console.error('âŒ [NotificationsPage] Error fetching notifications:', err)
+      console.error('Ã¢Å’ [NotificationsPage] Error fetching notifications:', err)
       setError('Failed to load notifications. Please try again.')
     } finally {
       setIsLoading(false)
@@ -77,7 +86,7 @@ const NotificationsPage = () => {
 
   const handleMarkAsRead = async (id) => {
     try {
-      console.log(`ðŸ“ [NotificationsPage] Marking notification ${id} as read`)
+      console.log(`Ã°Å¸â€œ [NotificationsPage] Marking notification ${id} as read`)
       const result = await notificationService.markAsRead(id)
 
       if (result.success) {
@@ -85,41 +94,41 @@ const NotificationsPage = () => {
           notif.id === id ? { ...notif, read: true } : notif
         ))
         window.dispatchEvent(new Event('notifications-updated'))
-        console.log('âœ… [NotificationsPage] Notification marked as read')
+        console.log('Ã¢Å“â€¦ [NotificationsPage] Notification marked as read')
       }
     } catch (err) {
-      console.error('âŒ [NotificationsPage] Error marking as read:', err)
+      console.error('Ã¢Å’ [NotificationsPage] Error marking as read:', err)
       alert('Failed to mark as read. Please try again.')
     }
   }
 
   const handleMarkAllAsRead = async () => {
     try {
-      console.log('ðŸ“ [NotificationsPage] Marking all notifications as read')
+      console.log('Ã°Å¸â€œ [NotificationsPage] Marking all notifications as read')
       const result = await notificationService.markAllAsRead()
 
       if (result.success) {
         setNotifications(notifications.map(notif => ({ ...notif, read: true })))
         window.dispatchEvent(new Event('notifications-updated'))
-        console.log('âœ… [NotificationsPage] All notifications marked as read')
+        console.log('Ã¢Å“â€¦ [NotificationsPage] All notifications marked as read')
       }
     } catch (err) {
-      console.error('âŒ [NotificationsPage] Error marking all as read:', err)
+      console.error('Ã¢Å’ [NotificationsPage] Error marking all as read:', err)
       alert('Failed to mark all as read. Please try again.')
     }
   }
 
   const handleDelete = async (id) => {
     try {
-      console.log(`ðŸ—‘ï¸ [NotificationsPage] Deleting notification ${id}`)
+      console.log(`Ã°Å¸â€”â€˜Ã¯Â¸ [NotificationsPage] Deleting notification ${id}`)
       const result = await notificationService.deleteNotification(id)
 
       if (result.success) {
         setNotifications(notifications.filter(notif => notif.id !== id))
-        console.log('âœ… [NotificationsPage] Notification deleted')
+        console.log('Ã¢Å“â€¦ [NotificationsPage] Notification deleted')
       }
     } catch (err) {
-      console.error('âŒ [NotificationsPage] Error deleting notification:', err)
+      console.error('Ã¢Å’ [NotificationsPage] Error deleting notification:', err)
       alert('Failed to delete notification. Please try again.')
     }
   }
@@ -128,7 +137,7 @@ const NotificationsPage = () => {
     if (!notification.read) {
       await handleMarkAsRead(notification.id)
     }
-    navigate(getNotificationPath(notification))
+    navigate(getNotificationPath(notification, user))
   }
 
   const handleClearAll = async () => {
@@ -137,15 +146,15 @@ const NotificationsPage = () => {
     }
 
     try {
-      console.log('ðŸ—‘ï¸ [NotificationsPage] Clearing all notifications')
+      console.log('Ã°Å¸â€”â€˜Ã¯Â¸ [NotificationsPage] Clearing all notifications')
       const result = await notificationService.clearAll()
 
       if (result.success) {
         setNotifications([])
-        console.log('âœ… [NotificationsPage] All notifications cleared')
+        console.log('Ã¢Å“â€¦ [NotificationsPage] All notifications cleared')
       }
     } catch (err) {
-      console.error('âŒ [NotificationsPage] Error clearing all:', err)
+      console.error('Ã¢Å’ [NotificationsPage] Error clearing all:', err)
       alert('Failed to clear notifications. Please try again.')
     }
   }
@@ -163,6 +172,8 @@ const NotificationsPage = () => {
         return { icon: Package, iconBg: 'bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500', iconRing: 'ring-emerald-300/40' }
       case 'emergency':
         return { icon: AlertTriangle, iconBg: 'bg-gradient-to-br from-rose-500 via-red-500 to-orange-600', iconRing: 'ring-rose-300/40' }
+      case 'document':
+        return { icon: FileText, iconBg: 'bg-gradient-to-br from-blue-500 via-indigo-500 to-sky-500', iconRing: 'ring-blue-300/40' }
       default:
         return { icon: Bell, iconBg: 'bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500', iconRing: 'ring-sky-300/40' }
     }
@@ -188,7 +199,7 @@ const NotificationsPage = () => {
   }
 
   return (
-    /* No background here â€” Layout.jsx paints the gradient behind everything */
+    /* No background here Ã¢â‚¬â€ Layout.jsx paints the gradient behind everything */
     <div className="mx-auto max-w-3xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
 
       {/* Header */}

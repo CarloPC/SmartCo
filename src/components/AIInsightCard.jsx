@@ -1,3 +1,4 @@
+
 import { Sparkles, Clock, ChevronDown, ChevronUp, Check, X } from 'lucide-react'
 import { useState } from 'react'
 
@@ -18,6 +19,7 @@ const MODULE_LABELS = {
   food_aid: 'Food Aid AI',
   events: 'Event AI',
   emergency: 'Emergency AI',
+  document: 'Document AI',
 }
 
 const formatTimestamp = (iso) => {
@@ -33,7 +35,7 @@ const formatTimestamp = (iso) => {
 /**
  * Displays a single explainable AI recommendation.
  * Every card always shows: Title, Summary, Reason, Confidence, Suggested Action,
- * Priority Level, Timestamp — per the Explainable AI requirement.
+ * Priority Level, Timestamp â€” per the Explainable AI requirement.
  */
 const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }) => {
   const [expanded, setExpanded] = useState(false)
@@ -78,7 +80,7 @@ const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }
           {insight.dataAnalyzed && (
             <p className="text-xs opacity-70 break-words">
               <span className="font-semibold">Data analyzed: </span>
-              {Object.entries(insight.dataAnalyzed).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`).join(' · ')}
+              {Object.entries(insight.dataAnalyzed).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`).join(' Â· ')}
             </p>
           )}
         </div>

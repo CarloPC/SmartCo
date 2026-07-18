@@ -1,3 +1,4 @@
+
 import FoodAidProjectionChart from '../components/FoodAidProjectionChart'
 import EventAttendanceChart from '../components/EventAttendanceChart'
 import { useState, useEffect } from 'react'
@@ -5,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Heart, Package, Calendar, Users, AlertCircle,
   Activity, BarChart3, Loader, ArrowRight,
-  Sparkles, ShieldCheck, Clock3, MapPin,
+  Sparkles, ShieldCheck, Clock3, MapPin, FileText,
 } from 'lucide-react'
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
@@ -34,14 +35,15 @@ const HomePage = () => {
   useEffect(() => { fetchDashboardData() }, [])
 
   const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-      const [healthRecords, events, foodAidSchedules, notifications] = await Promise.all([
-        healthService.getHealthRecords(),
-        eventsService.getEvents(),
-        foodAidService.getFoodAidSchedules(),
-        notificationService.getNotifications(),
-      ])
+  try {
+    setLoading(true)
+    const [healthRecords, events, foodAidSchedules, notifications] = await Promise.all([
+      healthService.getHealthRecords(user?.purok),
+      eventsService.getEvents(), // barangay-wide â€” see note below
+      foodAidService.getFoodAidSchedules(user?.purok),
+      notificationService.getNotifications(),
+    ])
+    // ...rest unchanged
       const upcomingEvents = events.filter((e) => e.status === 'upcoming').length
       const totalFamiliesServed = foodAidSchedules.reduce((sum, item) => sum + (item.deliveredFamilies || 0), 0)
       setStats({ healthRecords: healthRecords.length, aidDistributed: totalFamiliesServed, upcomingEvents, activeUsers: 342 })
@@ -125,7 +127,7 @@ const HomePage = () => {
   const attendanceRate = totalExpected > 0 ? ((totalActual / totalExpected) * 100).toFixed(1) : 0
   const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'
 
-  /* glass card â€” used on every panel */
+  /* glass card Ã¢â‚¬â€ used on every panel */
  const card =
   'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
   const statCards = [
@@ -198,6 +200,15 @@ const HomePage = () => {
   },
 
   {
+    label: 'Request Documents',
+    description: 'Request an official barangay document',
+    path: '/documents/new',
+    icon: FileText,
+    gradient: 'from-blue-500/60 via-indigo-500/40 to-sky-600/25',
+    glow: 'hover:shadow-blue-500/30',
+  },
+
+  {
     label: 'Report Emergency',
     description: 'Send a fast community alert',
     path: '/emergency/report',
@@ -248,7 +259,7 @@ const HomePage = () => {
 
       <div className="mx-auto max-w-7xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
 
-      {/* â”€â”€ Hero welcome banner â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Hero welcome banner Ã¢â€â‚¬Ã¢â€â‚¬ */}
      <section
   className={`${card} overflow-hidden bg-gradient-to-r from-indigo-500/30 via-violet-500/20 to-blue-500/30`}
 >
@@ -259,11 +270,17 @@ const HomePage = () => {
               AI-powered barangay overview
             </div>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              {greeting}, {user?.fullName?.split(' ')[0] || 'there'} 😊
+              {greeting}, {user?.fullName?.split(' ')[0] || 'there'} 
             </h2>
             <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-              Keep tabs on health updates, food aid progress, and Barangay Ilihan events  all in one modern dashboard.
-            </p>
+  Keep tabs on health updates, food aid progress, and Barangay Ilihan events all in one modern dashboard.
+</p>
+{user?.purok && (
+  <p className="mt-1 text-xs font-semibold text-white/60">
+    <MapPin className="inline h-3 w-3 mr-1" />
+    Showing {user.purok} data
+  </p>
+)}
             <div className="mt-5 flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/health')}
@@ -309,7 +326,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* â”€â”€ Stat cards â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Stat cards Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map((c) => (
           <div
@@ -327,7 +344,7 @@ const HomePage = () => {
         ))}
       </section>
 
-      {/* â”€â”€ Health trend + Alerts â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Health trend + Alerts Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.4fr_0.9fr]">
 
         <div className={`${card} p-5 lg:p-6`}>
@@ -397,7 +414,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* â”€â”€ Charts â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Charts Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
 
         <div className={`${card} p-5 lg:p-6`}>
@@ -453,7 +470,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* â”€â”€ Quick actions â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Quick actions Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section
   className={`${card} bg-gradient-to-br from-indigo-500/15 via-blue-500/10 to-violet-500/15 p-5 lg:p-6`}
 >
