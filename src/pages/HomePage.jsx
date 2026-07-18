@@ -183,7 +183,7 @@ const HomePage = () => {
     ? [{
         label: 'Schedule Aid',
         description: 'Plan next food aid distribution',
-        path: '/food-aid/optimize',
+        path: '/food-aid',
         icon: Package,
         gradient: 'from-emerald-500/60 via-green-500/40 to-teal-600/25',
         glow: 'hover:shadow-emerald-500/30',
