@@ -225,6 +225,24 @@ class FoodAidService {
     }
   }
 
+  // All food aid distribution docs for a given purok, visible to every
+  // resident of that purok. No privacy concern here — Firestore rules
+  // already let any authenticated user read the whole `foodAid` collection,
+  // so this is a plain filtered query, not an aggregate rollup.
+  async getFoodAidByPurok(purok) {
+    try {
+      if (!purok) return []
+      const shortLabel = getShortPurokName(purok)
+      const snapshot = await getDocs(collection(db, 'foodAid'))
+      return snapshot.docs
+        .map(doc => this._enrich({ id: doc.id, ...doc.data() }))
+        .filter(item => item.purok === purok || item.purok === shortLabel || getShortPurokName(item.purok) === shortLabel)
+    } catch (error) {
+      console.error('Error fetching food aid by purok:', error)
+      return []
+    }
+  }
+
   async getFoodAidById(id) {
     try {
       const docRef = doc(db, 'foodAid', id)

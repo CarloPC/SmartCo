@@ -1,6 +1,7 @@
 import { collection, getDocs, getDoc, doc, updateDoc, query, where, orderBy } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
+import purokStatsService from './purokStatsService'
 
 class AdminService {
   // Check if current user is admin or barangay official
@@ -146,6 +147,9 @@ class AdminService {
         updatedAt: new Date().toISOString()
       })
 
+      // Keep the purok's aggregate stats in sync (pending -> approved)
+      purokStatsService.recordHealthStatusChange(record.userPurok, record.approvalStatus, 'approved')
+
       const requestQuery = query(
         collection(db, 'health_requests'),
         where('sourceRecordId', '==', recordId)
@@ -213,6 +217,9 @@ class AdminService {
         rejectionReason: reason,
         updatedAt: new Date().toISOString()
       })
+
+      // Keep the purok's aggregate stats in sync (pending -> rejected)
+      purokStatsService.recordHealthStatusChange(record.userPurok, record.approvalStatus, 'rejected')
 
       const requestQuery = query(
         collection(db, 'health_requests'),

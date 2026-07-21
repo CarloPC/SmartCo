@@ -1,4 +1,3 @@
-
 import FoodAidProjectionChart from '../components/FoodAidProjectionChart'
 import EventAttendanceChart from '../components/EventAttendanceChart'
 import { useState, useEffect } from 'react'
@@ -6,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Heart, Package, Calendar, Users, AlertCircle,
   Activity, BarChart3, Loader, ArrowRight,
-  Sparkles, ShieldCheck, Clock3, MapPin, FileText,
+  Sparkles, ShieldCheck, Clock3, MapPin,
 } from 'lucide-react'
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
@@ -19,14 +18,19 @@ import healthService from '../services/healthService'
 import eventsService from '../services/eventsService'
 import foodAidService from '../services/foodAidService'
 import notificationService from '../services/notificationService'
+import purokStatsService from '../services/purokStatsService'
+import { getShortPurokName } from '../constants/puroks'
 
 const HomePage = () => {
   const navigate = useNavigate()
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
+  const purokLabel = getShortPurokName(user?.purok)
 
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ healthRecords: 0, aidDistributed: 0, upcomingEvents: 0, activeUsers: 0 })
+  const [purokHealthStats, setPurokHealthStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, monthly: {} })
+  const [foodAidStats, setFoodAidStats] = useState({ totalFamilies: 0, familiesServed: 0, pendingDeliveries: 0, completedDeliveries: 0, progress: 0 })
   const [healthTrendsData, setHealthTrendsData] = useState([])
   const [foodAidData, setFoodAidData] = useState([])
   const [eventAttendanceData, setEventAttendanceData] = useState([])
@@ -35,20 +39,34 @@ const HomePage = () => {
   useEffect(() => { fetchDashboardData() }, [])
 
   const fetchDashboardData = async () => {
-  try {
-    setLoading(true)
-    const [healthRecords, events, foodAidSchedules, notifications] = await Promise.all([
-      healthService.getHealthRecords(user?.purok),
-      eventsService.getEvents(), // barangay-wide â€” see note below
-      foodAidService.getFoodAidSchedules(user?.purok),
-      notificationService.getNotifications(),
-    ])
-    // ...rest unchanged
+    try {
+      setLoading(true)
+      const purok = user?.purok
+      const [healthStats, foodAidItems, events, notifications] = await Promise.all([
+        purokStatsService.getHealthStats(purok),
+        foodAidService.getFoodAidByPurok(purok),
+        eventsService.getEvents(),
+        notificationService.getNotifications(),
+      ])
+
       const upcomingEvents = events.filter((e) => e.status === 'upcoming').length
-      const totalFamiliesServed = foodAidSchedules.reduce((sum, item) => sum + (item.deliveredFamilies || 0), 0)
-      setStats({ healthRecords: healthRecords.length, aidDistributed: totalFamiliesServed, upcomingEvents, activeUsers: 342 })
-      setHealthTrendsData(processHealthTrends(healthRecords))
-      setFoodAidData(processFoodAidByPurok(foodAidSchedules))
+
+      const totalFamilies = foodAidItems.reduce((s, i) => s + (i.progress?.householdsTarget ?? i.totalFamilies ?? 0), 0)
+      const familiesServed = foodAidItems.reduce((s, i) => s + (i.progress?.householdsServed ?? i.deliveredFamilies ?? 0), 0)
+      const pendingDeliveries = foodAidItems.filter((i) => !['completed', 'archived', 'cancelled'].includes(i.progress?.workflowStatus)).length
+      const completedDeliveries = foodAidItems.filter((i) => ['completed', 'archived'].includes(i.progress?.workflowStatus)).length
+
+      setStats({ healthRecords: healthStats.total, aidDistributed: familiesServed, upcomingEvents, activeUsers: 342 })
+      setPurokHealthStats(healthStats)
+      setFoodAidStats({
+        totalFamilies,
+        familiesServed,
+        pendingDeliveries,
+        completedDeliveries,
+        progress: totalFamilies > 0 ? Math.round((familiesServed / totalFamilies) * 100) : 0,
+      })
+      setHealthTrendsData(processHealthMonthlyTrend(healthStats.monthly))
+      setFoodAidData(processFoodAidTrend(foodAidItems))
       setEventAttendanceData(processEventAttendance(events))
       const alerts = notifications
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -62,28 +80,28 @@ const HomePage = () => {
     }
   }
 
-  const processHealthTrends = (records) => {
-    const today = new Date()
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(today)
-      date.setDate(date.getDate() - (6 - i))
-      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      const dayRecords = records.filter((r) => new Date(r.createdAt).toDateString() === date.toDateString())
-      const avgBP = dayRecords.length ? Math.round(dayRecords.reduce((s, r) => s + (parseInt(r.formData?.bloodPressureSystolic) || 0), 0) / dayRecords.length) : 0
-      const avgTemp = dayRecords.length ? +(dayRecords.reduce((s, r) => s + (parseFloat(r.formData?.temperature) || 0), 0) / dayRecords.length).toFixed(1) : 0
-      return { date: dateStr, avgBP, avgTemp, checkups: dayRecords.length }
+  // Last 6 months of purok-wide checkup counts, from the privacy-safe
+  // aggregate stats — no individual health records are ever fetched here.
+  const processHealthMonthlyTrend = (monthly = {}) => {
+    const now = new Date()
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      return { date: d.toLocaleDateString('en-US', { month: 'short' }), checkups: monthly[key] || 0 }
     })
   }
 
-  const processFoodAidByPurok = (schedules) => {
+  // Groups this purok's food aid distributions by month for the trend chart.
+  const processFoodAidTrend = (items) => {
     const map = {}
-    schedules.forEach((s) => {
-      const p = s.purok || 'Unknown'
-      if (!map[p]) map[p] = { purok: p, families: 0, delivered: 0 }
-      map[p].families += s.totalFamilies || 0
-      map[p].delivered += s.deliveredFamilies || 0
+    items.forEach((item) => {
+      const d = item.date ? new Date(item.date) : new Date(item.createdAt || Date.now())
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (!map[key]) map[key] = { key, period: d.toLocaleDateString('en-US', { month: 'short' }), families: 0, delivered: 0 }
+      map[key].families += item.progress?.householdsTarget ?? item.totalFamilies ?? 0
+      map[key].delivered += item.progress?.householdsServed ?? item.deliveredFamilies ?? 0
     })
-    return Object.values(map).sort((a, b) => a.purok.localeCompare(b.purok))
+    return Object.values(map).sort((a, b) => a.key.localeCompare(b.key))
   }
 
   const processEventAttendance = (events) => {
@@ -119,15 +137,15 @@ const HomePage = () => {
     )
   }
 
-  const totalFamilies = foodAidData.reduce((s, i) => s + i.families, 0)
-  const totalDelivered = foodAidData.reduce((s, i) => s + i.delivered, 0)
-  const deliveryProgress = totalFamilies > 0 ? ((totalDelivered / totalFamilies) * 100).toFixed(1) : 0
+  const totalFamilies = foodAidStats.totalFamilies
+  const totalDelivered = foodAidStats.familiesServed
+  const deliveryProgress = foodAidStats.progress
   const totalExpected = eventAttendanceData.reduce((s, i) => s + i.expected, 0)
   const totalActual = eventAttendanceData.reduce((s, i) => s + i.actual, 0)
   const attendanceRate = totalExpected > 0 ? ((totalActual / totalExpected) * 100).toFixed(1) : 0
   const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'
 
-  /* glass card Ã¢â‚¬â€ used on every panel */
+  /* glass card — used on every panel */
  const card =
   'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
   const statCards = [
@@ -183,7 +201,7 @@ const HomePage = () => {
     ? [{
         label: 'Schedule Aid',
         description: 'Plan next food aid distribution',
-        path: '/food-aid',
+        path: '/food-aid/optimize',
         icon: Package,
         gradient: 'from-emerald-500/60 via-green-500/40 to-teal-600/25',
         glow: 'hover:shadow-emerald-500/30',
@@ -197,15 +215,6 @@ const HomePage = () => {
     icon: Calendar,
     gradient: 'from-violet-500/60 via-fuchsia-500/40 to-purple-700/25',
     glow: 'hover:shadow-violet-500/30',
-  },
-
-  {
-    label: 'Request Documents',
-    description: 'Request an official barangay document',
-    path: '/documents/new',
-    icon: FileText,
-    gradient: 'from-blue-500/60 via-indigo-500/40 to-sky-600/25',
-    glow: 'hover:shadow-blue-500/30',
   },
 
   {
@@ -259,7 +268,7 @@ const HomePage = () => {
 
       <div className="mx-auto max-w-7xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Hero welcome banner Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* —— Hero welcome banner —— */}
      <section
   className={`${card} overflow-hidden bg-gradient-to-r from-indigo-500/30 via-violet-500/20 to-blue-500/30`}
 >
@@ -270,17 +279,11 @@ const HomePage = () => {
               AI-powered barangay overview
             </div>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              {greeting}, {user?.fullName?.split(' ')[0] || 'there'} 
+              {greeting}, {user?.fullName?.split(' ')[0] || 'there'} 😊
             </h2>
             <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-  Keep tabs on health updates, food aid progress, and Barangay Ilihan events all in one modern dashboard.
-</p>
-{user?.purok && (
-  <p className="mt-1 text-xs font-semibold text-white/60">
-    <MapPin className="inline h-3 w-3 mr-1" />
-    Showing {user.purok} data
-  </p>
-)}
+              Keep tabs on health updates, food aid progress, and Barangay Ilihan events — all in one modern dashboard.
+            </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/health')}
@@ -326,7 +329,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Stat cards Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* —— Stat cards —— */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map((c) => (
           <div
@@ -344,7 +347,7 @@ const HomePage = () => {
         ))}
       </section>
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Health trend + Alerts Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* —— Health trend + Alerts —— */}
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.4fr_0.9fr]">
 
         <div className={`${card} p-5 lg:p-6`}>
@@ -353,21 +356,34 @@ const HomePage = () => {
               <Activity className="h-4 w-4 text-sky-200" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-white/50">Barangay Ilihan health trend</p>
-              <p className="text-base font-semibold text-white">Weekly pulse of resident checkups</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-white/50">{purokLabel} health trend</p>
+              <p className="text-base font-semibold text-white">Monthly checkup trend</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={200}>
             <LineChart data={healthTrendsData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
-              <YAxis tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} iconType="line" />
               <Line type="monotone" dataKey="checkups" stroke="#93c5fd" strokeWidth={2.5} name="Checkups" dot={{ fill: '#93c5fd', r: 3 }} activeDot={{ r: 5 }} />
-              <Line type="monotone" dataKey="avgBP"    stroke="#fca5a5" strokeWidth={2.5} name="Avg BP"   dot={{ fill: '#fca5a5', r: 3 }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-center">
+              <p className="text-lg font-bold text-white">{purokHealthStats.pending}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Pending</p>
+            </div>
+            <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-center">
+              <p className="text-lg font-bold text-white">{purokHealthStats.approved}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Approved</p>
+            </div>
+            <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-center">
+              <p className="text-lg font-bold text-white">{purokHealthStats.rejected}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Rejected</p>
+            </div>
+          </div>
         </div>
 
         <div className={`${card} p-5 lg:p-6`}>
@@ -414,7 +430,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Charts Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* —— Charts —— */}
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
 
         <div className={`${card} p-5 lg:p-6`}>
@@ -423,14 +439,14 @@ const HomePage = () => {
               <Package className="h-4 w-4 text-emerald-200" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-white/50">Food aid distribution</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-white/50">{purokLabel} food aid distribution</p>
               <p className="text-base font-semibold text-white">{deliveryProgress}% of families reached</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={foodAidData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-              <XAxis dataKey="purok"    tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
+              <XAxis dataKey="period"   tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
               <YAxis                    tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.5)' }} stroke="rgba(255,255,255,0.1)" />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }} iconType="rect" />
@@ -440,6 +456,8 @@ const HomePage = () => {
           </ResponsiveContainer>
           <div className="mt-3 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs text-white/60">
             <span className="font-semibold text-white">Progress:</span> {totalDelivered} of {totalFamilies} families served
+            <span className="mx-1.5 text-white/30">•</span>
+            {foodAidStats.pendingDeliveries} pending, {foodAidStats.completedDeliveries} completed
           </div>
         </div>
 
@@ -470,7 +488,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Quick actions Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* —— Quick actions —— */}
       <section
   className={`${card} bg-gradient-to-br from-indigo-500/15 via-blue-500/10 to-violet-500/15 p-5 lg:p-6`}
 >

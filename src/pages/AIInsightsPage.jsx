@@ -133,7 +133,7 @@ const AIInsightsPage = () => {
               disabled={refreshing}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Analyzingâ€¦' : 'Refresh Insights'}
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Analyzing¦' : 'Refresh Insights'}
             </button>
           </div>
         </div>
@@ -186,7 +186,7 @@ const AIInsightsPage = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className={`w-8 h-8 animate-spin ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
-            <p className={textSecondary}>Analyzing Firestore data across all modulesâ€¦</p>
+            <p className={textSecondary}>Analyzing Firestore data across all modules</p>
           </div>
         ) : visibleInsights.length === 0 ? (
           <div className={`rounded-2xl p-10 text-center border ${isDarkMode ? 'bg-gray-900/60 border-gray-800' : 'bg-white border-gray-100'}`}>

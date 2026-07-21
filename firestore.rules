@@ -18,6 +18,7 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() == 'admin';
     }
 
+    // Includes BHWs, Admins, and Barangay Officials
     function isBHW() {
       return isAuthenticated() && getUserRole() in ['bhw', 'admin', 'barangay_official'];
     }
@@ -26,29 +27,52 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // ─── Users ──────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || isBHW());
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
       allow create: if isAuthenticated() && isOwner(userId);
+
       allow update: if isAuthenticated() && isOwner(userId) &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+
       allow update: if isAdmin() &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+
       allow update: if isSuperAdmin();
-      allow list: if isAdmin();
+
+      allow list: if isAdmin() || (isAuthenticated() && resource.data.role in ['bhw', 'admin', 'barangay_official']);
     }
 
+    // ─── Health Records (Vitals, Clinical Logs) ──────────────────────────────
+    // ─── Purok Stats (privacy-safe aggregate counters, no individual data) ──
+    // Only non-sensitive counts (total/pending/approved/rejected/monthly) are
+    // ever written here — never names, vitals, or record-level detail — so
+    // it's safe for every authenticated resident to read.
+    // NOTE: writes are intentionally open to any authenticated user because
+    // this project has no backend/Cloud Functions to validate increments
+    // server-side. Worst case of a bad write is an inaccurate counter, not a
+    // data leak, since no PII is ever stored in this collection. If a
+    // backend is added later, lock this down to Admin SDK / Cloud Functions
+    // only.
+    match /purokStats/{purokId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // ─── Health Records (Vitals, Clinical Logs) ──────────────────────────────
     match /healthRecords/{recordId} {
       allow read: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid || isBHW()
+        resource.data.userId == request.auth.uid || isBHW() // ✅ FIXED: BHW can now read health records
       );
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isBHW();
+      allow update: if isBHW(); // ✅ FIXED: BHW can now update/log health records
       allow delete: if isAuthenticated() && (
         (resource.data.userId == request.auth.uid && resource.data.approvalStatus == 'pending') ||
         isAdmin()
       );
     }
 
+    // ─── Health Requests (Groq AI Summaries & Scheduling) ───────────────────
     match /health_requests/{requestId} {
       allow read: if isAuthenticated() && (
         resource.data.userId == request.auth.uid || isBHW()
@@ -61,6 +85,7 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // ─── Food Aid ────────────────────────────────────────────────────────────
     match /foodAid/{scheduleId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
@@ -74,6 +99,7 @@ service cloud.firestore {
       );
     }
 
+    // ─── Events ──────────────────────────────────────────────────────────────
     match /events/{eventId} {
       allow read: if isAuthenticated() && (
         resource.data.createdBy == request.auth.uid || isAdmin()
@@ -89,6 +115,7 @@ service cloud.firestore {
       );
     }
 
+    // ─── Announcements (Community Board) ─────────────────────────────────────
     match /announcements/{postId} {
       allow read: if isAuthenticated();
       allow create: if isAdmin();
@@ -106,6 +133,7 @@ service cloud.firestore {
       }
     }
 
+    // ─── Emergencies ─────────────────────────────────────────────────────────
     match /emergencies/{emergencyId} {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow read: if isAuthenticated() && (
@@ -116,6 +144,7 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // ─── Admin Access Requests ───────────────────────────────────────────────
     match /adminRequests/{requestId} {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow read: if isAuthenticated() && (
@@ -126,11 +155,39 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // ─── Notifications ───────────────────────────────────────────────────────
     match /notifications/{notificationId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
+    // ─── Document Requests ────────────────────────────────────────────────
+match /documentRequests/{requestId} {
+
+  allow create: if isAuthenticated() &&
+    request.resource.data.userId == request.auth.uid;
+
+  allow read: if isAuthenticated() &&
+    (
+      resource.data.userId == request.auth.uid ||
+      isAdmin()
+    );
+
+  // Only Barangay Officials/Admins process requests
+  allow update: if isAdmin();
+
+  // Resident owns the request and it's still pending: allow only the
+  // harmless housekeeping fields the client writes right after creating
+  // it (requestId, notificationSent, updatedAt). Status/approval fields
+  // stay locked to isAdmin() above.
+  allow update: if isAuthenticated() &&
+    resource.data.userId == request.auth.uid &&
+    resource.data.status == 'pending' &&
+    request.resource.data.diff(resource.data).affectedKeys()
+      .hasOnly(['requestId', 'notificationSent', 'updatedAt']);
+
+  allow delete: if false;
+}
   }
 }

@@ -84,7 +84,28 @@ const HealthPage = () => {
         record.healthAssessment?.overallStatus === 'critical' || record.healthAssessment?.urgencyLevel === 'urgent'
       ).length
 
-      setHealthAlerts(records.map(record => ({ ...record, time: getTimeAgo(record.createdAt) })).slice(0, 5))
+      const alerts = records.slice(0, 5).map(record => {
+        const assessment = record.healthAssessment
+        let type = 'Checkup'
+        let urgent = false
+        if (assessment?.overallStatus === 'critical') {
+          type = 'Emergency'
+          urgent = true
+        } else if (assessment?.overallStatus === 'concerning') {
+          type = 'Alert'
+        }
+        return {
+          id: record.id,
+          type,
+          message: assessment?.vitalsSummary || 'Health checkup completed',
+          createdAt: record.createdAt,
+          urgent,
+          recordedBy: record.recordedBy || 'Health Worker',
+          approvalStatus: record.approvalStatus || 'approved',
+          time: getTimeAgo(record.createdAt),
+        }
+      })
+      setHealthAlerts(alerts)
       setHealthStats({
         total: records.length,
         today: todayRecords.length,

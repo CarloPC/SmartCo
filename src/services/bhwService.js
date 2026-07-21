@@ -2,6 +2,7 @@
 import { collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import notificationService from './notificationService'
+import purokStatsService from './purokStatsService'
 
 const HEALTH_REQUESTS_COLLECTION = 'health_requests'
 
@@ -108,13 +109,23 @@ export const updateHealthRequestStatus = async (requestId, updates) => {
   const requestData = requestSnap.data() || {}
 
   if (requestData.sourceRecordId) {
+    const healthRecordRef = doc(db, 'healthRecords', requestData.sourceRecordId)
+    const healthRecordSnap = await getDoc(healthRecordRef)
+    const oldApprovalStatus = healthRecordSnap.data()?.approvalStatus || 'pending'
+
+    // Only 'scheduled'/'approved' and 'rejected' represent an actual approval
+    // decision. Downstream statuses like 'inreview'/'completed' happen AFTER
+    // a request was already approved, so they must NOT overwrite it back to
+    // 'pending'. (Previously this fell back to `requestData.approvalStatus`,
+    // a field that never exists on health_requests docs, so it always
+    // defaulted to 'pending' and silently un-approved the resident's record.)
     const approvalStatus = updates.status === 'scheduled' || updates.status === 'approved'
       ? 'approved'
       : updates.status === 'rejected'
         ? 'rejected'
-        : requestData.approvalStatus || 'pending'
+        : oldApprovalStatus
 
-    await updateDoc(doc(db, 'healthRecords', requestData.sourceRecordId), {
+    await updateDoc(healthRecordRef, {
       approvalStatus,
       updatedAt: updates.updatedAt || new Date().toISOString(),
       reviewedBy: updates.reviewedBy || 'BHW',
@@ -124,6 +135,9 @@ export const updateHealthRequestStatus = async (requestId, updates) => {
       requestedAppointmentDate: updates.requestedAppointmentDate || requestData.requestedAppointmentDate || null,
       requestedAppointmentTime: updates.requestedAppointmentTime || requestData.requestedAppointmentTime || null,
     })
+
+    // Keep the purok's aggregate stats in sync
+    purokStatsService.recordHealthStatusChange(requestData.purok, oldApprovalStatus, approvalStatus)
   }
 
   if (requestData.userId) {

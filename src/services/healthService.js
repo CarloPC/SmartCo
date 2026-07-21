@@ -1,6 +1,7 @@
 import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
+import purokStatsService from './purokStatsService'
 
 class HealthService {
   async getHealthRecords() {
@@ -88,6 +89,10 @@ class HealthService {
       const record = { id: docRef.id, ...newRecord }
 
       console.log('Health record saved with ID:', docRef.id)
+
+      // Bump the purok's privacy-safe aggregate stats (counts only, no PII)
+      // so every resident in this purok sees the same updated numbers.
+      purokStatsService.recordHealthCreated(residentPurok, newRecord.createdAt)
 
       const healthRequestRef = await addDoc(collection(db, 'health_requests'), {
         userId,
