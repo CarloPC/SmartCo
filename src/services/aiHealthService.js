@@ -15,7 +15,7 @@
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const MODELS = ['llama-3.3-70b-versatile', 'llama3-8b-8192', 'gemma2-9b-it']
+const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
 
 const SYSTEM_PROMPT = `You are HealthBot, a compassionate and professional AI health assistant embedded in SmartCo, the Smart Barangay Management System for Barangay Ilihan, Toledo City, Cebu, Philippines.
 
@@ -32,7 +32,16 @@ CONVERSATION FLOW:
    - 🔍 Possible condition(s) (mention 1–3 likely ones, not as diagnosis)
    - 💊 Home remedy & self-care advice
    - ⚠️ Warning signs to watch out for
-4. For SERIOUS symptoms (high fever >38.5°C, chest pain, difficulty breathing, persistent vomiting >24h, severe headache with stiff neck, signs of stroke), include this exact marker at the END of your response: [SUGGEST_CHECKUP]
+4. For SERIOUS symptoms, include this exact marker at the END of your response, on its own, with nothing else on that line: [SUGGEST_CHECKUP]
+   Trigger this whenever the user describes ANY of the following, whether stated precisely or in plain/casual language:
+   - A fever described as "high", "really high", or any numeric fever above 38.5°C
+   - Chest pain or tightness
+   - Difficulty or labored breathing
+   - Persistent vomiting lasting more than 24 hours
+   - Severe headache, especially with a stiff neck
+   - Any signs of stroke (slurred speech, facial drooping, numbness/weakness on one side)
+   - Symptoms described as severe, worsening, or lasting several days despite home care
+   When unsure whether something counts as serious, err on the side of including the marker — it's better to recommend a checkup than to miss one.
 5. For mild concerns (common cold, mild headache, minor cuts, seasonal allergy), give home remedies without suggesting a checkup.
 
 TONE & STYLE:
@@ -40,7 +49,13 @@ TONE & STYLE:
 - Keep each response to 3–5 short sentences or bullet points.
 - Always end serious analyses with: "Note: I'm an AI health assistant, not a licensed doctor. Please seek professional care if symptoms worsen."
 - Do NOT discuss non-health topics. Politely redirect if asked.
-- Respond in English by default, but if the user writes in Filipino/Cebuano, respond in the same language.`
+- LANGUAGE: English is the default and required language unless overridden below.
+  - Your own background knowledge that this is Barangay Ilihan, Toledo City, Cebu is CONTEXT ONLY — it must never influence what language you reply in.
+  - Look ONLY at the words the user actually typed in their most recent message to decide the language. Ignore all earlier messages and ignore location/setting.
+  - If their message is in English (like "I have a headache"), reply ONLY in English. Do not add Cebuano or Tagalog words or greetings.
+  - If their most recent message is clearly written in Cebuano/Bisaya, reply in Cebuano/Bisaya.
+  - If their most recent message is clearly written in Tagalog/Filipino, reply in Tagalog/Filipino.
+  - If you are unsure, default to English.`
 
 /** ── Demo mode responses (used when all API quota is exhausted) ────────── */
 const DEMO_RESPONSES = [
@@ -120,9 +135,18 @@ export async function sendHealthMessage(messages, userContext = {}) {
   for (const model of MODELS) {
     try {
       const rawText = await callGroq(model, systemText, chatMessages)
-      const suggestCheckup = rawText.includes('[SUGGEST_CHECKUP]')
-      const cleanText = rawText.replace('[SUGGEST_CHECKUP]', '').trim()
-      return { text: cleanText, suggestCheckup, model }
+
+// Signal 1: explicit marker for genuinely serious symptoms
+const hasMarker = /\[\s*SUGGEST_CHECKUP\s*\]/i.test(rawText)
+
+// Signal 2: the reply itself reads like a diagnosis or summary,
+// regardless of whether the model remembered the marker
+const looksLikeDiagnosis = /overall summary|possible condition|my diagnosis|health analysis|🔍/i.test(rawText)
+
+const suggestCheckup = hasMarker || looksLikeDiagnosis
+const cleanText = rawText.replace(/\[\s*SUGGEST_CHECKUP\s*\]/i, '').trim()
+
+return { text: cleanText, suggestCheckup, model }
     } catch (err) {
       if (err.isRateLimit) {
         console.warn(`Model ${model} rate-limited, trying next…`)

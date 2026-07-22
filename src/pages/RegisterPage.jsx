@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, Loader2, CheckCircle, Shield, Zap, Bell } from 'lucide-react'
@@ -72,7 +73,7 @@ const RegisterPage = () => {
     { icon: CheckCircle, text: 'Streamlined approval workflows' },
   ]
 
-  /* glass card — matches HomePage.jsx */
+  /* glass card â€” matches HomePage.jsx */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
   const inputClass =
@@ -83,14 +84,14 @@ const RegisterPage = () => {
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
 
-      {/* Decorative glow blobs — matches Layout.jsx global gradient treatment */}
+      {/* Decorative glow blobs â€” matches Layout.jsx global gradient treatment */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
         <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
         <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-violet-500/15 blur-3xl" />
       </div>
 
-      {/* ── LEFT BRAND PANEL (desktop only) ── */}
+      {/* â”€â”€ LEFT BRAND PANEL (desktop only) â”€â”€ */}
       <div className="relative z-10 hidden lg:flex lg:w-2/5 xl:w-1/2 flex-col justify-between p-12 overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -137,10 +138,10 @@ const RegisterPage = () => {
           </div>
         </div>
 
-        <p className="relative z-10 text-blue-300/60 text-sm">© 2026 SmartCo. All rights reserved.</p>
+        <p className="relative z-10 text-blue-300/60 text-sm">Â© 2026 SmartCo. All rights reserved.</p>
       </div>
 
-      {/* ── RIGHT FORM PANEL ── */}
+      {/* â”€â”€ RIGHT FORM PANEL â”€â”€ */}
       <div className="relative z-10 flex-1 flex flex-col overflow-y-auto">
         {/* Mobile background */}
         <div className="absolute inset-0 lg:hidden">
@@ -276,7 +277,7 @@ const RegisterPage = () => {
                     <p className="mt-1.5 text-xs text-white/40">
                       Need admin access?{' '}
                       <Link to="/login" className="text-blue-300 font-medium hover:underline">
-                        Sign in and request it here →
+                        Sign in and request it here
                       </Link>
                     </p>
                   </div>
@@ -290,8 +291,8 @@ const RegisterPage = () => {
                       required
                     >
                       <option value="">Select your purok</option>
-                      {PUROKS_ILIHAN.map((purok, index) => (
-                        <option key={index} value={`Purok ${index + 1}`}>
+                      {PUROKS_ILIHAN.map((purok) => (
+                        <option key={purok} value={purok}>
                           {purok}
                         </option>
                       ))}
@@ -390,3 +391,4 @@ const RegisterPage = () => {
 }
 
 export default RegisterPage
+

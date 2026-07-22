@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -10,6 +11,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import emergencyService from '../services/emergencyService'
 import LocationPicker from '../components/LocationPicker'
+import { PUROKS_ILIHAN } from '../constants/puroks'
 
 const EMERGENCY_TYPES = [
   { value: 'fire',     label: 'Fire',         icon: Flame,       color: 'text-red-300',    grad: 'from-red-500/30 to-orange-500/10',    ring: 'ring-red-400/50' },
@@ -27,11 +29,11 @@ const SEVERITIES = [
   { value: 'critical', label: 'Critical', desc: 'Life-threatening / immediate danger', color: 'text-red-300',     selBg: 'bg-gradient-to-br from-red-600/90 to-rose-700/90' },
 ]
 
-/* glass card — same design language as HomePage/HealthPage/FoodAidPage/EventsPage */
+/* glass card â€” same design language as HomePage/HealthPage/FoodAidPage/EventsPage */
 const card =
   'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
 
-/* shared full-bleed background — matches HomePage/HealthPage/FoodAidPage/EventsPage's hero shell */
+/* shared full-bleed background â€” matches HomePage/HealthPage/FoodAidPage/EventsPage's hero shell */
 const PageBackground = ({ isDarkMode }) => (
   <>
     <div className="fixed inset-0 -z-10 bg-cover bg-center" style={{ backgroundImage: `url(${toledoImage})` }}>
@@ -40,7 +42,7 @@ const PageBackground = ({ isDarkMode }) => (
         : 'bg-gradient-to-br from-blue-600/90 via-indigo-600/90 to-blue-800/90'}`}
       />
     </div>
-    {/* Decorative blobs — matches HomePage/HealthPage/FoodAidPage/EventsPage's gradient shell */}
+    {/* Decorative blobs â€” matches HomePage/HealthPage/FoodAidPage/EventsPage's gradient shell */}
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
       <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
@@ -53,14 +55,14 @@ const PageBackground = ({ isDarkMode }) => (
   </>
 )
 
-// ─── Suspension Banner ──────────────────────────────────────────────
+// â”€â”€â”€ Suspension Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SuspensionBanner = ({ suspension, isDarkMode, onBack }) => {
   const isPermanent = suspension.isPermanent
   const isRepeat = suspension.count >= 2
 
   const endDateStr = isPermanent
-    ? 'Permanent — no expiry'
+    ? 'Permanent â€” no expiry'
     : new Date(suspension.suspendedUntil).toLocaleDateString('en-PH', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       })
@@ -143,7 +145,7 @@ const SuspensionBanner = ({ suspension, isDarkMode, onBack }) => {
   )
 }
 
-// ─── Main Page ──────────────────────────────────────────────────────
+// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const ReportEmergencyPage = () => {
   const { isDarkMode } = useTheme()
@@ -215,7 +217,7 @@ const ReportEmergencyPage = () => {
 
   const inputCls = 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none backdrop-blur-sm transition-all duration-300 ease-out hover:scale-[1.02] hover:border-red-300/60 hover:shadow-[0_0_30px_rgba(248,113,113,0.35)] focus:scale-[1.02] focus:border-red-300 focus:ring-2 focus:ring-red-400/70 focus:shadow-[0_0_35px_rgba(248,113,113,0.55)]'
 
-  // Checking suspension…
+  // Checking suspensionâ€¦
   if (checkingSuspension) {
     return (
       <div className="min-h-screen relative">
@@ -223,7 +225,7 @@ const ReportEmergencyPage = () => {
         <div className="flex min-h-[80vh] items-center justify-center">
           <div className={`${card} px-8 py-10 text-center`}>
             <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-white" />
-            <p className="font-semibold text-white">Checking access…</p>
+            <p className="font-semibold text-white">Checking accessâ€¦</p>
           </div>
         </div>
       </div>
@@ -295,7 +297,7 @@ const ReportEmergencyPage = () => {
           <ArrowLeft className="w-4 h-4" /><span>Back</span>
         </button>
 
-        {/* ── Hero header banner ── */}
+        {/* â”€â”€ Hero header banner â”€â”€ */}
         <section className={`${card} overflow-hidden bg-gradient-to-r from-red-500/30 via-orange-500/20 to-rose-500/30`}>
           <div className="flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-xl">
@@ -307,7 +309,7 @@ const ReportEmergencyPage = () => {
                 Report Emergency
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-                Notify barangay officials immediately — every second counts.
+                Notify barangay officials immediately â€” every second counts.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <a
@@ -434,11 +436,9 @@ const ReportEmergencyPage = () => {
                 <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
                 <select name="purok" value={formData.purok} onChange={handleChange} required className={`${inputCls} appearance-none pl-10`}>
                   <option value="" className="text-gray-900">Select Purok</option>
-                  <option value="Purok 1" className="text-gray-900">Purok 1</option>
-                  <option value="Purok 2" className="text-gray-900">Purok 2</option>
-                  <option value="Purok 3" className="text-gray-900">Purok 3</option>
-                  <option value="Purok 4" className="text-gray-900">Purok 4</option>
-                  <option value="Purok 5" className="text-gray-900">Purok 5</option>
+                  {PUROKS_ILIHAN.map((p) => (
+                    <option key={p} value={p} className="text-gray-900">{p}</option>
+                  ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
               </div>
@@ -503,3 +503,4 @@ const ReportEmergencyPage = () => {
 }
 
 export default ReportEmergencyPage
+

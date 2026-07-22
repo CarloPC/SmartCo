@@ -1,6 +1,7 @@
+
 import { PUROKS_SHORT } from '../constants/puroks.js'
 
-// Toledo City, Cebu – Barangay GPS data
+// Toledo City, Cebu â€“ Barangay GPS data
 export const TOLEDO_BARANGAYS = [
   { id: 'poblacion',       name: 'Poblacion',              lat: 10.3737, lng: 123.6384, terrain: 'flat',        accessibility: 'excellent', hub: true },
   { id: 'cantabaco',       name: 'Cantabaco',              lat: 10.3508, lng: 123.6073, terrain: 'hilly',       accessibility: 'good' },
@@ -29,14 +30,13 @@ export const PUROKS_LIST = PUROKS_SHORT
 // Distribution hub (Barangay Ilihan Hall)
 export const DISTRIBUTION_HUB = { lat: 10.3321, lng: 123.6187, name: 'Barangay Ilihan Hall' }
 
-// Purok → approximate barangay coordinates (for enriching legacy data)
+// Area â†’ approximate barangay coordinates (for enriching legacy data)
 export const PUROK_COORDS = {
-  'Purok 1': { lat: 10.3737, lng: 123.6384, barangay: 'Poblacion' },
-  'Purok 2': { lat: 10.3825, lng: 123.6547, barangay: 'Bagakay' },
-  'Purok 3': { lat: 10.3508, lng: 123.6073, barangay: 'Cantabaco' },
-  'Purok 4': { lat: 10.3643, lng: 123.6712, barangay: 'Dumlog' },
-  'Purok 5': { lat: 10.3889, lng: 123.6089, barangay: 'Subayon' },
-  'Purok 6': { lat: 10.4003, lng: 123.6201, barangay: 'Capayas' },
+  'Sitio Proper Ilihan': { lat: 10.3737, lng: 123.6384, barangay: 'Poblacion' },
+  'Cabulihan Uno':       { lat: 10.3825, lng: 123.6547, barangay: 'Bagakay' },
+  'Cabulihan Dos':       { lat: 10.3508, lng: 123.6073, barangay: 'Cantabaco' },
+  'Sitio Mangga':        { lat: 10.3643, lng: 123.6712, barangay: 'Dumlog' },
+  'Sambag Ilihan':       { lat: 10.3889, lng: 123.6089, barangay: 'Subayon' },
 }
 
 /**
@@ -111,12 +111,12 @@ export const getRouteDescription = (fromName, toBarangay) => {
     flat:        'mostly flat, well-paved roads',
     mixed:       'mixed terrain with some elevation changes',
     hilly:       'hilly roads with winding sections and moderate slopes',
-    mountainous: 'steep mountain roads — a 4×4 vehicle is recommended',
+    mountainous: 'steep mountain roads â€” a 4Ã—4 vehicle is recommended',
   }
   const accDesc = {
     excellent: 'Roads are wide and well-maintained throughout.',
     good:      'Standard vehicles can access this barangay.',
-    moderate:  'Some sections are narrow — proceed carefully.',
+    moderate:  'Some sections are narrow â€” proceed carefully.',
   }
 
   return `From ${fromName}, travel approximately ${dist} km through ${terrainDesc[toBarangay.terrain] || terrainDesc.flat}. ${accDesc[toBarangay.accessibility] || accDesc.good} Follow barangay road signs toward ${toBarangay.name}.`
@@ -134,13 +134,13 @@ export const generateAIRouteAnalysis = (barangay, date) => {
   const risks = []
 
   if (barangay.terrain === 'hilly' || barangay.terrain === 'mountainous') {
-    risks.push({ severity: 'medium', text: 'Steep terrain – use a vehicle with reliable brakes and good ground clearance.' })
+    risks.push({ severity: 'medium', text: 'Steep terrain â€“ use a vehicle with reliable brakes and good ground clearance.' })
   }
   if (barangay.accessibility === 'moderate') {
-    risks.push({ severity: 'medium', text: 'Narrow roads – coordinate with local traffic management if needed.' })
+    risks.push({ severity: 'medium', text: 'Narrow roads â€“ coordinate with local traffic management if needed.' })
   }
   if (dist > 5) {
-    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) – ensure adequate fuel and emergency kit on board.` })
+    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) â€“ ensure adequate fuel and emergency kit on board.` })
   }
   if (date) {
     const day = new Date(date).getDay()
@@ -181,13 +181,13 @@ export const generatePinpointAIAnalysis = (pinLat, pinLng, nearestBarangay, puro
   const risks = []
 
   if (terrain === 'hilly' || terrain === 'mountainous') {
-    risks.push({ severity: 'medium', text: 'Steep terrain – use a vehicle with reliable brakes and good ground clearance.' })
+    risks.push({ severity: 'medium', text: 'Steep terrain â€“ use a vehicle with reliable brakes and good ground clearance.' })
   }
   if (accessibility === 'moderate') {
-    risks.push({ severity: 'medium', text: 'Narrow roads – coordinate with local traffic management if needed.' })
+    risks.push({ severity: 'medium', text: 'Narrow roads â€“ coordinate with local traffic management if needed.' })
   }
   if (dist > 5) {
-    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) – ensure adequate fuel and emergency kit on board.` })
+    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) â€“ ensure adequate fuel and emergency kit on board.` })
   }
   if (date) {
     const day = new Date(date).getDay()
@@ -203,12 +203,12 @@ export const generatePinpointAIAnalysis = (pinLat, pinLng, nearestBarangay, puro
   efficiency = Math.max(50, efficiency)
 
   const departure = travelTime > 30 ? '7:00 AM' : '8:00 AM'
-  const purokLabel = purok ? ` · ${purok}` : ''
+  const purokLabel = purok ? ` Â· ${purok}` : ''
   const areaLabel = (nearestBarangay?.name || 'target area') + purokLabel
   const accessDesc =
     accessibility === 'excellent' ? 'Roads are wide and well-maintained throughout.' :
     accessibility === 'good' ? 'Standard vehicles can access this area.' :
-    'Some sections are narrow — proceed carefully.'
+    'Some sections are narrow â€” proceed carefully.'
 
   return {
     distanceKm: +dist.toFixed(2),
@@ -243,3 +243,4 @@ export const getPositionAsync = () =>
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     )
   })
+

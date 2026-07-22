@@ -1,3 +1,4 @@
+
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Boxes } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
@@ -5,15 +6,15 @@ import { PUROKS_ILIHAN } from '../constants/puroks'
 
 /**
  * FoodAidProjectionChart
- * Visualizes Target vs. Served households per Purok for food aid distribution.
+ * Visualizes Target vs. Served households per area for food aid distribution.
  *
  * Expected data shape:
- * [{ name: 'Purok 1', targetHouseholds: 120, servedHouseholds: 95 }, ...]
+ * [{ name: 'Sitio Proper Ilihan', targetHouseholds: 120, servedHouseholds: 95 }, ...]
  */
 
 // Drop this in alongside initializeDemoData() if you need quick mock data
 export const buildFoodAidProjectionDemoData = (puroks = []) => {
-  const purokList = puroks.length ? puroks : PUROKS_ILIHAN.map((p, i) => `Purok ${i + 1}`)
+  const purokList = puroks.length ? puroks : [...PUROKS_ILIHAN]
   return purokList.map((name) => {
     const targetHouseholds = 80 + Math.floor(Math.random() * 80)
     const servedHouseholds = Math.max(0, targetHouseholds - Math.floor(Math.random() * 35))
@@ -63,7 +64,7 @@ export default function FoodAidProjectionChart({ data = [] }) {
       <div className="mb-4 flex items-center gap-2">
         <Boxes className="h-5 w-5 text-teal-500" />
         <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-gray-100' : 'text-slate-800'}`}>
-          Food Aid Projections — Target vs. Served
+          Food Aid Projections â€” Target vs. Served
         </h2>
       </div>
 
@@ -122,3 +123,4 @@ export default function FoodAidProjectionChart({ data = [] }) {
     </div>
   )
 }
+

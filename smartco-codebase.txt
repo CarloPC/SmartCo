@@ -476,6 +476,7 @@ export default function EventAttendanceChart({ data = [] }) {
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\FoodAidProjectionChart.jsx ==
 
+
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Boxes } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
@@ -483,15 +484,15 @@ import { PUROKS_ILIHAN } from '../constants/puroks'
 
 /**
  * FoodAidProjectionChart
- * Visualizes Target vs. Served households per Purok for food aid distribution.
+ * Visualizes Target vs. Served households per area for food aid distribution.
  *
  * Expected data shape:
- * [{ name: 'Purok 1', targetHouseholds: 120, servedHouseholds: 95 }, ...]
+ * [{ name: 'Sitio Proper Ilihan', targetHouseholds: 120, servedHouseholds: 95 }, ...]
  */
 
 // Drop this in alongside initializeDemoData() if you need quick mock data
 export const buildFoodAidProjectionDemoData = (puroks = []) => {
-  const purokList = puroks.length ? puroks : PUROKS_ILIHAN.map((p, i) => `Purok ${i + 1}`)
+  const purokList = puroks.length ? puroks : [...PUROKS_ILIHAN]
   return purokList.map((name) => {
     const targetHouseholds = 80 + Math.floor(Math.random() * 80)
     const servedHouseholds = Math.max(0, targetHouseholds - Math.floor(Math.random() * 35))
@@ -541,7 +542,7 @@ export default function FoodAidProjectionChart({ data = [] }) {
       <div className="mb-4 flex items-center gap-2">
         <Boxes className="h-5 w-5 text-teal-500" />
         <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-gray-100' : 'text-slate-800'}`}>
-          Food Aid Projections â€” Target vs. Served
+          Food Aid Projections Ã¢â‚¬â€ Target vs. Served
         </h2>
       </div>
 
@@ -600,6 +601,7 @@ export default function FoodAidProjectionChart({ data = [] }) {
     </div>
   )
 }
+
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\HealthAIChat.jsx ==
 
@@ -3459,65 +3461,57 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\constants\puroks.js ==
 
+
 /**
- * Barangay Ilihan Puroks
+ * Barangay Ilihan Puroks (Areas)
  * 
- * This is the central source of truth for all puroks in Barangay Ilihan.
- * All references to puroks throughout the application should import from this file.
+ * This is the central source of truth for all official areas in Barangay Ilihan.
+ * All references to areas throughout the application should import from this file.
  * 
- * NOTE: These are placeholder names. Once official purok names from Barangay Hall are available,
- * replace the placeholder values with the official names. Do not hardcode puroks anywhere else.
+ * These are the official area names for Barangay Ilihan, Toledo City, Cebu.
+ * Do not hardcode these names anywhere else in the codebase.
  */
 
 export const PUROKS_ILIHAN = [
-  'Purok 1 - [Pending Official Name]',
-  'Purok 2 - [Pending Official Name]',
-  'Purok 3 - [Pending Official Name]',
-  'Purok 4 - [Pending Official Name]',
-  'Purok 5 - [Pending Official Name]',
-  'Purok 6 - [Pending Official Name]',
+  'Sitio Proper Ilihan',
+  'Cabulihan Uno',
+  'Cabulihan Dos',
+  'Sitio Mangga',
+  'Sambag Ilihan',
 ]
 
 /**
- * Short labels for charts, dropdowns, and compact displays
+ * Kept as an alias of PUROKS_ILIHAN for backward compatibility with existing
+ * imports (e.g. charts, dropdowns) that expect a "short label" list. The
+ * official area names above are already concise, so no separate short form
+ * is needed.
  */
-export const PUROKS_SHORT = [
-  'Purok 1',
-  'Purok 2',
-  'Purok 3',
-  'Purok 4',
-  'Purok 5',
-  'Purok 6',
-]
+export const PUROKS_SHORT = [...PUROKS_ILIHAN]
 
 /**
- * Helper function to get the full purok name
+ * Helper function to get the full/display area name.
+ * Kept for backward compatibility with existing call sites; since area
+ * names are now the official names themselves, this is effectively an
+ * identity function (it still normalizes missing values to 'Unassigned').
  */
 export const getFullPurokName = (purok) => {
   if (!purok) return 'Unassigned'
-  
-  // If it's just a number, get the full name
-  const index = parseInt(purok.replace('Purok ', '')) - 1
-  if (!isNaN(index) && PUROKS_ILIHAN[index]) {
-    return PUROKS_ILIHAN[index]
-  }
-  
-  // If it's already a full name, return it
   return purok
 }
 
 /**
- * Helper function to get the short purok name
+ * Helper function to get the short/compact area name.
+ * Kept for backward compatibility with existing call sites; since area
+ * names are now the official names themselves, this is effectively an
+ * identity function (it still normalizes missing values to 'Unassigned').
  */
 export const getShortPurokName = (purok) => {
   if (!purok) return 'Unassigned'
-  
-  // Extract just "Purok N"
-  const match = purok.match(/Purok \d+/)
-  return match ? match[0] : purok
+  return purok
 }
 
 export default PUROKS_ILIHAN
+
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\context\AuthContext.jsx ==
 
@@ -12664,12 +12658,14 @@ export default ManageDocumentRequestsPage
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\MyProfilePage.jsx ==
 
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit2, Save, X, Trash2, User, Mail, Phone, MapPin, Briefcase, Loader, Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import authService from '../services/authService'
 import storageService from '../services/storageService'
+import { PUROKS_ILIHAN } from '../constants/puroks'
 
 const MyProfilePage = () => {
   const navigate = useNavigate()
@@ -12692,7 +12688,7 @@ const MyProfilePage = () => {
     }
   }, [user])
 
-  /* glass card Ã¢â‚¬â€ matches HomePage panels */
+  /* glass card ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â matches HomePage panels */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
 
@@ -12719,10 +12715,10 @@ const MyProfilePage = () => {
       updateUser(updates)
       setIsEditing(false)
 
-      alert('Ã¢Å“â€¦ Profile updated successfully!')
+      alert('ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Profile updated successfully!')
     } catch (error) {
       console.error('Error updating profile:', error)
-      alert('Ã¢Å’ Failed to update profile: ' + error.message)
+      alert('ÃƒÂ¢Ã…â€™ Failed to update profile: ' + error.message)
     } finally {
       setSaving(false)
     }
@@ -12751,10 +12747,10 @@ const MyProfilePage = () => {
       setUserData({ ...userData, photoURL })
       updateUser({ photoURL })
 
-      alert('âœ… Profile picture updated!')
+      alert('Ã¢Å“â€¦ Profile picture updated!')
     } catch (error) {
       console.error('Error uploading image:', error)
-      alert('âŒ Failed to upload image: ' + error.message)
+      alert('Ã¢ÂÅ’ Failed to upload image: ' + error.message)
     } finally {
       setUploadingImage(false)
     }
@@ -12768,7 +12764,7 @@ const MyProfilePage = () => {
   const handleDelete = async () => {
     // Note: Deleting Firebase Auth users requires re-authentication
     // For now, just logout and show message
-    alert('Ã¢Å¡ Ã¯Â¸ Account deletion requires contacting administrator.')
+    alert('ÃƒÂ¢Ã…Â¡ ÃƒÂ¯Ã‚Â¸ Account deletion requires contacting administrator.')
     setShowDeleteConfirm(false)
 
     // Optional: Implement full deletion with re-authentication
@@ -12794,7 +12790,7 @@ const MyProfilePage = () => {
   }
 
   return (
-    /* No background here Ã¢â‚¬â€ Layout.jsx paints the gradient behind everything */
+    /* No background here ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Layout.jsx paints the gradient behind everything */
     <div className="mx-auto max-w-2xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
 
       {/* Header */}
@@ -12942,11 +12938,9 @@ const MyProfilePage = () => {
                 onChange={(e) => handleInputChange('purok', e.target.value)}
                 className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-white backdrop-blur-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 [&>option]:text-gray-900"
               >
-                <option value="Purok 1">Purok 1</option>
-                <option value="Purok 2">Purok 2</option>
-                <option value="Purok 3">Purok 3</option>
-                <option value="Purok 4">Purok 4</option>
-                <option value="Purok 5">Purok 5</option>
+                {PUROKS_ILIHAN.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
               </select>
             ) : (
               <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-medium text-white">
@@ -13056,6 +13050,7 @@ const MyProfilePage = () => {
 }
 
 export default MyProfilePage
+
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\NotificationsPage.jsx ==
 
@@ -13422,6 +13417,7 @@ export default NotificationsPage
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\OptimizeSchedulePage.jsx ==
 
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
@@ -13468,13 +13464,13 @@ const START_ICON = L.divIcon({
 
 const STOP_COLORS = ['#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#ec4899']
 
-// Purok-to-approximate coordinates for legacy support
+// Area-to-approximate coordinates for legacy support
 const PUROK_DATA = {
-  'Purok 1': { distance: 2.5, terrain: 'flat',        accessibility: 'excellent', avgFamilies: 24, population: 120, lat: 10.3737, lng: 123.6384 },
-  'Purok 2': { distance: 1.8, terrain: 'flat',        accessibility: 'excellent', avgFamilies: 18, population: 90,  lat: 10.3825, lng: 123.6547 },
-  'Purok 3': { distance: 4.2, terrain: 'hilly',       accessibility: 'moderate',  avgFamilies: 31, population: 155, lat: 10.3508, lng: 123.6073 },
-  'Purok 4': { distance: 3.5, terrain: 'mixed',       accessibility: 'good',      avgFamilies: 28, population: 140, lat: 10.3643, lng: 123.6712 },
-  'Purok 5': { distance: 3.0, terrain: 'flat',        accessibility: 'good',      avgFamilies: 22, population: 110, lat: 10.3889, lng: 123.6089 },
+  'Sitio Proper Ilihan': { distance: 2.5, terrain: 'flat',        accessibility: 'excellent', avgFamilies: 24, population: 120, lat: 10.3737, lng: 123.6384 },
+  'Cabulihan Uno':       { distance: 1.8, terrain: 'flat',        accessibility: 'excellent', avgFamilies: 18, population: 90,  lat: 10.3825, lng: 123.6547 },
+  'Cabulihan Dos':       { distance: 4.2, terrain: 'hilly',       accessibility: 'moderate',  avgFamilies: 31, population: 155, lat: 10.3508, lng: 123.6073 },
+  'Sitio Mangga':        { distance: 3.5, terrain: 'mixed',       accessibility: 'good',      avgFamilies: 28, population: 140, lat: 10.3643, lng: 123.6712 },
+  'Sambag Ilihan':       { distance: 3.0, terrain: 'flat',        accessibility: 'good',      avgFamilies: 22, population: 110, lat: 10.3889, lng: 123.6089 },
 }
 const PUROKS = Object.keys(PUROK_DATA)
 
@@ -13516,7 +13512,7 @@ const OptimizeSchedulePage = () => {
 
   useEffect(() => { autoDetectGPS() }, [])
 
-  // â”€â”€ GPS detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ GPS detection Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const autoDetectGPS = async () => {
     setGpsStatus('detecting')
     try {
@@ -13538,7 +13534,7 @@ const OptimizeSchedulePage = () => {
     }
   }
 
-  // â”€â”€ Form helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Form helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const handlePurokToggle = purok => {
     setFormData(prev => ({
       ...prev,
@@ -13553,7 +13549,7 @@ const OptimizeSchedulePage = () => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  // â”€â”€ AI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ AI helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const predictWeather = date => {
     const types   = ['sunny', 'partly_cloudy', 'cloudy', 'rainy', 'stormy']
     const day     = new Date(date).getDay()
@@ -13575,7 +13571,7 @@ const OptimizeSchedulePage = () => {
     }
     if (data.accessibility === 'moderate' && (weather.weather === 'rainy' || weather.weather === 'stormy')) {
       risks.push({ type: 'accessibility', severity: 'high',
-        description: 'Roads may become difficult in bad weather', mitigation: 'Consider 4Ã—4 vehicle, alert residents of possible delay' })
+        description: 'Roads may become difficult in bad weather', mitigation: 'Consider 4Ãƒâ€”4 vehicle, alert residents of possible delay' })
     }
     if (families > data.avgFamilies * 1.5) {
       risks.push({ type: 'capacity', severity: 'medium',
@@ -13621,27 +13617,27 @@ const OptimizeSchedulePage = () => {
   const generateRecommendations = schedules => {
     const recommendations = []
     const avg = schedules.reduce((s, x) => s + x.efficiencyScore, 0) / schedules.length
-    if (avg >= 85)      recommendations.push({ type: 'success', message: 'âœ… Excellent schedule! High efficiency across all stops.', action: 'Proceed with this AI-optimized distribution plan.' })
-    else if (avg >= 70) recommendations.push({ type: 'good',    message: 'ðŸ‘ Good schedule with minor optimization opportunities.', action: 'Consider the risk mitigations suggested below.' })
-    else                recommendations.push({ type: 'warning', message: 'âš ï¸ Schedule has significant challenges.', action: 'Review high-risk stops and consider rescheduling.' })
+    if (avg >= 85)      recommendations.push({ type: 'success', message: 'Ã¢Å“â€¦ Excellent schedule! High efficiency across all stops.', action: 'Proceed with this AI-optimized distribution plan.' })
+    else if (avg >= 70) recommendations.push({ type: 'good',    message: 'Ã°Å¸â€˜Â Good schedule with minor optimization opportunities.', action: 'Consider the risk mitigations suggested below.' })
+    else                recommendations.push({ type: 'warning', message: 'Ã¢Å¡Â Ã¯Â¸Â Schedule has significant challenges.', action: 'Review high-risk stops and consider rescheduling.' })
 
     const rainyDays = schedules.filter(s => s.weather.weather === 'rainy' || s.weather.weather === 'stormy').length
     if (rainyDays > schedules.length / 2)
-      recommendations.push({ type: 'weather', message: 'ðŸŒ§ ' + rainyDays + ' days have rain forecast.', action: 'Consider shifting window or preparing rain contingency.' })
+      recommendations.push({ type: 'weather', message: 'Ã°Å¸Å’Â§ ' + rainyDays + ' days have rain forecast.', action: 'Consider shifting window or preparing rain contingency.' })
 
     const highRisk = schedules.filter(s => s.risks.some(r => r.severity === 'high'))
     if (highRisk.length)
-      recommendations.push({ type: 'risk', message: 'âš ï¸ ' + highRisk.length + ' high-risk stop(s) detected.',
+      recommendations.push({ type: 'risk', message: 'Ã¢Å¡Â Ã¯Â¸Â ' + highRisk.length + ' high-risk stop(s) detected.',
         action: 'Priority attention needed for: ' + highRisk.map(s => s.purok).join(', ') })
 
     const totalTime = schedules.reduce((s, x) => s + x.routeAnalysis.estimatedTime, 0)
     if (totalTime > 300)
-      recommendations.push({ type: 'logistics', message: 'ðŸšš Total distribution time is significant.', action: 'Consider deploying multiple teams or spreading over more days.' })
+      recommendations.push({ type: 'logistics', message: 'Ã°Å¸Å¡Å¡ Total distribution time is significant.', action: 'Consider deploying multiple teams or spreading over more days.' })
 
     return recommendations
   }
 
-  // â”€â”€ Main AI analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Main AI analysis Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const handleAnalyze = async () => {
     if (!formData.selectedPuroks.length || !formData.startDate || !formData.endDate || !formData.totalFamilies) {
       alert('Please fill in all required fields.')
@@ -13721,12 +13717,12 @@ const OptimizeSchedulePage = () => {
     setShowMap(true)
   }
 
-  // â”€â”€ Save to Firestore â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Save to Firestore Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const handleSaveSchedule = async () => {
     if (!analysisResult) { alert('Analyze first.'); return }
     try {
       await Promise.all(analysisResult.schedules.map(schedule => {
-        const weatherInfo = schedule.weather.weather + ' (' + schedule.weather.temperature + 'Â°C, ' + schedule.weather.humidity + '% humidity)'
+        const weatherInfo = schedule.weather.weather + ' (' + schedule.weather.temperature + 'Ã‚Â°C, ' + schedule.weather.humidity + '% humidity)'
         const riskSummary = schedule.risks.map(r => r.severity.toUpperCase() + ': ' + r.description).join('; ') || 'No significant risks'
         return foodAidService.createFoodAidSchedule({
           purok: schedule.purok, date: schedule.date, dayName: schedule.dayName,
@@ -13744,7 +13740,7 @@ const OptimizeSchedulePage = () => {
           barangayLat: schedule.lat, barangayLng: schedule.lng,
         })
       }))
-      alert('âœ… Saved ' + analysisResult.schedules.length + ' optimized schedule(s)!\n\nAverage efficiency: ' + analysisResult.averageEfficiency + '%')
+      alert('Ã¢Å“â€¦ Saved ' + analysisResult.schedules.length + ' optimized schedule(s)!\n\nAverage efficiency: ' + analysisResult.averageEfficiency + '%')
       navigate('/food-aid')
     } catch (err) {
       console.error(err)
@@ -13752,7 +13748,7 @@ const OptimizeSchedulePage = () => {
     }
   }
 
-  // â”€â”€ Computed map data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Computed map data Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const routePositions = analysisResult
     ? [[analysisResult.startLat, analysisResult.startLng], ...analysisResult.schedules.map(s => [s.lat, s.lng])]
     : []
@@ -13791,21 +13787,21 @@ const OptimizeSchedulePage = () => {
             <h2 className="text-xl font-bold">AI-Optimized Distribution Schedule</h2>
           </div>
           <p className={isDarkMode ? 'text-green-200' : 'text-green-100'}>
-            GPS-aware route planning Â· Nearest-neighbour optimization Â· Risk analysis
+            GPS-aware route planning Ã‚Â· Nearest-neighbour optimization Ã‚Â· Risk analysis
           </p>
         </div>
 
-        {/* â”€â”€ GPS Start Location â”€â”€ */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ GPS Start Location Ã¢â€â‚¬Ã¢â€â‚¬ */}
         <div className={card + ' p-4'}>
           <p className={'text-xs font-bold uppercase tracking-wide mb-3 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
-            ðŸ“ Distribution Start Location (GPS)
+            Ã°Å¸â€œÂ Distribution Start Location (GPS)
           </p>
 
           {gpsStatus === 'idle' || gpsStatus === 'detecting' ? (
             <div className="flex items-center space-x-3">
               <Loader2 className={'w-5 h-5 animate-spin ' + (isDarkMode ? 'text-blue-400' : 'text-blue-500')} />
               <p className={'text-sm ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>
-                {gpsStatus === 'detecting' ? 'Detecting GPS locationâ€¦' : 'Initializingâ€¦'}
+                {gpsStatus === 'detecting' ? 'Detecting GPS locationÃ¢â‚¬Â¦' : 'InitializingÃ¢â‚¬Â¦'}
               </p>
             </div>
           ) : gpsStatus === 'success' ? (
@@ -13820,7 +13816,7 @@ const OptimizeSchedulePage = () => {
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   </div>
                   <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                    GPS detected Â· Â±{startCoords?.accuracy}m Â· AI will optimize route from here
+                    GPS detected Ã‚Â· Ã‚Â±{startCoords?.accuracy}m Ã‚Â· AI will optimize route from here
                   </p>
                 </div>
               </div>
@@ -13833,21 +13829,21 @@ const OptimizeSchedulePage = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <AlertCircle className={'w-4 h-4 ' + (isDarkMode ? 'text-orange-400' : 'text-orange-500')} />
-                  <p className={'text-sm ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>GPS unavailable â€“ select start barangay</p>
+                  <p className={'text-sm ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>GPS unavailable Ã¢â‚¬â€œ select start barangay</p>
                 </div>
                 <button onClick={autoDetectGPS} className={'text-xs px-2.5 py-1.5 rounded-lg font-medium ' + (isDarkMode ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-50 text-blue-600')}>
                   Retry GPS
                 </button>
               </div>
               <select value={manualStart} onChange={e => handleManualStartSelect(e.target.value)} className={inputCls}>
-                <option value="">Select your starting barangayâ€¦</option>
+                <option value="">Select your starting barangayÃ¢â‚¬Â¦</option>
                 {TOLEDO_BARANGAYS.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
           )}
         </div>
 
-        {/* â”€â”€ Form â”€â”€ */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Form Ã¢â€â‚¬Ã¢â€â‚¬ */}
         <div className={card + ' p-4 space-y-4'}>
 
           {/* Purok selection */}
@@ -13867,7 +13863,7 @@ const OptimizeSchedulePage = () => {
                   <span>{purok}</span>
                   {formData.selectedPuroks.includes(purok) && (
                     <span className={'block text-xs mt-0.5 ' + (isDarkMode ? 'text-green-400' : 'text-green-600')}>
-                      ~{PUROK_DATA[purok].distance} km Â· {PUROK_DATA[purok].terrain}
+                      ~{PUROK_DATA[purok].distance} km Ã‚Â· {PUROK_DATA[purok].terrain}
                     </span>
                   )}
                 </button>
@@ -13900,7 +13896,7 @@ const OptimizeSchedulePage = () => {
           <div>
             <label className={'block text-sm font-medium mb-1.5 ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>Additional Notes (optional)</label>
             <textarea name="notes" value={formData.notes} onChange={handleInputChange}
-              placeholder="Special considerations or requirementsâ€¦" rows="2"
+              placeholder="Special considerations or requirementsÃ¢â‚¬Â¦" rows="2"
               className={inputCls + ' resize-none'} />
           </div>
 
@@ -13911,13 +13907,13 @@ const OptimizeSchedulePage = () => {
               (isDarkMode ? 'bg-green-900/90 hover:bg-green-800 border-gray-700/50' : 'bg-green-500/90 hover:bg-green-600 border-white/20')
             }>
             {isAnalyzing
-              ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Analyzing with AIâ€¦</span></>
+              ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Analyzing with AIÃ¢â‚¬Â¦</span></>
               : <><Sparkles className="w-5 h-5" /><span>Analyze & Optimize Route</span></>
             }
           </button>
         </div>
 
-        {/* â”€â”€ Analysis Results â”€â”€ */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Analysis Results Ã¢â€â‚¬Ã¢â€â‚¬ */}
         {analysisResult && (
           <div className="space-y-4">
 
@@ -13939,10 +13935,10 @@ const OptimizeSchedulePage = () => {
                 }
                 <div>
                   <p className={'font-bold text-lg ' + (isDarkMode ? 'text-gray-100' : 'text-gray-900')}>
-                    AI-Optimized Route Â· {analysisResult.averageEfficiency}% Efficiency
+                    AI-Optimized Route Ã‚Â· {analysisResult.averageEfficiency}% Efficiency
                   </p>
                   <p className={'text-sm ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
-                    Starting from <strong>{analysisResult.startName}</strong> Â· {analysisResult.totalDays} stops optimized via GPS
+                    Starting from <strong>{analysisResult.startName}</strong> Ã‚Â· {analysisResult.totalDays} stops optimized via GPS
                   </p>
                 </div>
               </div>
@@ -13950,7 +13946,7 @@ const OptimizeSchedulePage = () => {
 
             {/* Summary stats */}
             <div className={card + ' p-4'}>
-              <p className={'text-sm font-bold mb-3 ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>ðŸ“Š Distribution Summary</p>
+              <p className={'text-sm font-bold mb-3 ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>Ã°Å¸â€œÅ  Distribution Summary</p>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
                   { Icon: Calendar, text: analysisResult.totalDays + ' days' },
@@ -13993,7 +13989,7 @@ const OptimizeSchedulePage = () => {
                     <Marker position={[analysisResult.startLat, analysisResult.startLng]} icon={START_ICON}>
                       <Popup>
                         <div style={{ minWidth: 150 }}>
-                          <p style={{ fontWeight: 'bold', marginBottom: 4 }}>ðŸ Start Point</p>
+                          <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Ã°Å¸ÂÂ Start Point</p>
                           <p style={{ fontSize: 12 }}>{analysisResult.startName}</p>
                         </div>
                       </Popup>
@@ -14005,9 +14001,9 @@ const OptimizeSchedulePage = () => {
                         <Popup>
                           <div style={{ minWidth: 160 }}>
                             <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Stop {i + 1}: {s.purok}</p>
-                            <p style={{ fontSize: 12 }}>ðŸ“… {s.date} Â· {s.timeSlot}</p>
-                            <p style={{ fontSize: 12 }}>ðŸ‘¨â€ðŸ‘©â€ðŸ‘§ {s.families} families</p>
-                            <p style={{ fontSize: 12 }}>ðŸ“ {s.routeAnalysis.distance} km from prev stop</p>
+                            <p style={{ fontSize: 12 }}>Ã°Å¸â€œâ€¦ {s.date} Ã‚Â· {s.timeSlot}</p>
+                            <p style={{ fontSize: 12 }}>Ã°Å¸â€˜Â¨Ã¢â‚¬ÂÃ°Å¸â€˜Â©Ã¢â‚¬ÂÃ°Å¸â€˜Â§ {s.families} families</p>
+                            <p style={{ fontSize: 12 }}>Ã°Å¸â€œÂ {s.routeAnalysis.distance} km from prev stop</p>
                             <div style={{ marginTop: 6, display: 'inline-block', padding: '2px 8px', borderRadius: 999,
                               background: s.status === 'optimal' ? '#10b981' : s.status === 'acceptable' ? '#3b82f6' : '#f59e0b',
                               color: '#fff', fontSize: 11, fontWeight: 700 }}>
@@ -14046,7 +14042,7 @@ const OptimizeSchedulePage = () => {
                   {analysisResult.recommendations.map((rec, idx) => (
                     <div key={idx} className={'p-3 rounded-lg ' + (isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50')}>
                       <p className={'text-sm font-medium mb-1 ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>{rec.message}</p>
-                      <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>ðŸ’¡ {rec.action}</p>
+                      <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>Ã°Å¸â€™Â¡ {rec.action}</p>
                     </div>
                   ))}
                 </div>
@@ -14102,7 +14098,7 @@ const OptimizeSchedulePage = () => {
                       </span>
                     </div>
                     <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                      {schedule.weather.temperature}Â°C Â· {schedule.weather.humidity}% humidity
+                      {schedule.weather.temperature}Ã‚Â°C Ã‚Â· {schedule.weather.humidity}% humidity
                     </p>
                   </div>
                   <div>
@@ -14161,7 +14157,7 @@ const OptimizeSchedulePage = () => {
                              :                              (isDarkMode ? 'bg-blue-900/50 text-blue-400'   : 'bg-blue-100 text-blue-700'))
                             }>{risk.severity}</span>
                           </div>
-                          <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-600')}>ðŸ’¡ {risk.mitigation}</p>
+                          <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-600')}>Ã°Å¸â€™Â¡ {risk.mitigation}</p>
                         </div>
                       ))}
                     </div>
@@ -14195,6 +14191,7 @@ const OptimizeSchedulePage = () => {
 }
 
 export default OptimizeSchedulePage
+
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\PrivacySecurityPage.jsx ==
 
@@ -15260,6 +15257,7 @@ export default RecordCheckupPage
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\RegisterPage.jsx ==
 
+
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, Loader2, CheckCircle, Shield, Zap, Bell } from 'lucide-react'
@@ -15334,7 +15332,7 @@ const RegisterPage = () => {
     { icon: CheckCircle, text: 'Streamlined approval workflows' },
   ]
 
-  /* glass card â€” matches HomePage.jsx */
+  /* glass card Ã¢â‚¬â€ matches HomePage.jsx */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
   const inputClass =
@@ -15345,14 +15343,14 @@ const RegisterPage = () => {
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
 
-      {/* Decorative glow blobs â€” matches Layout.jsx global gradient treatment */}
+      {/* Decorative glow blobs Ã¢â‚¬â€ matches Layout.jsx global gradient treatment */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
         <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
         <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-violet-500/15 blur-3xl" />
       </div>
 
-      {/* â”€â”€ LEFT BRAND PANEL (desktop only) â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ LEFT BRAND PANEL (desktop only) Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <div className="relative z-10 hidden lg:flex lg:w-2/5 xl:w-1/2 flex-col justify-between p-12 overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -15399,10 +15397,10 @@ const RegisterPage = () => {
           </div>
         </div>
 
-        <p className="relative z-10 text-blue-300/60 text-sm">Â© 2026 SmartCo. All rights reserved.</p>
+        <p className="relative z-10 text-blue-300/60 text-sm">Ã‚Â© 2026 SmartCo. All rights reserved.</p>
       </div>
 
-      {/* â”€â”€ RIGHT FORM PANEL â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ RIGHT FORM PANEL Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <div className="relative z-10 flex-1 flex flex-col overflow-y-auto">
         {/* Mobile background */}
         <div className="absolute inset-0 lg:hidden">
@@ -15538,7 +15536,7 @@ const RegisterPage = () => {
                     <p className="mt-1.5 text-xs text-white/40">
                       Need admin access?{' '}
                       <Link to="/login" className="text-blue-300 font-medium hover:underline">
-                        Sign in and request it here â†’
+                        Sign in and request it here
                       </Link>
                     </p>
                   </div>
@@ -15552,8 +15550,8 @@ const RegisterPage = () => {
                       required
                     >
                       <option value="">Select your purok</option>
-                      {PUROKS_ILIHAN.map((purok, index) => (
-                        <option key={index} value={`Purok ${index + 1}`}>
+                      {PUROKS_ILIHAN.map((purok) => (
+                        <option key={purok} value={purok}>
                           {purok}
                         </option>
                       ))}
@@ -15653,7 +15651,9 @@ const RegisterPage = () => {
 
 export default RegisterPage
 
+
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\ReportEmergencyPage.jsx ==
+
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -15667,6 +15667,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import emergencyService from '../services/emergencyService'
 import LocationPicker from '../components/LocationPicker'
+import { PUROKS_ILIHAN } from '../constants/puroks'
 
 const EMERGENCY_TYPES = [
   { value: 'fire',     label: 'Fire',         icon: Flame,       color: 'text-red-300',    grad: 'from-red-500/30 to-orange-500/10',    ring: 'ring-red-400/50' },
@@ -15684,11 +15685,11 @@ const SEVERITIES = [
   { value: 'critical', label: 'Critical', desc: 'Life-threatening / immediate danger', color: 'text-red-300',     selBg: 'bg-gradient-to-br from-red-600/90 to-rose-700/90' },
 ]
 
-/* glass card â€” same design language as HomePage/HealthPage/FoodAidPage/EventsPage */
+/* glass card Ã¢â‚¬â€ same design language as HomePage/HealthPage/FoodAidPage/EventsPage */
 const card =
   'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
 
-/* shared full-bleed background â€” matches HomePage/HealthPage/FoodAidPage/EventsPage's hero shell */
+/* shared full-bleed background Ã¢â‚¬â€ matches HomePage/HealthPage/FoodAidPage/EventsPage's hero shell */
 const PageBackground = ({ isDarkMode }) => (
   <>
     <div className="fixed inset-0 -z-10 bg-cover bg-center" style={{ backgroundImage: `url(${toledoImage})` }}>
@@ -15697,7 +15698,7 @@ const PageBackground = ({ isDarkMode }) => (
         : 'bg-gradient-to-br from-blue-600/90 via-indigo-600/90 to-blue-800/90'}`}
       />
     </div>
-    {/* Decorative blobs â€” matches HomePage/HealthPage/FoodAidPage/EventsPage's gradient shell */}
+    {/* Decorative blobs Ã¢â‚¬â€ matches HomePage/HealthPage/FoodAidPage/EventsPage's gradient shell */}
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
       <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
@@ -15710,14 +15711,14 @@ const PageBackground = ({ isDarkMode }) => (
   </>
 )
 
-// â”€â”€â”€ Suspension Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Suspension Banner Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 const SuspensionBanner = ({ suspension, isDarkMode, onBack }) => {
   const isPermanent = suspension.isPermanent
   const isRepeat = suspension.count >= 2
 
   const endDateStr = isPermanent
-    ? 'Permanent â€” no expiry'
+    ? 'Permanent Ã¢â‚¬â€ no expiry'
     : new Date(suspension.suspendedUntil).toLocaleDateString('en-PH', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       })
@@ -15800,7 +15801,7 @@ const SuspensionBanner = ({ suspension, isDarkMode, onBack }) => {
   )
 }
 
-// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Main Page Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 const ReportEmergencyPage = () => {
   const { isDarkMode } = useTheme()
@@ -15872,7 +15873,7 @@ const ReportEmergencyPage = () => {
 
   const inputCls = 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none backdrop-blur-sm transition-all duration-300 ease-out hover:scale-[1.02] hover:border-red-300/60 hover:shadow-[0_0_30px_rgba(248,113,113,0.35)] focus:scale-[1.02] focus:border-red-300 focus:ring-2 focus:ring-red-400/70 focus:shadow-[0_0_35px_rgba(248,113,113,0.55)]'
 
-  // Checking suspensionâ€¦
+  // Checking suspensionÃ¢â‚¬Â¦
   if (checkingSuspension) {
     return (
       <div className="min-h-screen relative">
@@ -15880,7 +15881,7 @@ const ReportEmergencyPage = () => {
         <div className="flex min-h-[80vh] items-center justify-center">
           <div className={`${card} px-8 py-10 text-center`}>
             <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-white" />
-            <p className="font-semibold text-white">Checking accessâ€¦</p>
+            <p className="font-semibold text-white">Checking accessÃ¢â‚¬Â¦</p>
           </div>
         </div>
       </div>
@@ -15952,7 +15953,7 @@ const ReportEmergencyPage = () => {
           <ArrowLeft className="w-4 h-4" /><span>Back</span>
         </button>
 
-        {/* â”€â”€ Hero header banner â”€â”€ */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Hero header banner Ã¢â€â‚¬Ã¢â€â‚¬ */}
         <section className={`${card} overflow-hidden bg-gradient-to-r from-red-500/30 via-orange-500/20 to-rose-500/30`}>
           <div className="flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-xl">
@@ -15964,7 +15965,7 @@ const ReportEmergencyPage = () => {
                 Report Emergency
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-                Notify barangay officials immediately â€” every second counts.
+                Notify barangay officials immediately Ã¢â‚¬â€ every second counts.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <a
@@ -16091,11 +16092,9 @@ const ReportEmergencyPage = () => {
                 <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
                 <select name="purok" value={formData.purok} onChange={handleChange} required className={`${inputCls} appearance-none pl-10`}>
                   <option value="" className="text-gray-900">Select Purok</option>
-                  <option value="Purok 1" className="text-gray-900">Purok 1</option>
-                  <option value="Purok 2" className="text-gray-900">Purok 2</option>
-                  <option value="Purok 3" className="text-gray-900">Purok 3</option>
-                  <option value="Purok 4" className="text-gray-900">Purok 4</option>
-                  <option value="Purok 5" className="text-gray-900">Purok 5</option>
+                  {PUROKS_ILIHAN.map((p) => (
+                    <option key={p} value={p} className="text-gray-900">{p}</option>
+                  ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
               </div>
@@ -16160,6 +16159,7 @@ const ReportEmergencyPage = () => {
 }
 
 export default ReportEmergencyPage
+
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\pages\RequestAdminPage.jsx ==
 
@@ -18218,7 +18218,7 @@ export default new AdminService()
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const MODELS = ['llama-3.3-70b-versatile', 'llama3-8b-8192', 'gemma2-9b-it']
+const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
 
 const SYSTEM_PROMPT = `You are HealthBot, a compassionate and professional AI health assistant embedded in SmartCo, the Smart Barangay Management System for Barangay Ilihan, Toledo City, Cebu, Philippines.
 
@@ -18235,7 +18235,16 @@ CONVERSATION FLOW:
    - ðŸ” Possible condition(s) (mention 1â€“3 likely ones, not as diagnosis)
    - ðŸ’Š Home remedy & self-care advice
    - âš ï¸ Warning signs to watch out for
-4. For SERIOUS symptoms (high fever >38.5Â°C, chest pain, difficulty breathing, persistent vomiting >24h, severe headache with stiff neck, signs of stroke), include this exact marker at the END of your response: [SUGGEST_CHECKUP]
+4. For SERIOUS symptoms, include this exact marker at the END of your response, on its own, with nothing else on that line: [SUGGEST_CHECKUP]
+   Trigger this whenever the user describes ANY of the following, whether stated precisely or in plain/casual language:
+   - A fever described as "high", "really high", or any numeric fever above 38.5Â°C
+   - Chest pain or tightness
+   - Difficulty or labored breathing
+   - Persistent vomiting lasting more than 24 hours
+   - Severe headache, especially with a stiff neck
+   - Any signs of stroke (slurred speech, facial drooping, numbness/weakness on one side)
+   - Symptoms described as severe, worsening, or lasting several days despite home care
+   When unsure whether something counts as serious, err on the side of including the marker â€” it's better to recommend a checkup than to miss one.
 5. For mild concerns (common cold, mild headache, minor cuts, seasonal allergy), give home remedies without suggesting a checkup.
 
 TONE & STYLE:
@@ -18243,7 +18252,13 @@ TONE & STYLE:
 - Keep each response to 3â€“5 short sentences or bullet points.
 - Always end serious analyses with: "Note: I'm an AI health assistant, not a licensed doctor. Please seek professional care if symptoms worsen."
 - Do NOT discuss non-health topics. Politely redirect if asked.
-- Respond in English by default, but if the user writes in Filipino/Cebuano, respond in the same language.`
+- LANGUAGE: English is the default and required language unless overridden below.
+  - Your own background knowledge that this is Barangay Ilihan, Toledo City, Cebu is CONTEXT ONLY â€” it must never influence what language you reply in.
+  - Look ONLY at the words the user actually typed in their most recent message to decide the language. Ignore all earlier messages and ignore location/setting.
+  - If their message is in English (like "I have a headache"), reply ONLY in English. Do not add Cebuano or Tagalog words or greetings.
+  - If their most recent message is clearly written in Cebuano/Bisaya, reply in Cebuano/Bisaya.
+  - If their most recent message is clearly written in Tagalog/Filipino, reply in Tagalog/Filipino.
+  - If you are unsure, default to English.`
 
 /** â”€â”€ Demo mode responses (used when all API quota is exhausted) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const DEMO_RESPONSES = [
@@ -18323,9 +18338,18 @@ export async function sendHealthMessage(messages, userContext = {}) {
   for (const model of MODELS) {
     try {
       const rawText = await callGroq(model, systemText, chatMessages)
-      const suggestCheckup = rawText.includes('[SUGGEST_CHECKUP]')
-      const cleanText = rawText.replace('[SUGGEST_CHECKUP]', '').trim()
-      return { text: cleanText, suggestCheckup, model }
+
+// Signal 1: explicit marker for genuinely serious symptoms
+const hasMarker = /\[\s*SUGGEST_CHECKUP\s*\]/i.test(rawText)
+
+// Signal 2: the reply itself reads like a diagnosis or summary,
+// regardless of whether the model remembered the marker
+const looksLikeDiagnosis = /overall summary|possible condition|my diagnosis|health analysis|ðŸ”/i.test(rawText)
+
+const suggestCheckup = hasMarker || looksLikeDiagnosis
+const cleanText = rawText.replace(/\[\s*SUGGEST_CHECKUP\s*\]/i, '').trim()
+
+return { text: cleanText, suggestCheckup, model }
     } catch (err) {
       if (err.isRateLimit) {
         console.warn(`Model ${model} rate-limited, trying nextâ€¦`)
@@ -18410,7 +18434,7 @@ import { PUROKS_ILIHAN, getShortPurokName } from '../constants/puroks'
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const MODELS = ['llama-3.3-70b-versatile', 'llama3-8b-8192', 'gemma2-9b-it']
+const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
 
 const AI_HISTORY_COLLECTION = 'aiInsightsHistory'
 const HEALTH_REQUESTS_COLLECTION = 'health_requests'
@@ -21816,9 +21840,10 @@ export default new HealthService()
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\initializeDemoData.js ==
 
+
 import { collection, getDocs, addDoc, query, where } from 'firebase/firestore'
 import { db } from '../config/firebase'
-import { PUROKS_SHORT } from '../constants/puroks'
+import { PUROKS_ILIHAN } from '../constants/puroks'
 
 // Helper to check if demo data exists
 async function isDemoDataInitialized() {
@@ -21848,9 +21873,9 @@ export const initializeDemoData = async () => {
 
     // Note: Demo users must be registered through Firebase Authentication
     // You can register them manually or through the registration page:
-    // 1. Email: juan@smartco.ph | Password: password123 | Role: official | Purok: Purok 1
-    // 2. Email: maria@smartco.ph | Password: password123 | Role: health | Purok: Purok 2
-    // 3. Email: pedro@smartco.ph | Password: password123 | Role: volunteer | Purok: Purok 3
+    // 1. Email: juan@smartco.ph | Password: password123 | Role: official | Purok: Sitio Proper Ilihan
+    // 2. Email: maria@smartco.ph | Password: password123 | Role: health | Purok: Cabulihan Uno
+    // 3. Email: pedro@smartco.ph | Password: password123 | Role: volunteer | Purok: Cabulihan Dos
 
     // Create demo events (these don't require user authentication)
     const demoEvents = [
@@ -21862,7 +21887,7 @@ export const initializeDemoData = async () => {
         duration: 'Full day',
         venue: 'Barangay Ilihan Court',
         expectedAttendees: 50,
-        description: 'Annual basketball tournament for all puroks of Barangay Ilihan',
+        description: 'Annual basketball tournament for all areas of Barangay Ilihan',
         status: 'upcoming',
         attendees: [],
         createdBy: 'demo',
@@ -21890,7 +21915,7 @@ export const initializeDemoData = async () => {
         date: '2026-02-08',
         time: '06:00',
         duration: '3 hours',
-        venue: 'All Puroks',
+        venue: 'All Areas',
         expectedAttendees: 80,
         description: 'Monthly community cleanup drive for Barangay Ilihan',
         status: 'upcoming',
@@ -21904,56 +21929,56 @@ export const initializeDemoData = async () => {
     // Create demo food aid schedules
     const demoFoodAid = [
       {
-        purok: 'Purok 1',
+        purok: PUROKS_ILIHAN[0],
         date: '2026-02-01',
         totalFamilies: 24,
         deliveredFamilies: 24,
         status: 'completed',
-        route: 'Main Road â†’ Street A â†’ Street B',
+        route: 'Main Road Ã¢â€ â€™ Street A Ã¢â€ â€™ Street B',
         createdBy: 'demo',
         createdAt: new Date('2026-01-15').toISOString(),
         updatedAt: new Date('2026-01-15').toISOString()
       },
       {
-        purok: 'Purok 2',
+        purok: PUROKS_ILIHAN[1],
         date: '2026-02-02',
         totalFamilies: 18,
         deliveredFamilies: 18,
         status: 'completed',
-        route: 'Main Road â†’ Street C',
+        route: 'Main Road Ã¢â€ â€™ Street C',
         createdBy: 'demo',
         createdAt: new Date('2026-01-16').toISOString(),
         updatedAt: new Date('2026-01-16').toISOString()
       },
       {
-        purok: 'Purok 3',
+        purok: PUROKS_ILIHAN[2],
         date: '2026-02-03',
         totalFamilies: 31,
         deliveredFamilies: 21,
         status: 'in-progress',
-        route: 'Main Road â†’ Street D â†’ Street E â†’ Street F',
+        route: 'Main Road Ã¢â€ â€™ Street D Ã¢â€ â€™ Street E Ã¢â€ â€™ Street F',
         createdBy: 'demo',
         createdAt: new Date('2026-01-17').toISOString(),
         updatedAt: new Date('2026-01-17').toISOString()
       },
       {
-        purok: 'Purok 4',
+        purok: PUROKS_ILIHAN[3],
         date: '2026-02-05',
         totalFamilies: 28,
         deliveredFamilies: 10,
         status: 'in-progress',
-        route: 'Main Road â†’ Street G â†’ Street H',
+        route: 'Main Road Ã¢â€ â€™ Street G Ã¢â€ â€™ Street H',
         createdBy: 'demo',
         createdAt: new Date('2026-01-18').toISOString(),
         updatedAt: new Date('2026-01-18').toISOString()
       },
       {
-        purok: 'Purok 5',
+        purok: PUROKS_ILIHAN[4],
         date: '2026-02-08',
         totalFamilies: 22,
         deliveredFamilies: 0,
         status: 'scheduled',
-        route: 'Main Road â†’ Street I',
+        route: 'Main Road Ã¢â€ â€™ Street I',
         createdBy: 'demo',
         createdAt: new Date('2026-01-19').toISOString(),
         updatedAt: new Date('2026-01-19').toISOString()
@@ -21970,20 +21995,21 @@ export const initializeDemoData = async () => {
       await addDoc(collection(db, 'foodAid'), schedule)
     }
 
-    console.log('âœ… Demo data initialized successfully!')
-    console.log('\nðŸ“ To use the app, please register demo accounts:')
-    console.log('1. Email: juan@smartco.ph | Password: password123 | Role: official | Purok: Purok 1')
-    console.log('2. Email: maria@smartco.ph | Password: password123 | Role: health | Purok: Purok 2')
-    console.log('3. Email: pedro@smartco.ph | Password: password123 | Role: volunteer | Purok: Purok 3')
+    console.log('Ã¢Å“â€¦ Demo data initialized successfully!')
+    console.log('\nÃ°Å¸â€œÂ To use the app, please register demo accounts:')
+    console.log('1. Email: juan@smartco.ph | Password: password123 | Role: official | Purok: Sitio Proper Ilihan')
+    console.log('2. Email: maria@smartco.ph | Password: password123 | Role: health | Purok: Cabulihan Uno')
+    console.log('3. Email: pedro@smartco.ph | Password: password123 | Role: volunteer | Purok: Cabulihan Dos')
   } catch (error) {
     console.error('Error initializing demo data:', error)
-    console.log('\nâš ï¸ Could not initialize demo data. This is normal if:')
+    console.log('\nÃ¢Å¡Â Ã¯Â¸Â Could not initialize demo data. This is normal if:')
     console.log('- Firebase is not configured yet')
     console.log('- You are not connected to the internet')
     console.log('- Firestore security rules are not set up')
     console.log('\nYou can still use the app by registering a new account!')
   }
 }
+
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\services\notificationService.js ==
 
@@ -22282,9 +22308,10 @@ export { STORAGE_KEYS }
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\utils\locationUtils.js ==
 
+
 import { PUROKS_SHORT } from '../constants/puroks.js'
 
-// Toledo City, Cebu â€“ Barangay GPS data
+// Toledo City, Cebu Ã¢â‚¬â€œ Barangay GPS data
 export const TOLEDO_BARANGAYS = [
   { id: 'poblacion',       name: 'Poblacion',              lat: 10.3737, lng: 123.6384, terrain: 'flat',        accessibility: 'excellent', hub: true },
   { id: 'cantabaco',       name: 'Cantabaco',              lat: 10.3508, lng: 123.6073, terrain: 'hilly',       accessibility: 'good' },
@@ -22313,14 +22340,13 @@ export const PUROKS_LIST = PUROKS_SHORT
 // Distribution hub (Barangay Ilihan Hall)
 export const DISTRIBUTION_HUB = { lat: 10.3321, lng: 123.6187, name: 'Barangay Ilihan Hall' }
 
-// Purok â†’ approximate barangay coordinates (for enriching legacy data)
+// Area Ã¢â€ â€™ approximate barangay coordinates (for enriching legacy data)
 export const PUROK_COORDS = {
-  'Purok 1': { lat: 10.3737, lng: 123.6384, barangay: 'Poblacion' },
-  'Purok 2': { lat: 10.3825, lng: 123.6547, barangay: 'Bagakay' },
-  'Purok 3': { lat: 10.3508, lng: 123.6073, barangay: 'Cantabaco' },
-  'Purok 4': { lat: 10.3643, lng: 123.6712, barangay: 'Dumlog' },
-  'Purok 5': { lat: 10.3889, lng: 123.6089, barangay: 'Subayon' },
-  'Purok 6': { lat: 10.4003, lng: 123.6201, barangay: 'Capayas' },
+  'Sitio Proper Ilihan': { lat: 10.3737, lng: 123.6384, barangay: 'Poblacion' },
+  'Cabulihan Uno':       { lat: 10.3825, lng: 123.6547, barangay: 'Bagakay' },
+  'Cabulihan Dos':       { lat: 10.3508, lng: 123.6073, barangay: 'Cantabaco' },
+  'Sitio Mangga':        { lat: 10.3643, lng: 123.6712, barangay: 'Dumlog' },
+  'Sambag Ilihan':       { lat: 10.3889, lng: 123.6089, barangay: 'Subayon' },
 }
 
 /**
@@ -22395,12 +22421,12 @@ export const getRouteDescription = (fromName, toBarangay) => {
     flat:        'mostly flat, well-paved roads',
     mixed:       'mixed terrain with some elevation changes',
     hilly:       'hilly roads with winding sections and moderate slopes',
-    mountainous: 'steep mountain roads â€” a 4Ã—4 vehicle is recommended',
+    mountainous: 'steep mountain roads Ã¢â‚¬â€ a 4Ãƒâ€”4 vehicle is recommended',
   }
   const accDesc = {
     excellent: 'Roads are wide and well-maintained throughout.',
     good:      'Standard vehicles can access this barangay.',
-    moderate:  'Some sections are narrow â€” proceed carefully.',
+    moderate:  'Some sections are narrow Ã¢â‚¬â€ proceed carefully.',
   }
 
   return `From ${fromName}, travel approximately ${dist} km through ${terrainDesc[toBarangay.terrain] || terrainDesc.flat}. ${accDesc[toBarangay.accessibility] || accDesc.good} Follow barangay road signs toward ${toBarangay.name}.`
@@ -22418,13 +22444,13 @@ export const generateAIRouteAnalysis = (barangay, date) => {
   const risks = []
 
   if (barangay.terrain === 'hilly' || barangay.terrain === 'mountainous') {
-    risks.push({ severity: 'medium', text: 'Steep terrain â€“ use a vehicle with reliable brakes and good ground clearance.' })
+    risks.push({ severity: 'medium', text: 'Steep terrain Ã¢â‚¬â€œ use a vehicle with reliable brakes and good ground clearance.' })
   }
   if (barangay.accessibility === 'moderate') {
-    risks.push({ severity: 'medium', text: 'Narrow roads â€“ coordinate with local traffic management if needed.' })
+    risks.push({ severity: 'medium', text: 'Narrow roads Ã¢â‚¬â€œ coordinate with local traffic management if needed.' })
   }
   if (dist > 5) {
-    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) â€“ ensure adequate fuel and emergency kit on board.` })
+    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) Ã¢â‚¬â€œ ensure adequate fuel and emergency kit on board.` })
   }
   if (date) {
     const day = new Date(date).getDay()
@@ -22465,13 +22491,13 @@ export const generatePinpointAIAnalysis = (pinLat, pinLng, nearestBarangay, puro
   const risks = []
 
   if (terrain === 'hilly' || terrain === 'mountainous') {
-    risks.push({ severity: 'medium', text: 'Steep terrain â€“ use a vehicle with reliable brakes and good ground clearance.' })
+    risks.push({ severity: 'medium', text: 'Steep terrain Ã¢â‚¬â€œ use a vehicle with reliable brakes and good ground clearance.' })
   }
   if (accessibility === 'moderate') {
-    risks.push({ severity: 'medium', text: 'Narrow roads â€“ coordinate with local traffic management if needed.' })
+    risks.push({ severity: 'medium', text: 'Narrow roads Ã¢â‚¬â€œ coordinate with local traffic management if needed.' })
   }
   if (dist > 5) {
-    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) â€“ ensure adequate fuel and emergency kit on board.` })
+    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) Ã¢â‚¬â€œ ensure adequate fuel and emergency kit on board.` })
   }
   if (date) {
     const day = new Date(date).getDay()
@@ -22487,12 +22513,12 @@ export const generatePinpointAIAnalysis = (pinLat, pinLng, nearestBarangay, puro
   efficiency = Math.max(50, efficiency)
 
   const departure = travelTime > 30 ? '7:00 AM' : '8:00 AM'
-  const purokLabel = purok ? ` Â· ${purok}` : ''
+  const purokLabel = purok ? ` Ã‚Â· ${purok}` : ''
   const areaLabel = (nearestBarangay?.name || 'target area') + purokLabel
   const accessDesc =
     accessibility === 'excellent' ? 'Roads are wide and well-maintained throughout.' :
     accessibility === 'good' ? 'Standard vehicles can access this area.' :
-    'Some sections are narrow â€” proceed carefully.'
+    'Some sections are narrow Ã¢â‚¬â€ proceed carefully.'
 
   return {
     distanceKm: +dist.toFixed(2),
@@ -22527,6 +22553,7 @@ export const getPositionAsync = () =>
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     )
   })
+
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\App.jsx ==
 

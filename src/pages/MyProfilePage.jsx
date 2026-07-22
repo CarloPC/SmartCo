@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit2, Save, X, Trash2, User, Mail, Phone, MapPin, Briefcase, Loader, Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import authService from '../services/authService'
 import storageService from '../services/storageService'
+import { PUROKS_ILIHAN } from '../constants/puroks'
 
 const MyProfilePage = () => {
   const navigate = useNavigate()
@@ -26,7 +28,7 @@ const MyProfilePage = () => {
     }
   }, [user])
 
-  /* glass card â€” matches HomePage panels */
+  /* glass card Ã¢â‚¬â€ matches HomePage panels */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
 
@@ -53,10 +55,10 @@ const MyProfilePage = () => {
       updateUser(updates)
       setIsEditing(false)
 
-      alert('âœ… Profile updated successfully!')
+      alert('Ã¢Å“â€¦ Profile updated successfully!')
     } catch (error) {
       console.error('Error updating profile:', error)
-      alert('âŒ Failed to update profile: ' + error.message)
+      alert('Ã¢Å’ Failed to update profile: ' + error.message)
     } finally {
       setSaving(false)
     }
@@ -85,10 +87,10 @@ const MyProfilePage = () => {
       setUserData({ ...userData, photoURL })
       updateUser({ photoURL })
 
-      alert('✅ Profile picture updated!')
+      alert('âœ… Profile picture updated!')
     } catch (error) {
       console.error('Error uploading image:', error)
-      alert('❌ Failed to upload image: ' + error.message)
+      alert('âŒ Failed to upload image: ' + error.message)
     } finally {
       setUploadingImage(false)
     }
@@ -102,7 +104,7 @@ const MyProfilePage = () => {
   const handleDelete = async () => {
     // Note: Deleting Firebase Auth users requires re-authentication
     // For now, just logout and show message
-    alert('âš ï¸ Account deletion requires contacting administrator.')
+    alert('Ã¢Å¡ Ã¯Â¸ Account deletion requires contacting administrator.')
     setShowDeleteConfirm(false)
 
     // Optional: Implement full deletion with re-authentication
@@ -128,7 +130,7 @@ const MyProfilePage = () => {
   }
 
   return (
-    /* No background here â€” Layout.jsx paints the gradient behind everything */
+    /* No background here Ã¢â‚¬â€ Layout.jsx paints the gradient behind everything */
     <div className="mx-auto max-w-2xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
 
       {/* Header */}
@@ -276,11 +278,9 @@ const MyProfilePage = () => {
                 onChange={(e) => handleInputChange('purok', e.target.value)}
                 className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-white backdrop-blur-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 [&>option]:text-gray-900"
               >
-                <option value="Purok 1">Purok 1</option>
-                <option value="Purok 2">Purok 2</option>
-                <option value="Purok 3">Purok 3</option>
-                <option value="Purok 4">Purok 4</option>
-                <option value="Purok 5">Purok 5</option>
+                {PUROKS_ILIHAN.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
               </select>
             ) : (
               <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-medium text-white">
@@ -390,3 +390,4 @@ const MyProfilePage = () => {
 }
 
 export default MyProfilePage
+

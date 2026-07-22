@@ -34,7 +34,7 @@ import { PUROKS_ILIHAN, getShortPurokName } from '../constants/puroks'
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const MODELS = ['llama-3.3-70b-versatile', 'llama3-8b-8192', 'gemma2-9b-it']
+const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
 
 const AI_HISTORY_COLLECTION = 'aiInsightsHistory'
 const HEALTH_REQUESTS_COLLECTION = 'health_requests'

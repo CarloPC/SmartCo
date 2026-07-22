@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
@@ -44,13 +45,13 @@ const START_ICON = L.divIcon({
 
 const STOP_COLORS = ['#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#ec4899']
 
-// Purok-to-approximate coordinates for legacy support
+// Area-to-approximate coordinates for legacy support
 const PUROK_DATA = {
-  'Purok 1': { distance: 2.5, terrain: 'flat',        accessibility: 'excellent', avgFamilies: 24, population: 120, lat: 10.3737, lng: 123.6384 },
-  'Purok 2': { distance: 1.8, terrain: 'flat',        accessibility: 'excellent', avgFamilies: 18, population: 90,  lat: 10.3825, lng: 123.6547 },
-  'Purok 3': { distance: 4.2, terrain: 'hilly',       accessibility: 'moderate',  avgFamilies: 31, population: 155, lat: 10.3508, lng: 123.6073 },
-  'Purok 4': { distance: 3.5, terrain: 'mixed',       accessibility: 'good',      avgFamilies: 28, population: 140, lat: 10.3643, lng: 123.6712 },
-  'Purok 5': { distance: 3.0, terrain: 'flat',        accessibility: 'good',      avgFamilies: 22, population: 110, lat: 10.3889, lng: 123.6089 },
+  'Sitio Proper Ilihan': { distance: 2.5, terrain: 'flat',        accessibility: 'excellent', avgFamilies: 24, population: 120, lat: 10.3737, lng: 123.6384 },
+  'Cabulihan Uno':       { distance: 1.8, terrain: 'flat',        accessibility: 'excellent', avgFamilies: 18, population: 90,  lat: 10.3825, lng: 123.6547 },
+  'Cabulihan Dos':       { distance: 4.2, terrain: 'hilly',       accessibility: 'moderate',  avgFamilies: 31, population: 155, lat: 10.3508, lng: 123.6073 },
+  'Sitio Mangga':        { distance: 3.5, terrain: 'mixed',       accessibility: 'good',      avgFamilies: 28, population: 140, lat: 10.3643, lng: 123.6712 },
+  'Sambag Ilihan':       { distance: 3.0, terrain: 'flat',        accessibility: 'good',      avgFamilies: 22, population: 110, lat: 10.3889, lng: 123.6089 },
 }
 const PUROKS = Object.keys(PUROK_DATA)
 
@@ -92,7 +93,7 @@ const OptimizeSchedulePage = () => {
 
   useEffect(() => { autoDetectGPS() }, [])
 
-  // ── GPS detection ────────────────────────────────────────────────────────
+  // â”€â”€ GPS detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const autoDetectGPS = async () => {
     setGpsStatus('detecting')
     try {
@@ -114,7 +115,7 @@ const OptimizeSchedulePage = () => {
     }
   }
 
-  // ── Form helpers ─────────────────────────────────────────────────────────
+  // â”€â”€ Form helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handlePurokToggle = purok => {
     setFormData(prev => ({
       ...prev,
@@ -129,7 +130,7 @@ const OptimizeSchedulePage = () => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  // ── AI helpers ───────────────────────────────────────────────────────────
+  // â”€â”€ AI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const predictWeather = date => {
     const types   = ['sunny', 'partly_cloudy', 'cloudy', 'rainy', 'stormy']
     const day     = new Date(date).getDay()
@@ -151,7 +152,7 @@ const OptimizeSchedulePage = () => {
     }
     if (data.accessibility === 'moderate' && (weather.weather === 'rainy' || weather.weather === 'stormy')) {
       risks.push({ type: 'accessibility', severity: 'high',
-        description: 'Roads may become difficult in bad weather', mitigation: 'Consider 4×4 vehicle, alert residents of possible delay' })
+        description: 'Roads may become difficult in bad weather', mitigation: 'Consider 4Ã—4 vehicle, alert residents of possible delay' })
     }
     if (families > data.avgFamilies * 1.5) {
       risks.push({ type: 'capacity', severity: 'medium',
@@ -197,27 +198,27 @@ const OptimizeSchedulePage = () => {
   const generateRecommendations = schedules => {
     const recommendations = []
     const avg = schedules.reduce((s, x) => s + x.efficiencyScore, 0) / schedules.length
-    if (avg >= 85)      recommendations.push({ type: 'success', message: '✅ Excellent schedule! High efficiency across all stops.', action: 'Proceed with this AI-optimized distribution plan.' })
-    else if (avg >= 70) recommendations.push({ type: 'good',    message: '👍 Good schedule with minor optimization opportunities.', action: 'Consider the risk mitigations suggested below.' })
-    else                recommendations.push({ type: 'warning', message: '⚠️ Schedule has significant challenges.', action: 'Review high-risk stops and consider rescheduling.' })
+    if (avg >= 85)      recommendations.push({ type: 'success', message: 'âœ… Excellent schedule! High efficiency across all stops.', action: 'Proceed with this AI-optimized distribution plan.' })
+    else if (avg >= 70) recommendations.push({ type: 'good',    message: 'ðŸ‘ Good schedule with minor optimization opportunities.', action: 'Consider the risk mitigations suggested below.' })
+    else                recommendations.push({ type: 'warning', message: 'âš ï¸ Schedule has significant challenges.', action: 'Review high-risk stops and consider rescheduling.' })
 
     const rainyDays = schedules.filter(s => s.weather.weather === 'rainy' || s.weather.weather === 'stormy').length
     if (rainyDays > schedules.length / 2)
-      recommendations.push({ type: 'weather', message: '🌧 ' + rainyDays + ' days have rain forecast.', action: 'Consider shifting window or preparing rain contingency.' })
+      recommendations.push({ type: 'weather', message: 'ðŸŒ§ ' + rainyDays + ' days have rain forecast.', action: 'Consider shifting window or preparing rain contingency.' })
 
     const highRisk = schedules.filter(s => s.risks.some(r => r.severity === 'high'))
     if (highRisk.length)
-      recommendations.push({ type: 'risk', message: '⚠️ ' + highRisk.length + ' high-risk stop(s) detected.',
+      recommendations.push({ type: 'risk', message: 'âš ï¸ ' + highRisk.length + ' high-risk stop(s) detected.',
         action: 'Priority attention needed for: ' + highRisk.map(s => s.purok).join(', ') })
 
     const totalTime = schedules.reduce((s, x) => s + x.routeAnalysis.estimatedTime, 0)
     if (totalTime > 300)
-      recommendations.push({ type: 'logistics', message: '🚚 Total distribution time is significant.', action: 'Consider deploying multiple teams or spreading over more days.' })
+      recommendations.push({ type: 'logistics', message: 'ðŸšš Total distribution time is significant.', action: 'Consider deploying multiple teams or spreading over more days.' })
 
     return recommendations
   }
 
-  // ── Main AI analysis ─────────────────────────────────────────────────────
+  // â”€â”€ Main AI analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleAnalyze = async () => {
     if (!formData.selectedPuroks.length || !formData.startDate || !formData.endDate || !formData.totalFamilies) {
       alert('Please fill in all required fields.')
@@ -297,12 +298,12 @@ const OptimizeSchedulePage = () => {
     setShowMap(true)
   }
 
-  // ── Save to Firestore ────────────────────────────────────────────────────
+  // â”€â”€ Save to Firestore â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSaveSchedule = async () => {
     if (!analysisResult) { alert('Analyze first.'); return }
     try {
       await Promise.all(analysisResult.schedules.map(schedule => {
-        const weatherInfo = schedule.weather.weather + ' (' + schedule.weather.temperature + '°C, ' + schedule.weather.humidity + '% humidity)'
+        const weatherInfo = schedule.weather.weather + ' (' + schedule.weather.temperature + 'Â°C, ' + schedule.weather.humidity + '% humidity)'
         const riskSummary = schedule.risks.map(r => r.severity.toUpperCase() + ': ' + r.description).join('; ') || 'No significant risks'
         return foodAidService.createFoodAidSchedule({
           purok: schedule.purok, date: schedule.date, dayName: schedule.dayName,
@@ -320,7 +321,7 @@ const OptimizeSchedulePage = () => {
           barangayLat: schedule.lat, barangayLng: schedule.lng,
         })
       }))
-      alert('✅ Saved ' + analysisResult.schedules.length + ' optimized schedule(s)!\n\nAverage efficiency: ' + analysisResult.averageEfficiency + '%')
+      alert('âœ… Saved ' + analysisResult.schedules.length + ' optimized schedule(s)!\n\nAverage efficiency: ' + analysisResult.averageEfficiency + '%')
       navigate('/food-aid')
     } catch (err) {
       console.error(err)
@@ -328,7 +329,7 @@ const OptimizeSchedulePage = () => {
     }
   }
 
-  // ── Computed map data ────────────────────────────────────────────────────
+  // â”€â”€ Computed map data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const routePositions = analysisResult
     ? [[analysisResult.startLat, analysisResult.startLng], ...analysisResult.schedules.map(s => [s.lat, s.lng])]
     : []
@@ -367,21 +368,21 @@ const OptimizeSchedulePage = () => {
             <h2 className="text-xl font-bold">AI-Optimized Distribution Schedule</h2>
           </div>
           <p className={isDarkMode ? 'text-green-200' : 'text-green-100'}>
-            GPS-aware route planning · Nearest-neighbour optimization · Risk analysis
+            GPS-aware route planning Â· Nearest-neighbour optimization Â· Risk analysis
           </p>
         </div>
 
-        {/* ── GPS Start Location ── */}
+        {/* â”€â”€ GPS Start Location â”€â”€ */}
         <div className={card + ' p-4'}>
           <p className={'text-xs font-bold uppercase tracking-wide mb-3 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
-            📍 Distribution Start Location (GPS)
+            ðŸ“ Distribution Start Location (GPS)
           </p>
 
           {gpsStatus === 'idle' || gpsStatus === 'detecting' ? (
             <div className="flex items-center space-x-3">
               <Loader2 className={'w-5 h-5 animate-spin ' + (isDarkMode ? 'text-blue-400' : 'text-blue-500')} />
               <p className={'text-sm ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>
-                {gpsStatus === 'detecting' ? 'Detecting GPS location…' : 'Initializing…'}
+                {gpsStatus === 'detecting' ? 'Detecting GPS locationâ€¦' : 'Initializingâ€¦'}
               </p>
             </div>
           ) : gpsStatus === 'success' ? (
@@ -396,7 +397,7 @@ const OptimizeSchedulePage = () => {
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   </div>
                   <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                    GPS detected · ±{startCoords?.accuracy}m · AI will optimize route from here
+                    GPS detected Â· Â±{startCoords?.accuracy}m Â· AI will optimize route from here
                   </p>
                 </div>
               </div>
@@ -409,21 +410,21 @@ const OptimizeSchedulePage = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <AlertCircle className={'w-4 h-4 ' + (isDarkMode ? 'text-orange-400' : 'text-orange-500')} />
-                  <p className={'text-sm ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>GPS unavailable – select start barangay</p>
+                  <p className={'text-sm ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>GPS unavailable â€“ select start barangay</p>
                 </div>
                 <button onClick={autoDetectGPS} className={'text-xs px-2.5 py-1.5 rounded-lg font-medium ' + (isDarkMode ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-50 text-blue-600')}>
                   Retry GPS
                 </button>
               </div>
               <select value={manualStart} onChange={e => handleManualStartSelect(e.target.value)} className={inputCls}>
-                <option value="">Select your starting barangay…</option>
+                <option value="">Select your starting barangayâ€¦</option>
                 {TOLEDO_BARANGAYS.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
           )}
         </div>
 
-        {/* ── Form ── */}
+        {/* â”€â”€ Form â”€â”€ */}
         <div className={card + ' p-4 space-y-4'}>
 
           {/* Purok selection */}
@@ -443,7 +444,7 @@ const OptimizeSchedulePage = () => {
                   <span>{purok}</span>
                   {formData.selectedPuroks.includes(purok) && (
                     <span className={'block text-xs mt-0.5 ' + (isDarkMode ? 'text-green-400' : 'text-green-600')}>
-                      ~{PUROK_DATA[purok].distance} km · {PUROK_DATA[purok].terrain}
+                      ~{PUROK_DATA[purok].distance} km Â· {PUROK_DATA[purok].terrain}
                     </span>
                   )}
                 </button>
@@ -476,7 +477,7 @@ const OptimizeSchedulePage = () => {
           <div>
             <label className={'block text-sm font-medium mb-1.5 ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>Additional Notes (optional)</label>
             <textarea name="notes" value={formData.notes} onChange={handleInputChange}
-              placeholder="Special considerations or requirements…" rows="2"
+              placeholder="Special considerations or requirementsâ€¦" rows="2"
               className={inputCls + ' resize-none'} />
           </div>
 
@@ -487,13 +488,13 @@ const OptimizeSchedulePage = () => {
               (isDarkMode ? 'bg-green-900/90 hover:bg-green-800 border-gray-700/50' : 'bg-green-500/90 hover:bg-green-600 border-white/20')
             }>
             {isAnalyzing
-              ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Analyzing with AI…</span></>
+              ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Analyzing with AIâ€¦</span></>
               : <><Sparkles className="w-5 h-5" /><span>Analyze & Optimize Route</span></>
             }
           </button>
         </div>
 
-        {/* ── Analysis Results ── */}
+        {/* â”€â”€ Analysis Results â”€â”€ */}
         {analysisResult && (
           <div className="space-y-4">
 
@@ -515,10 +516,10 @@ const OptimizeSchedulePage = () => {
                 }
                 <div>
                   <p className={'font-bold text-lg ' + (isDarkMode ? 'text-gray-100' : 'text-gray-900')}>
-                    AI-Optimized Route · {analysisResult.averageEfficiency}% Efficiency
+                    AI-Optimized Route Â· {analysisResult.averageEfficiency}% Efficiency
                   </p>
                   <p className={'text-sm ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
-                    Starting from <strong>{analysisResult.startName}</strong> · {analysisResult.totalDays} stops optimized via GPS
+                    Starting from <strong>{analysisResult.startName}</strong> Â· {analysisResult.totalDays} stops optimized via GPS
                   </p>
                 </div>
               </div>
@@ -526,7 +527,7 @@ const OptimizeSchedulePage = () => {
 
             {/* Summary stats */}
             <div className={card + ' p-4'}>
-              <p className={'text-sm font-bold mb-3 ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>📊 Distribution Summary</p>
+              <p className={'text-sm font-bold mb-3 ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>ðŸ“Š Distribution Summary</p>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
                   { Icon: Calendar, text: analysisResult.totalDays + ' days' },
@@ -569,7 +570,7 @@ const OptimizeSchedulePage = () => {
                     <Marker position={[analysisResult.startLat, analysisResult.startLng]} icon={START_ICON}>
                       <Popup>
                         <div style={{ minWidth: 150 }}>
-                          <p style={{ fontWeight: 'bold', marginBottom: 4 }}>🏁 Start Point</p>
+                          <p style={{ fontWeight: 'bold', marginBottom: 4 }}>ðŸ Start Point</p>
                           <p style={{ fontSize: 12 }}>{analysisResult.startName}</p>
                         </div>
                       </Popup>
@@ -581,9 +582,9 @@ const OptimizeSchedulePage = () => {
                         <Popup>
                           <div style={{ minWidth: 160 }}>
                             <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Stop {i + 1}: {s.purok}</p>
-                            <p style={{ fontSize: 12 }}>📅 {s.date} · {s.timeSlot}</p>
-                            <p style={{ fontSize: 12 }}>👨‍👩‍👧 {s.families} families</p>
-                            <p style={{ fontSize: 12 }}>📍 {s.routeAnalysis.distance} km from prev stop</p>
+                            <p style={{ fontSize: 12 }}>ðŸ“… {s.date} Â· {s.timeSlot}</p>
+                            <p style={{ fontSize: 12 }}>ðŸ‘¨â€ðŸ‘©â€ðŸ‘§ {s.families} families</p>
+                            <p style={{ fontSize: 12 }}>ðŸ“ {s.routeAnalysis.distance} km from prev stop</p>
                             <div style={{ marginTop: 6, display: 'inline-block', padding: '2px 8px', borderRadius: 999,
                               background: s.status === 'optimal' ? '#10b981' : s.status === 'acceptable' ? '#3b82f6' : '#f59e0b',
                               color: '#fff', fontSize: 11, fontWeight: 700 }}>
@@ -622,7 +623,7 @@ const OptimizeSchedulePage = () => {
                   {analysisResult.recommendations.map((rec, idx) => (
                     <div key={idx} className={'p-3 rounded-lg ' + (isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50')}>
                       <p className={'text-sm font-medium mb-1 ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>{rec.message}</p>
-                      <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>💡 {rec.action}</p>
+                      <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>ðŸ’¡ {rec.action}</p>
                     </div>
                   ))}
                 </div>
@@ -678,7 +679,7 @@ const OptimizeSchedulePage = () => {
                       </span>
                     </div>
                     <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                      {schedule.weather.temperature}°C · {schedule.weather.humidity}% humidity
+                      {schedule.weather.temperature}Â°C Â· {schedule.weather.humidity}% humidity
                     </p>
                   </div>
                   <div>
@@ -737,7 +738,7 @@ const OptimizeSchedulePage = () => {
                              :                              (isDarkMode ? 'bg-blue-900/50 text-blue-400'   : 'bg-blue-100 text-blue-700'))
                             }>{risk.severity}</span>
                           </div>
-                          <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-600')}>💡 {risk.mitigation}</p>
+                          <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-600')}>ðŸ’¡ {risk.mitigation}</p>
                         </div>
                       ))}
                     </div>
@@ -771,3 +772,4 @@ const OptimizeSchedulePage = () => {
 }
 
 export default OptimizeSchedulePage
+
