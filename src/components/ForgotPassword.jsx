@@ -16,9 +16,15 @@ export default function ForgotPassword() {
     setMessage("");
     setError("");
     setLoading(true);
+    const actionCodeSettings = {
+      // Your Vercel route
+      url: "https://smartco-barangay.vercel.app/reset-password",
+      handleCodeInApp: true,
+    };
+
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, email, actionCodeSettings);
       setMessage("Password reset link sent! Please check your email (and spam folder).");
     } catch (err) {
       if (err.code === "auth/user-not-found") {
