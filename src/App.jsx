@@ -32,6 +32,7 @@ import BHWDashboard from './pages/BHWDashboard'
 import DocumentRequestsPage from './pages/DocumentRequestsPage'
 import RequestDocumentPage from './pages/RequestDocumentPage'
 import ManageDocumentRequestsPage from './pages/ManageDocumentRequestsPage'
+import ForgotPassword from "./components/ForgotPassword"
 
 function App() {
   return (
@@ -41,6 +42,8 @@ function App() {
         <Route path="/" element={<WelcomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        
 
         {/* Protected Routes - Main App */}
         <Route

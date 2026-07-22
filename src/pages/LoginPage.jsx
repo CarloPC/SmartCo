@@ -222,8 +222,12 @@ const LoginPage = () => {
                     />
                     <span className="text-sm text-white/60">Remember me</span>
                   </label>
-                  <button type="button" className="text-sm text-blue-300 hover:text-blue-200 font-medium">
-                    Forgot password?
+                  <button
+                      type="button"
+                      onClick={() => navigate('/forgot-password')}
+                      className="text-sm text-cyan-300 hover:text-cyan-200 transition-colors hover:underline"
+                    >
+                      Forgot password?
                   </button>
                 </div>
 

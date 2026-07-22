@@ -603,6 +603,71 @@ export default function FoodAidProjectionChart({ data = [] }) {
 }
 
 
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\ForgotPassword.jsx ==
+
+// src/components/ForgotPassword.jsx
+import React, { useState } from "react";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../config/firebase";
+
+export default function ForgotPassword() {
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    setError("");
+    setLoading(true);
+
+    try {
+      // Firebase sends the reset link automatically
+      await sendPasswordResetEmail(auth, email);
+      setMessage("Password reset email sent! Check your inbox.");
+    } catch (err) {
+      // Common error codes: 'auth/user-not-found', 'auth/invalid-email'
+      if (err.code === "auth/user-not-found") {
+        setError("No account found with this email address.");
+      } else {
+        setError("Failed to send reset email. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-4">Reset Password</h2>
+
+      {message && <div className="p-3 mb-4 text-green-700 bg-green-100 rounded">{message}</div>}
+      {error && <div className="p-3 mb-4 text-red-700 bg-red-100 rounded">{error}</div>}
+
+      <form onSubmit={handleSubmit}>
+        <label className="block mb-2 text-sm font-medium">Email Address</label>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="yourname@smartco.com"
+          className="w-full p-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? "Sending link..." : "Send Reset Link"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\HealthAIChat.jsx ==
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -12222,8 +12287,12 @@ const LoginPage = () => {
                     />
                     <span className="text-sm text-white/60">Remember me</span>
                   </label>
-                  <button type="button" className="text-sm text-blue-300 hover:text-blue-200 font-medium">
-                    Forgot password?
+                  <button
+                      type="button"
+                      onClick={() => navigate('/forgot-password')}
+                      className="text-sm text-cyan-300 hover:text-cyan-200 transition-colors hover:underline"
+                    >
+                      Forgot password?
                   </button>
                 </div>
 
@@ -22591,6 +22660,7 @@ import BHWDashboard from './pages/BHWDashboard'
 import DocumentRequestsPage from './pages/DocumentRequestsPage'
 import RequestDocumentPage from './pages/RequestDocumentPage'
 import ManageDocumentRequestsPage from './pages/ManageDocumentRequestsPage'
+import ForgotPassword from "./components/ForgotPassword"
 
 function App() {
   return (
@@ -22600,6 +22670,7 @@ function App() {
         <Route path="/" element={<WelcomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Protected Routes - Main App */}
         <Route
