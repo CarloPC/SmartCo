@@ -71,11 +71,12 @@ const formatTimestamp = (iso) => {
 /**
  * Displays a single explainable AI recommendation.
  * Every card always shows: Title, Summary, Reason, Confidence, Suggested Action,
- * Priority Level, Timestamp Ã¢â‚¬â€ per the Explainable AI requirement.
+ * Priority Level, Timestampâ€ per the Explainable AI requirement.
  */
 const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }) => {
   const [expanded, setExpanded] = useState(false)
   const priorityStyle = PRIORITY_STYLES[insight.priority] || PRIORITY_STYLES.low
+  const isFoodAidPriorityRec = insight.module === 'food_aid' && insight.title === "Today's priority purok"
 
   const card = `${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border`
 
@@ -110,13 +111,56 @@ const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }
       </button>
 
       {expanded && (
-        <div className={`rounded-xl p-3 text-sm space-y-2 ${isDarkMode ? 'bg-gray-800/70 text-gray-300' : 'bg-gray-50 text-gray-600'}`}>
+        <div className={`rounded-xl p-3 text-sm space-y-3 ${isDarkMode ? 'bg-gray-800/70 text-gray-300' : 'bg-gray-50 text-gray-600'}`}>
           <p><span className="font-semibold">Reason: </span>{insight.reason}</p>
           <p><span className="font-semibold">Suggested Action: </span>{insight.suggestedAction}</p>
+
+          {insight.dataAnalyzed?.rankedPuroks && (
+            <div>
+              <p className="font-semibold mb-1.5">Purok priority order:</p>
+              <ol className="space-y-1">
+                {insight.dataAnalyzed.rankedPuroks.map((p, i) => {
+                  const style = PRIORITY_STYLES[p.priority] || PRIORITY_STYLES.low
+                  return (
+                    <li key={p.purok} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="flex items-center gap-1.5">
+                        <span className="opacity-60">{i + 1}.</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                        {p.purok}
+                        {p.detail && <span className="opacity-60">â€” {p.detail}</span>}
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded-full border text-[10px] whitespace-nowrap ${style.badge}`}>
+                        {style.label.replace(' Priority', '')}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ol>
+            </div>
+          )}
+
+          {insight.dataAnalyzed?.availableToDistribute && (
+            <div>
+              <p className="font-semibold mb-1.5">Available distributions:</p>
+              <ul className="space-y-1">
+                {insight.dataAnalyzed.availableToDistribute.map((d, i) => (
+                  <li key={i} className="text-xs flex items-center justify-between gap-2">
+                    <span>{d.purok}</span>
+                    <span className="opacity-70 whitespace-nowrap">
+                      {String(d.status).replace(/_/g, ' ')} Â· {d.householdsTarget} hh{d.date ? ` Â· ${d.date}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {insight.dataAnalyzed && (
             <p className="text-xs opacity-70 break-words">
               <span className="font-semibold">Data analyzed: </span>
-              {Object.entries(insight.dataAnalyzed).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`).join(' Ã‚Â· ')}
+              {Object.entries(insight.dataAnalyzed)
+                .filter(([k]) => !['rankedPuroks', 'availableToDistribute'].includes(k))
+                .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`).join(' Â· ')}
             </p>
           )}
         </div>
@@ -134,16 +178,31 @@ const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }
 
         {(onAcknowledge || onDismiss) && (
           <div className="flex items-center gap-2">
-            {status && status !== 'generated' && (
+            {status && typeof status === 'object' && status.status === 'recommendation_applied' && (
+              <div className={`text-right text-xs leading-snug ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                <p className="font-semibold flex items-center justify-end gap-1">
+                  <Check className="w-3 h-3" /> Recommendation Applied
+                </p>
+                <p className="opacity-80">Applied to: {status.appliedTo}</p>
+                <p className="opacity-80">Priority: {status.priority}</p>
+                <p className="opacity-80">Applied At: {formatTimestamp(status.appliedAt)}</p>
+              </div>
+            )}
+            {typeof status === 'string' && status !== 'generated' && (
               <span className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                {status === 'acted_on' ? 'Acted on' : status === 'dismissed' ? 'Dismissed' : status}
+                {status === 'applying' ? 'Applyingâ€¦' : status === 'acted_on' ? 'Acted on' : status === 'dismissed' ? 'Dismissed' : status}
               </span>
             )}
             {(!status || status === 'generated') && (
               <>
+                {isFoodAidPriorityRec && (
+                  <span className={`text-[11px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Apply Recommendation
+                  </span>
+                )}
                 <button
                   onClick={() => onAcknowledge?.(insight)}
-                  title="Mark as acted on"
+                  title={isFoodAidPriorityRec ? 'Apply Recommendation' : 'Mark as acted on'}
                   className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
                 >
                   <Check className="w-3.5 h-3.5" />
@@ -542,7 +601,7 @@ export default function FoodAidProjectionChart({ data = [] }) {
       <div className="mb-4 flex items-center gap-2">
         <Boxes className="h-5 w-5 text-teal-500" />
         <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-gray-100' : 'text-slate-800'}`}>
-          Food Aid Projections Ã¢â‚¬â€ Target vs. Served
+          Food Aid Projections  Target vs. Served
         </h2>
       </div>
 
@@ -605,33 +664,41 @@ export default function FoodAidProjectionChart({ data = [] }) {
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\ForgotPassword.jsx ==
 
-// src/components/ForgotPassword.jsx
 import React, { useState } from "react";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../config/firebase";
+import { Mail, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
     setError("");
     setLoading(true);
+    const actionCodeSettings = {
+      // Your Vercel route
+      url: "https://smartco-barangay.vercel.app/reset-password",
+      handleCodeInApp: true,
+    };
+
 
     try {
-      // Firebase sends the reset link automatically
-      await sendPasswordResetEmail(auth, email);
-      setMessage("Password reset email sent! Check your inbox.");
+      await sendPasswordResetEmail(auth, email, actionCodeSettings);
+      setMessage("Password reset link sent! Please check your email (and spam folder).");
     } catch (err) {
-      // Common error codes: 'auth/user-not-found', 'auth/invalid-email'
       if (err.code === "auth/user-not-found") {
         setError("No account found with this email address.");
+      } else if (err.code === "auth/invalid-email") {
+        setError("Please enter a valid email address.");
       } else {
-        setError("Failed to send reset email. Please try again.");
+        setError("Failed to send reset link. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -639,31 +706,78 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4">Reset Password</h2>
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
+      {/* Background glow effects */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {message && <div className="p-3 mb-4 text-green-700 bg-green-100 rounded">{message}</div>}
-      {error && <div className="p-3 mb-4 text-red-700 bg-red-100 rounded">{error}</div>}
-
-      <form onSubmit={handleSubmit}>
-        <label className="block mb-2 text-sm font-medium">Email Address</label>
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="yourname@smartco.com"
-          className="w-full p-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-
+      <div className="relative w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+        {/* Back Button */}
         <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors mb-6"
         >
-          {loading ? "Sending link..." : "Send Reset Link"}
+          <ArrowLeft className="w-4 h-4" />
+          Back to Login
         </button>
-      </form>
+
+        {/* Header */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-white mb-2">Reset Password</h2>
+          <p className="text-sm text-white/60">
+            Enter your registered email address and we'll send you a link to reset your password.
+          </p>
+        </div>
+
+        {/* Alerts */}
+        {message && (
+          <div className="flex items-start gap-3 p-4 mb-6 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+            <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+            <span>{message}</span>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-start gap-3 p-4 mb-6 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-white/80 mb-2">
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="yourname@smartco.com"
+                className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/25"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Sending link...</span>
+              </>
+            ) : (
+              "Send Reset Link"
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -1326,7 +1440,7 @@ const Layout = ({ children }) => {
         : isDarkMode ? 'bg-gray-950' : 'bg-gray-50'
     }`}>
 
-      {/* Global gradient Ã¢â‚¬â€ only rendered on pages with their own hero background */}
+      {/* Global gradient â€ only rendered on pages with their own hero background */}
       {hasCustomBackground && (
         <>
           <div className={`fixed inset-0 -z-10 ${
@@ -1358,7 +1472,7 @@ const Layout = ({ children }) => {
 
       <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
 
-      {/* Main content Ã¢â‚¬â€ transparent on pages with their own hero background so it bleeds through */}
+      {/* Main content â€ transparent on pages with their own hero background so it bleeds through */}
       <main
         style={{ paddingTop: 'var(--topbar-height)' }}
         className={`min-h-screen transition-all duration-300 ease-in-out ${sidebarOffset} ${
@@ -2514,7 +2628,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
 
   const isAdmin = user?.role === 'admin' || user?.role === 'barangay_official'
 
-  /* glass card Ã¢â‚¬â€ matches HomePage panels */
+  /* glass card â€ matches HomePage panels */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40'
 
@@ -2621,7 +2735,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        {/* Background gradient Ã¢â‚¬â€ same palette as HomePage's dashboard backdrop */}
+        {/* Background gradient â€ same palette as HomePage's dashboard backdrop */}
         <div
           className={`absolute inset-0 -z-10 ${
             isDarkMode
@@ -2766,6 +2880,158 @@ const ProtectedRoute = ({ children }) => {
 }
 
 export default ProtectedRoute
+
+== FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\ResetPassword.jsx ==
+
+import React, { useState } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { confirmPasswordReset } from "firebase/auth";
+import { auth } from "../config/firebase";
+import { Lock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+
+export default function ResetPassword() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // 1. Check if oobCode is passed directly or embedded inside resetUrl parameter
+  let oobCode = searchParams.get("oobCode");
+  
+  if (!oobCode && searchParams.get("resetUrl")) {
+    try {
+      const embeddedUrl = new URL(searchParams.get("resetUrl"));
+      oobCode = embeddedUrl.searchParams.get("oobCode");
+    } catch (e) {
+      console.error("Error parsing reset token from URL:", e);
+    }
+  }
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    setError("");
+
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      return;
+    }
+
+    if (!oobCode) {
+      setError("Invalid or expired password reset link.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Confirms the password reset with Firebase using the oobCode
+      await confirmPasswordReset(auth, oobCode, newPassword);
+      setMessage("Your password has been reset successfully! Redirecting to login...");
+
+      setTimeout(() => {
+        navigate("/login");
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      if (err.code === "auth/invalid-action-code") {
+        setError("This password reset link has expired or has already been used.");
+      } else {
+        setError("Failed to reset password. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
+      {/* Background glow effects */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="relative w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+        <h2 className="text-2xl font-bold text-white mb-2">Create New Password</h2>
+        <p className="text-sm text-white/60 mb-6">
+          Please enter your new password below.
+        </p>
+
+        {message && (
+          <div className="flex items-start gap-3 p-4 mb-6 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+            <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+            <span>{message}</span>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-start gap-3 p-4 mb-6 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-white/80 mb-2">
+              New Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+              <input
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white/80 mb-2">
+              Confirm New Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full mt-2 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 shadow-lg shadow-blue-600/25"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Saving Password...</span>
+              </>
+            ) : (
+              "Save New Password"
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 == FILE: C:\Users\Admin\Documents\BACKUP\SmartCo\src\components\ScheduleCheckupModal.jsx ==
 
@@ -3082,7 +3348,7 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={6}
-                placeholder="Describe your symptoms for the health workerÃ¢â‚¬Â¦"
+                placeholder="Describe your symptoms for the health worker"
                 className={`${inputCls} resize-y`}
               />
               {symptomsSummary && (
@@ -3128,7 +3394,7 @@ const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
   const isAdmin = adminService.isAdmin(user)
   const [assignmentCount, setAssignmentCount] = useState(0)
 
-  // Only show "My Assignments" once this user actually has a food aid assignment ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+  // Only show "My Assignments" once this user actually has a food aid assignment 
   // keeps the sidebar clean for people who've never volunteered.
   useEffect(() => {
     if (!user?.id) return
@@ -5654,7 +5920,10 @@ import { Brain, RefreshCw, History, LayoutGrid, Heart, Package, Calendar, AlertT
 import { db } from '../config/firebase'
 import { useTheme } from '../context/ThemeContext'
 import aiInsightsService, { MODULES } from '../services/aiInsightsService'
+import foodAidService from '../services/foodAidService'
 import AIInsightCard from '../components/AIInsightCard'
+
+const PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' }
 
 const MODULE_TABS = [
   { key: 'all',            label: 'All',       icon: LayoutGrid },
@@ -5737,7 +6006,36 @@ const AIInsightsPage = () => {
     setShowHistory(s => !s)
   }
 
-  const handleAcknowledge = (insight) => setActionedIds(m => ({ ...m, [insight.id]: 'acted_on' }))
+  const isPriorityPurokRecommendation = (insight) =>
+    insight.module === MODULES.FOOD_AID &&
+    insight.title === "Today's priority purok" &&
+    !!insight.dataAnalyzed?.purok
+
+  const handleAcknowledge = async (insight) => {
+    if (!isPriorityPurokRecommendation(insight)) {
+      setActionedIds(m => ({ ...m, [insight.id]: 'acted_on' }))
+      return
+    }
+    setActionedIds(m => ({ ...m, [insight.id]: 'applying' }))
+    const result = await foodAidService.applyAIPriorityRecommendation(insight.dataAnalyzed.purok, {
+      priority: PRIORITY_LABELS[insight.priority] || 'Medium',
+      reason: insight.reason,
+    })
+    if (result.success) {
+      setActionedIds(m => ({
+        ...m,
+        [insight.id]: {
+          status: 'recommendation_applied',
+          appliedTo: 'Food Aid',
+          priority: PRIORITY_LABELS[insight.priority] || 'Medium',
+          appliedAt: result.schedule?.priorityAppliedAt || new Date().toISOString(),
+        },
+      }))
+    } else {
+      setActionedIds(m => ({ ...m, [insight.id]: 'acted_on' }))
+    }
+  }
+
   const handleDismiss = (insight) => setActionedIds(m => ({ ...m, [insight.id]: 'dismissed' }))
 
   const visibleInsights = activeTab === 'all'
@@ -9647,6 +9945,7 @@ import { useAuth } from '../context/AuthContext'
 import foodAidService, { WORKFLOW_LABELS } from '../services/foodAidService'
 import adminService from '../services/adminService'
 import LocationPicker from '../components/LocationPicker'
+import BARANGAY_CONFIG from '../config/barangayConfig'
 import {
   TOLEDO_BARANGAYS, PUROKS_LIST, PUROK_COORDS,
   getPositionAsync, detectNearestBarangay,
@@ -9699,6 +9998,14 @@ const STATUS_COLORS = {
   rejected:      '#ef4444',
 }
 
+const PRIORITY_STYLES = {
+  High:   { emoji: 'ðŸ”´', cls: 'bg-red-500/15 text-red-300 border border-red-500/30' },
+  Medium: { emoji: 'ðŸŸ¡', cls: 'bg-amber-500/15 text-amber-300 border border-amber-500/30' },
+  Low:    { emoji: 'ðŸŸ¢', cls: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' },
+}
+
+
+
 function MapUpdater({ center }) {
   const map = useMap()
   useEffect(() => { if (center) map.setView(center, map.getZoom()) }, [center, map])
@@ -9717,10 +10024,13 @@ function MapFitRoute({ positions }) {
   return null
 }
 
-// â”€â”€ Post Distribution Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Post Distribution Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Single-barangay deployment: Barangay Ilihan is fixed, not selectable.
 function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
   const [form, setForm] = useState({
-    barangay: '', purok: '', date: '', timeSlot: 'Morning (8AM-10AM)',
+    purok: '', date: '',
+    timeSlot: 'Morning (8AM-10AM)', scheduleMode: 'preset',
+    customStartTime: '08:00', customHours: '',
     totalFamilies: '', packageType: 'Mixed', description: '',
   })
   const [aiAnalysis,      setAiAnalysis]      = useState(null)
@@ -9728,37 +10038,77 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
   const [pinCoords,       setPinCoords]       = useState(null)
   const [customPurokMode, setCustomPurokMode] = useState(false)
 
-  // AI analysis fires whenever the pin changes (pin-first) or barangay/date/purok changes
+  // Barangay is fixed to Ilihan for this deployment.
+  const ilihanBarangay = TOLEDO_BARANGAYS.find(b => b.id === 'ilihan')
+
+  // AI analysis fires whenever the pin, date, or purok changes.
+  // Pin-first: uses the exact dropped pin when available, otherwise falls
+  // back to Barangay Ilihan's default coordinates.
   useEffect(() => {
     if (pinCoords) {
-      const nearest = detectNearestBarangay(pinCoords.lat, pinCoords.lng)
-      setAiAnalysis(generatePinpointAIAnalysis(pinCoords.lat, pinCoords.lng, nearest, form.purok, form.date || null))
-    } else if (form.barangay) {
-      const b = TOLEDO_BARANGAYS.find(b => b.id === form.barangay)
-      if (b) setAiAnalysis(generateAIRouteAnalysis(b, form.date || null))
-      else   setAiAnalysis(null)
+      setAiAnalysis(generatePinpointAIAnalysis(pinCoords.lat, pinCoords.lng, ilihanBarangay, form.purok, form.date || null))
+    } else if (ilihanBarangay) {
+      setAiAnalysis(generateAIRouteAnalysis(ilihanBarangay, form.date || null))
     } else {
       setAiAnalysis(null)
     }
-  }, [pinCoords, form.barangay, form.date, form.purok])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinCoords, form.date, form.purok])
 
   const set = (key, val) => setForm(p => ({ ...p, [key]: val }))
 
+  // â”€â”€ Time helpers for the custom-hours / whole-day schedule modes â”€â”€
+  const formatTime12h = (t) => {
+    if (!t) return ''
+    const [h, m] = t.split(':').map(Number)
+    const period = h >= 12 ? 'PM' : 'AM'
+    const h12 = h % 12 === 0 ? 12 : h % 12
+    return `${h12}:${String(m).padStart(2, '0')}${period}`
+  }
+
+  const addHours = (t, hrs) => {
+    const [h, m] = t.split(':').map(Number)
+    const total = h * 60 + m + Math.round(hrs * 60)
+    const wrapped = ((total % 1440) + 1440) % 1440
+    const hh = String(Math.floor(wrapped / 60)).padStart(2, '0')
+    const mm = String(wrapped % 60).padStart(2, '0')
+    return `${hh}:${mm}`
+  }
+
+  const getFinalTimeSlot = () => {
+    if (form.scheduleMode === 'wholeday') return 'Whole Day (7AM-5PM)'
+    if (form.scheduleMode === 'custom') {
+      const hrs = parseFloat(form.customHours)
+      if (!hrs) return ''
+      const end = addHours(form.customStartTime, hrs)
+      return `Custom (${formatTime12h(form.customStartTime)}-${formatTime12h(end)}, ${hrs} hr${hrs === 1 ? '' : 's'})`
+    }
+    return form.timeSlot
+  }
+
   const handleSubmit = async () => {
-    const b = TOLEDO_BARANGAYS.find(b => b.id === form.barangay)
-    if ((!b && !pinCoords) || !form.purok || !form.date || !form.totalFamilies) {
-      alert('Please fill in all required fields. A barangay selection or pinpointed location is required.')
+    const finalTimeSlot = getFinalTimeSlot()
+
+    if (!form.purok || !form.date || !form.totalFamilies) {
+      alert('Please fill in all required fields.')
       return
     }
-    const nearest       = pinCoords ? detectNearestBarangay(pinCoords.lat, pinCoords.lng) : null
-    const targetBarangay = b || nearest
-    const targetLat     = pinCoords?.lat ?? b?.lat
-    const targetLng     = pinCoords?.lng ?? b?.lng
+    if (form.scheduleMode === 'custom') {
+      const hrs = parseFloat(form.customHours)
+      if (!hrs || hrs < 1 || hrs > 10) {
+        alert('Custom hours must be between 1 and 10.')
+        return
+      }
+    }
+
+    const targetLat = pinCoords?.lat ?? ilihanBarangay?.lat
+    const targetLng = pinCoords?.lng ?? ilihanBarangay?.lng
+
     try {
       setIsPosting(true)
       await foodAidService.postDistribution({
-        barangay:            targetBarangay?.name ?? '',
-        barangayId:          targetBarangay?.id   ?? '',
+        barangay:            ilihanBarangay?.name ?? BARANGAY_CONFIG.barangayName,
+        barangayId:          ilihanBarangay?.id   ?? 'ilihan',
         barangayLat:         targetLat,
         barangayLng:         targetLng,
         pinLat:              pinCoords?.lat ?? null,
@@ -9766,13 +10116,13 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
         isPinpointed:        !!pinCoords,
         purok:               form.purok,
         date:                form.date,
-        timeSlot:            form.timeSlot,
+        timeSlot:            finalTimeSlot,
         totalFamilies:       parseInt(form.totalFamilies),
         packageType:         form.packageType,
         description:         form.description,
         routeDistance:       aiAnalysis?.distanceKm,
         estimatedTravelTime: aiAnalysis?.travelTimeMin,
-        terrain:             aiAnalysis?.terrain ?? targetBarangay?.terrain,
+        terrain:             aiAnalysis?.terrain ?? ilihanBarangay?.terrain,
         efficiency:          aiAnalysis?.efficiency,
         createdByName:       user?.fullName,
         aiOptimized:         !!pinCoords,
@@ -9792,9 +10142,6 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
   const labelCls  = 'block text-xs font-semibold mb-1.5 uppercase tracking-wide ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')
   const sectionCls = 'rounded-2xl p-4 border space-y-3 ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')
   const stepNum    = (n, color) => `w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-${color}-500`
-
-  // Nearest barangay label from pin
-  const nearestFromPin = pinCoords ? detectNearestBarangay(pinCoords.lat, pinCoords.lng) : null
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
@@ -9831,7 +10178,7 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
             <div>
                 <p className={'text-sm font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Set Origin &amp; Destination Pins</p>
                 <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                  ðŸ”µ <strong>Pin 1 (Origin)</strong> is auto-set to the Distribution Hub. ðŸŸ¢ <strong>Pin 2 (Destination)</strong>: click the map or use GPS to pin the delivery location. The AI will analyze the best route.
+                  ðŸ”µ <strong>Pin 1 (Origin)</strong> is auto-set to the Distribution Hub. ðŸŸ¢ <strong>Pin 2 (Destination)</strong>: click the map or use GPS to pin the delivery location within Barangay Ilihan. The AI will analyze the best route.
                 </p>
               </div>
             </div>
@@ -9844,11 +10191,11 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
                 originLabel="Distribution Hub (Barangay Hall)"
               />
 
-            {/* Auto-detected nearest barangay from pin */}
-            {nearestFromPin && (
+            {/* Pin confirmation - barangay is fixed to Ilihan */}
+            {pinCoords && (
               <div className={'flex items-center space-x-2 text-xs px-3 py-2 rounded-xl ' + (isDarkMode ? 'bg-green-950/40 text-green-300' : 'bg-green-50 text-green-700')}>
                 <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Nearest barangay detected: <strong>{nearestFromPin.name}</strong> ({nearestFromPin.terrain} terrain)</span>
+                <span>Delivery pin set within <strong>Barangay Ilihan</strong> ({ilihanBarangay?.terrain || 'hilly'} terrain)</span>
               </div>
             )}
 
@@ -9868,17 +10215,17 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
               <p className={'text-sm font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Distribution Area</p>
             </div>
 
-            {/* Barangay â€“ optional when pin is set */}
+            {/* Barangay â€“ fixed to Barangay Ilihan (single-barangay deployment) */}
             <div>
-              <label className={labelCls}>
-                Barangay {pinCoords
-                  ? <span className={'normal-case font-normal ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>(optional â€“ auto-detected from pin)</span>
-                  : <span className="text-red-500">*</span>}
-              </label>
-              <select value={form.barangay} onChange={e => set('barangay', e.target.value)} className={inputCls}>
-                <option value="">{pinCoords ? `Auto: ${nearestFromPin?.name || 'Detected from pin'}` : 'Select Barangayâ€¦'}</option>
-                {TOLEDO_BARANGAYS.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
+              <label className={labelCls}>Barangay</label>
+              <div className={
+                'w-full px-3 py-2.5 rounded-xl border text-sm flex items-center space-x-2 ' +
+                (isDarkMode ? 'bg-gray-800/60 border-gray-700 text-gray-300' : 'bg-gray-100 border-gray-200 text-gray-600')
+              }>
+                <MapPin className="w-4 h-4 flex-shrink-0 opacity-70" />
+                <span className="font-medium">{BARANGAY_CONFIG.fullBarangayName}</span>
+                <span className={'text-xs ml-auto ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>Fixed</span>
+              </div>
             </div>
 
             {/* Purok with custom toggle */}
@@ -9890,7 +10237,7 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
                   onClick={() => { setCustomPurokMode(m => !m); set('purok', '') }}
                   className={'text-xs font-medium px-2.5 py-1 rounded-lg transition ' + (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-600')}
                 >
-                  {customPurokMode ? 'â†© Use Dropdown' : 'âœ Custom Purok'}
+                  {customPurokMode ? 'â†© Use Dropdown' : 'âœŽ Custom Purok'}
                 </button>
               </div>
               {customPurokMode ? (
@@ -9925,20 +10272,71 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
               <p className={'text-sm font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Schedule & Capacity</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Date *</label>
-                <input type="date" value={form.date} min={new Date().toISOString().split('T')[0]}
-                  onChange={e => set('date', e.target.value)} className={inputCls} />
+            <div>
+              <label className={labelCls}>Date *</label>
+              <input type="date" value={form.date} min={new Date().toISOString().split('T')[0]}
+                onChange={e => set('date', e.target.value)} className={inputCls} />
+            </div>
+
+            <div>
+              <label className={labelCls}>Duration</label>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {[
+                  { key: 'preset',   label: 'Time Slot' },
+                  { key: 'wholeday', label: 'Whole Day' },
+                  { key: 'custom',   label: 'Custom Hours' },
+                ].map(m => (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => set('scheduleMode', m.key)}
+                    className={
+                      'px-2 py-2 rounded-lg text-xs font-semibold transition border ' +
+                      (form.scheduleMode === m.key
+                        ? 'bg-green-500 text-white border-green-500'
+                        : (isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border-gray-300 text-gray-600'))
+                    }
+                  >
+                    {m.label}
+                  </button>
+                ))}
               </div>
-              <div>
-                <label className={labelCls}>Time Slot</label>
+
+              {form.scheduleMode === 'preset' && (
                 <select value={form.timeSlot} onChange={e => set('timeSlot', e.target.value)} className={inputCls}>
                   {['Early Morning (7AM-9AM)', 'Morning (8AM-10AM)', 'Late Morning (10AM-12PM)', 'Afternoon (2PM-4PM)'].map(t => (
                     <option key={t}>{t}</option>
                   ))}
                 </select>
-              </div>
+              )}
+
+              {form.scheduleMode === 'wholeday' && (
+                <div className={'flex items-center space-x-2 text-xs px-3 py-2.5 rounded-xl border ' + (isDarkMode ? 'bg-gray-800/60 text-gray-300 border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-200')}>
+                  <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Distribution runs the whole day: <strong>7:00 AM â€“ 5:00 PM</strong></span>
+                </div>
+              )}
+
+              {form.scheduleMode === 'custom' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Start Time</label>
+                    <input type="time" value={form.customStartTime}
+                      onChange={e => set('customStartTime', e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Hours (1-10)</label>
+                    <input type="number" min="1" max="10" step="0.5" placeholder="e.g. 4"
+                      value={form.customHours}
+                      onChange={e => set('customHours', e.target.value)} className={inputCls} />
+                  </div>
+                  {form.customHours >= 1 && form.customHours <= 10 && (
+                    <p className={'col-span-2 text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+                      Runs {formatTime12h(form.customStartTime)} â€“ {formatTime12h(addHours(form.customStartTime, parseFloat(form.customHours)))} ({form.customHours} hr{parseFloat(form.customHours) === 1 ? '' : 's'})
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -9954,7 +10352,7 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
             </div>
           </div>
 
-          {/* â”€â”€ AI Route Analysis â€“ triggers on pin OR barangay â”€â”€ */}
+          {/* â”€â”€ AI Route Analysis â€“ triggers on pin OR default Ilihan coords â”€â”€ */}
           {aiAnalysis && (
             <div className={
               'rounded-2xl p-4 border ' +
@@ -10396,6 +10794,8 @@ const FoodAidPage = () => {
   const [statusFilter,  setStatusFilter]  = useState('all')
   const [showPostModal, setShowPostModal] = useState(false)
   const [routeDist,     setRouteDist]     = useState(null)
+  const [expandedPriority, setExpandedPriority] = useState({})
+  
 
   useEffect(() => {
     detectLocation()
@@ -10568,7 +10968,7 @@ const FoodAidPage = () => {
                     <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                   </div>
                   <p className="text-xs text-white/50">
-                    GPS detected Â· Â±{userCoords?.accuracy}m accuracy Â· Distributions sorted by distance
+                    GPS detected {userCoords?.accuracy} accuracy Â· Distributions sorted by distance
                   </p>
                 </div>
               </div>
@@ -10794,10 +11194,37 @@ const FoodAidPage = () => {
                           )}
                         </div>
                       </div>
-                      <span className={'text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ml-2 ' + badge.cls}>
-                        {badge.label}
-                      </span>
+                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0 ml-2">
+                        {d.priority && PRIORITY_STYLES[d.priority] && (
+                          <span className={'text-xs font-semibold px-2.5 py-1 rounded-full ' + PRIORITY_STYLES[d.priority].cls}>
+                            {PRIORITY_STYLES[d.priority].emoji} {d.priority.toUpperCase()}
+                          </span>
+                        )}
+                        <span className={'text-xs font-semibold px-2.5 py-1 rounded-full ' + badge.cls}>
+                          {badge.label}
+                        </span>
+                      </div>
                     </div>
+
+                    {d.priority && d.prioritySource && (
+                      <div className="mb-3">
+                        <button
+                          onClick={() => setExpandedPriority(m => ({ ...m, [d.id]: !m[d.id] }))}
+                          className="flex items-center gap-1 text-xs font-medium text-white/50 hover:text-white/80"
+                        >
+                          <Sparkles className="w-3 h-3 text-emerald-300" />
+                          {expandedPriority[d.id] ? 'Hide priority details' : 'Why this priority?'}
+                        </button>
+                        {expandedPriority[d.id] && (
+                          <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70 space-y-1">
+                            <p><span className="font-semibold text-white/90">Assigned by:</span> {d.prioritySource}</p>
+                            {d.priorityReason && (
+                              <p><span className="font-semibold text-white/90">Reason:</span> {d.priorityReason}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Workflow stage Â· assigned volunteer Â· admin actions */}
                     {isAdmin && (
@@ -12757,7 +13184,7 @@ const MyProfilePage = () => {
     }
   }, [user])
 
-  /* glass card ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â matches HomePage panels */
+  /* glass card  matches HomePage panels */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
 
@@ -12784,7 +13211,7 @@ const MyProfilePage = () => {
       updateUser(updates)
       setIsEditing(false)
 
-      alert('ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Profile updated successfully!')
+      alert(' Profile updated successfully!')
     } catch (error) {
       console.error('Error updating profile:', error)
       alert('ÃƒÂ¢Ã…â€™ Failed to update profile: ' + error.message)
@@ -12859,7 +13286,7 @@ const MyProfilePage = () => {
   }
 
   return (
-    /* No background here ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Layout.jsx paints the gradient behind everything */
+    /* No background here  Layout.jsx paints the gradient behind everything */
     <div className="mx-auto max-w-2xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
 
       {/* Header */}
@@ -13181,13 +13608,13 @@ const NotificationsPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  /* glass card ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â matches HomePage panels */
+  /* glass card ÃƒÂ¢Ã¢â€šÂ¬Â matches HomePage panels */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
 
   // Fetch notifications from Firebase
   useEffect(() => {
-    console.log('ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬Â [NotificationsPage] Fetching notifications...')
+    console.log('ÃƒÂ°Ã…Â¸ÂÂ [NotificationsPage] Fetching notifications...')
     fetchNotifications()
   }, [])
 
@@ -13196,10 +13623,10 @@ const NotificationsPage = () => {
       setIsLoading(true)
       setError(null)
 
-      console.log('ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¹ [NotificationsPage] Calling notificationService.getNotifications()')
+      console.log('ÃƒÂ°Ã…Â¸Å“Â¹ [NotificationsPage] Calling notificationService.getNotifications()')
       const fetchedNotifications = await notificationService.getNotifications()
 
-      console.log(`ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ [NotificationsPage] Received ${fetchedNotifications.length} notifications`)
+      console.log(`ÃƒÂ¢Ã…â€œÂ¦ [NotificationsPage] Received ${fetchedNotifications.length} notifications`)
       setNotifications(fetchedNotifications)
     } catch (err) {
       console.error('ÃƒÂ¢Ã…â€™ [NotificationsPage] Error fetching notifications:', err)
@@ -13211,7 +13638,7 @@ const NotificationsPage = () => {
 
   const handleMarkAsRead = async (id) => {
     try {
-      console.log(`ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“ [NotificationsPage] Marking notification ${id} as read`)
+      console.log(`ÃƒÂ°Ã…Â¸Å“ [NotificationsPage] Marking notification ${id} as read`)
       const result = await notificationService.markAsRead(id)
 
       if (result.success) {
@@ -13219,7 +13646,7 @@ const NotificationsPage = () => {
           notif.id === id ? { ...notif, read: true } : notif
         ))
         window.dispatchEvent(new Event('notifications-updated'))
-        console.log('ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ [NotificationsPage] Notification marked as read')
+        console.log('ÃƒÂ¢Ã…â€œÂ¦ [NotificationsPage] Notification marked as read')
       }
     } catch (err) {
       console.error('ÃƒÂ¢Ã…â€™ [NotificationsPage] Error marking as read:', err)
@@ -13229,13 +13656,13 @@ const NotificationsPage = () => {
 
   const handleMarkAllAsRead = async () => {
     try {
-      console.log('ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“ [NotificationsPage] Marking all notifications as read')
+      console.log('ÃƒÂ°Ã…Â¸Å“ [NotificationsPage] Marking all notifications as read')
       const result = await notificationService.markAllAsRead()
 
       if (result.success) {
         setNotifications(notifications.map(notif => ({ ...notif, read: true })))
         window.dispatchEvent(new Event('notifications-updated'))
-        console.log('ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ [NotificationsPage] All notifications marked as read')
+        console.log('ÃƒÂ¢Ã…â€œÂ¦ [NotificationsPage] All notifications marked as read')
       }
     } catch (err) {
       console.error('ÃƒÂ¢Ã…â€™ [NotificationsPage] Error marking all as read:', err)
@@ -13245,12 +13672,12 @@ const NotificationsPage = () => {
 
   const handleDelete = async (id) => {
     try {
-      console.log(`ÃƒÂ°Ã…Â¸Ã¢â‚¬â€Ã¢â‚¬ËœÃƒÂ¯Ã‚Â¸ [NotificationsPage] Deleting notification ${id}`)
+      console.log(`ÃƒÂ°Ã…Â¸â€ËœÃƒÂ¯Ã‚Â¸ [NotificationsPage] Deleting notification ${id}`)
       const result = await notificationService.deleteNotification(id)
 
       if (result.success) {
         setNotifications(notifications.filter(notif => notif.id !== id))
-        console.log('ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ [NotificationsPage] Notification deleted')
+        console.log('ÃƒÂ¢Ã…â€œÂ¦ [NotificationsPage] Notification deleted')
       }
     } catch (err) {
       console.error('ÃƒÂ¢Ã…â€™ [NotificationsPage] Error deleting notification:', err)
@@ -13271,12 +13698,12 @@ const NotificationsPage = () => {
     }
 
     try {
-      console.log('ÃƒÂ°Ã…Â¸Ã¢â‚¬â€Ã¢â‚¬ËœÃƒÂ¯Ã‚Â¸ [NotificationsPage] Clearing all notifications')
+      console.log('ÃƒÂ°Ã…Â¸â€ËœÃƒÂ¯Ã‚Â¸ [NotificationsPage] Clearing all notifications')
       const result = await notificationService.clearAll()
 
       if (result.success) {
         setNotifications([])
-        console.log('ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ [NotificationsPage] All notifications cleared')
+        console.log('ÃƒÂ¢Ã…â€œÂ¦ [NotificationsPage] All notifications cleared')
       }
     } catch (err) {
       console.error('ÃƒÂ¢Ã…â€™ [NotificationsPage] Error clearing all:', err)
@@ -13324,7 +13751,7 @@ const NotificationsPage = () => {
   }
 
   return (
-    /* No background here ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Layout.jsx paints the gradient behind everything */
+    /* No background here ÃƒÂ¢Ã¢â€šÂ¬Â Layout.jsx paints the gradient behind everything */
     <div className="mx-auto max-w-3xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
 
       {/* Header */}
@@ -13581,7 +14008,7 @@ const OptimizeSchedulePage = () => {
 
   useEffect(() => { autoDetectGPS() }, [])
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ GPS detection Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // GPS detection 
   const autoDetectGPS = async () => {
     setGpsStatus('detecting')
     try {
@@ -13603,7 +14030,7 @@ const OptimizeSchedulePage = () => {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Form helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // Ã¢â€â€â‚¬ Form helpers Ã¢â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â‚¬
   const handlePurokToggle = purok => {
     setFormData(prev => ({
       ...prev,
@@ -13618,7 +14045,7 @@ const OptimizeSchedulePage = () => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ AI helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // Ã¢â€â€â‚¬ AI helpers Ã¢â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â‚¬
   const predictWeather = date => {
     const types   = ['sunny', 'partly_cloudy', 'cloudy', 'rainy', 'stormy']
     const day     = new Date(date).getDay()
@@ -13706,7 +14133,7 @@ const OptimizeSchedulePage = () => {
     return recommendations
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Main AI analysis Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // Ã¢â€â€â‚¬ Main AI analysis Ã¢â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â€â‚¬
   const handleAnalyze = async () => {
     if (!formData.selectedPuroks.length || !formData.startDate || !formData.endDate || !formData.totalFamilies) {
       alert('Please fill in all required fields.')
@@ -13725,8 +14152,33 @@ const OptimizeSchedulePage = () => {
       lng: PUROK_DATA[purok].lng,
     }))
 
-    // Nearest-neighbor route optimization from GPS start point
-    const optimizedRoute = nearestNeighborRoute(startLat, startLng, destinations)
+    const existingSchedules = await foodAidService.getAllFoodAidSchedules().catch(() => [])
+    const PRIORITY_RANK = { High: 0, Medium: 1, Low: 2 }
+    const purokPriorityRank = {}
+    existingSchedules.forEach(s => {
+      if (!s.purok || !s.priority) return
+      const rank = PRIORITY_RANK[s.priority] ?? 2
+      if (purokPriorityRank[s.purok] === undefined || rank < purokPriorityRank[s.purok]) {
+        purokPriorityRank[s.purok] = rank
+      }
+    })
+
+    const tiers = [[], [], []]
+    destinations.forEach(d => {
+      const rank = purokPriorityRank[d.purok] ?? 2
+      tiers[rank].push(d)
+    })
+
+    let optimizedRoute = []
+    let curLat = startLat, curLng = startLng
+    tiers.forEach(tierDestinations => {
+      if (!tierDestinations.length) return
+      const tierRoute = nearestNeighborRoute(curLat, curLng, tierDestinations)
+      optimizedRoute = optimizedRoute.concat(tierRoute)
+      const last = tierRoute[tierRoute.length - 1]
+      curLat = last.lat
+      curLng = last.lng
+    })
 
     const totalPopulation = optimizedRoute.reduce((s, d) => s + PUROK_DATA[d.purok].population, 0)
 
@@ -13786,12 +14238,12 @@ const OptimizeSchedulePage = () => {
     setShowMap(true)
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Save to Firestore Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // Save to Firestore 
   const handleSaveSchedule = async () => {
     if (!analysisResult) { alert('Analyze first.'); return }
     try {
       await Promise.all(analysisResult.schedules.map(schedule => {
-        const weatherInfo = schedule.weather.weather + ' (' + schedule.weather.temperature + 'Ã‚Â°C, ' + schedule.weather.humidity + '% humidity)'
+        const weatherInfo = schedule.weather.weather + ' (' + schedule.weather.temperature + 'Â°C, ' + schedule.weather.humidity + '% humidity)'
         const riskSummary = schedule.risks.map(r => r.severity.toUpperCase() + ': ' + r.description).join('; ') || 'No significant risks'
         return foodAidService.createFoodAidSchedule({
           purok: schedule.purok, date: schedule.date, dayName: schedule.dayName,
@@ -13809,7 +14261,7 @@ const OptimizeSchedulePage = () => {
           barangayLat: schedule.lat, barangayLng: schedule.lng,
         })
       }))
-      alert('Ã¢Å“â€¦ Saved ' + analysisResult.schedules.length + ' optimized schedule(s)!\n\nAverage efficiency: ' + analysisResult.averageEfficiency + '%')
+      alert('Saved ' + analysisResult.schedules.length + ' optimized schedule(s)!\n\nAverage efficiency: ' + analysisResult.averageEfficiency + '%')
       navigate('/food-aid')
     } catch (err) {
       console.error(err)
@@ -13817,7 +14269,7 @@ const OptimizeSchedulePage = () => {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Computed map data Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  //Computed map data 
   const routePositions = analysisResult
     ? [[analysisResult.startLat, analysisResult.startLng], ...analysisResult.schedules.map(s => [s.lat, s.lng])]
     : []
@@ -13856,11 +14308,11 @@ const OptimizeSchedulePage = () => {
             <h2 className="text-xl font-bold">AI-Optimized Distribution Schedule</h2>
           </div>
           <p className={isDarkMode ? 'text-green-200' : 'text-green-100'}>
-            GPS-aware route planning Ã‚Â· Nearest-neighbour optimization Ã‚Â· Risk analysis
+            GPS-aware route planning Â· Nearest-neighbour optimization Â· Risk analysis
           </p>
         </div>
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ GPS Start Location Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/* Ã¢â€â€â‚¬ GPS Start Location Ã¢â€â€â‚¬ */}
         <div className={card + ' p-4'}>
           <p className={'text-xs font-bold uppercase tracking-wide mb-3 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
             Ã°Å¸â€œÂ Distribution Start Location (GPS)
@@ -13870,7 +14322,7 @@ const OptimizeSchedulePage = () => {
             <div className="flex items-center space-x-3">
               <Loader2 className={'w-5 h-5 animate-spin ' + (isDarkMode ? 'text-blue-400' : 'text-blue-500')} />
               <p className={'text-sm ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>
-                {gpsStatus === 'detecting' ? 'Detecting GPS locationÃ¢â‚¬Â¦' : 'InitializingÃ¢â‚¬Â¦'}
+                {gpsStatus === 'detecting' ? 'Detecting GPS locationÂ¦' : 'InitializingÂ¦'}
               </p>
             </div>
           ) : gpsStatus === 'success' ? (
@@ -13885,7 +14337,7 @@ const OptimizeSchedulePage = () => {
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   </div>
                   <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                    GPS detected Ã‚Â· Ã‚Â±{startCoords?.accuracy}m Ã‚Â· AI will optimize route from here
+                    GPS detected Â· {startCoords?.accuracy}m Â· AI will optimize route from here
                   </p>
                 </div>
               </div>
@@ -13898,21 +14350,21 @@ const OptimizeSchedulePage = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <AlertCircle className={'w-4 h-4 ' + (isDarkMode ? 'text-orange-400' : 'text-orange-500')} />
-                  <p className={'text-sm ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>GPS unavailable Ã¢â‚¬â€œ select start barangay</p>
+                  <p className={'text-sm ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>GPS unavailable â€œ select start barangay</p>
                 </div>
                 <button onClick={autoDetectGPS} className={'text-xs px-2.5 py-1.5 rounded-lg font-medium ' + (isDarkMode ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-50 text-blue-600')}>
                   Retry GPS
                 </button>
               </div>
               <select value={manualStart} onChange={e => handleManualStartSelect(e.target.value)} className={inputCls}>
-                <option value="">Select your starting barangayÃ¢â‚¬Â¦</option>
+                <option value="">Select your starting barangay</option>
                 {TOLEDO_BARANGAYS.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
           )}
         </div>
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Form Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/*Form  */}
         <div className={card + ' p-4 space-y-4'}>
 
           {/* Purok selection */}
@@ -13932,7 +14384,7 @@ const OptimizeSchedulePage = () => {
                   <span>{purok}</span>
                   {formData.selectedPuroks.includes(purok) && (
                     <span className={'block text-xs mt-0.5 ' + (isDarkMode ? 'text-green-400' : 'text-green-600')}>
-                      ~{PUROK_DATA[purok].distance} km Ã‚Â· {PUROK_DATA[purok].terrain}
+                      ~{PUROK_DATA[purok].distance} km Â· {PUROK_DATA[purok].terrain}
                     </span>
                   )}
                 </button>
@@ -13965,7 +14417,7 @@ const OptimizeSchedulePage = () => {
           <div>
             <label className={'block text-sm font-medium mb-1.5 ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>Additional Notes (optional)</label>
             <textarea name="notes" value={formData.notes} onChange={handleInputChange}
-              placeholder="Special considerations or requirementsÃ¢â‚¬Â¦" rows="2"
+              placeholder="Special considerations or requirements" rows="2"
               className={inputCls + ' resize-none'} />
           </div>
 
@@ -13976,13 +14428,13 @@ const OptimizeSchedulePage = () => {
               (isDarkMode ? 'bg-green-900/90 hover:bg-green-800 border-gray-700/50' : 'bg-green-500/90 hover:bg-green-600 border-white/20')
             }>
             {isAnalyzing
-              ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Analyzing with AIÃ¢â‚¬Â¦</span></>
+              ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Analyzing with AI</span></>
               : <><Sparkles className="w-5 h-5" /><span>Analyze & Optimize Route</span></>
             }
           </button>
         </div>
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Analysis Results Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/* Analysis Results */}
         {analysisResult && (
           <div className="space-y-4">
 
@@ -14004,7 +14456,7 @@ const OptimizeSchedulePage = () => {
                 }
                 <div>
                   <p className={'font-bold text-lg ' + (isDarkMode ? 'text-gray-100' : 'text-gray-900')}>
-                    AI-Optimized Route Ã‚Â· {analysisResult.averageEfficiency}% Efficiency
+                    AI-Optimized Route Â· {analysisResult.averageEfficiency}% Efficiency
                   </p>
                   <p className={'text-sm ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
                     Starting from <strong>{analysisResult.startName}</strong> Ã‚Â· {analysisResult.totalDays} stops optimized via GPS
@@ -14070,9 +14522,9 @@ const OptimizeSchedulePage = () => {
                         <Popup>
                           <div style={{ minWidth: 160 }}>
                             <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Stop {i + 1}: {s.purok}</p>
-                            <p style={{ fontSize: 12 }}>Ã°Å¸â€œâ€¦ {s.date} Ã‚Â· {s.timeSlot}</p>
-                            <p style={{ fontSize: 12 }}>Ã°Å¸â€˜Â¨Ã¢â‚¬ÂÃ°Å¸â€˜Â©Ã¢â‚¬ÂÃ°Å¸â€˜Â§ {s.families} families</p>
-                            <p style={{ fontSize: 12 }}>Ã°Å¸â€œÂ {s.routeAnalysis.distance} km from prev stop</p>
+                            <p style={{ fontSize: 12 }}> {s.date} Â· {s.timeSlot}</p>
+                            <p style={{ fontSize: 12 }}> {s.families} families</p>
+                            <p style={{ fontSize: 12 }}> {s.routeAnalysis.distance} km from prev stop</p>
                             <div style={{ marginTop: 6, display: 'inline-block', padding: '2px 8px', borderRadius: 999,
                               background: s.status === 'optimal' ? '#10b981' : s.status === 'acceptable' ? '#3b82f6' : '#f59e0b',
                               color: '#fff', fontSize: 11, fontWeight: 700 }}>
@@ -14167,7 +14619,7 @@ const OptimizeSchedulePage = () => {
                       </span>
                     </div>
                     <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                      {schedule.weather.temperature}Ã‚Â°C Ã‚Â· {schedule.weather.humidity}% humidity
+                      {schedule.weather.temperature}Â°C Â· {schedule.weather.humidity}% humidity
                     </p>
                   </div>
                   <div>
@@ -15401,7 +15853,7 @@ const RegisterPage = () => {
     { icon: CheckCircle, text: 'Streamlined approval workflows' },
   ]
 
-  /* glass card Ã¢â‚¬â€ matches HomePage.jsx */
+  /* glass card â€ matches HomePage.jsx */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
   const inputClass =
@@ -15412,7 +15864,7 @@ const RegisterPage = () => {
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
 
-      {/* Decorative glow blobs Ã¢â‚¬â€ matches Layout.jsx global gradient treatment */}
+      {/* Decorative glow blobs â€ matches Layout.jsx global gradient treatment */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
         <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
@@ -15754,11 +16206,11 @@ const SEVERITIES = [
   { value: 'critical', label: 'Critical', desc: 'Life-threatening / immediate danger', color: 'text-red-300',     selBg: 'bg-gradient-to-br from-red-600/90 to-rose-700/90' },
 ]
 
-/* glass card Ã¢â‚¬â€ same design language as HomePage/HealthPage/FoodAidPage/EventsPage */
+/* glass card  same design language as HomePage/HealthPage/FoodAidPage/EventsPage */
 const card =
   'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
 
-/* shared full-bleed background Ã¢â‚¬â€ matches HomePage/HealthPage/FoodAidPage/EventsPage's hero shell */
+/* shared full-bleed background  matches HomePage/HealthPage/FoodAidPage/EventsPage's hero shell */
 const PageBackground = ({ isDarkMode }) => (
   <>
     <div className="fixed inset-0 -z-10 bg-cover bg-center" style={{ backgroundImage: `url(${toledoImage})` }}>
@@ -15767,7 +16219,7 @@ const PageBackground = ({ isDarkMode }) => (
         : 'bg-gradient-to-br from-blue-600/90 via-indigo-600/90 to-blue-800/90'}`}
       />
     </div>
-    {/* Decorative blobs Ã¢â‚¬â€ matches HomePage/HealthPage/FoodAidPage/EventsPage's gradient shell */}
+    {/* Decorative blobs  matches HomePage/HealthPage/FoodAidPage/EventsPage's gradient shell */}
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
       <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
@@ -15787,7 +16239,7 @@ const SuspensionBanner = ({ suspension, isDarkMode, onBack }) => {
   const isRepeat = suspension.count >= 2
 
   const endDateStr = isPermanent
-    ? 'Permanent Ã¢â‚¬â€ no expiry'
+    ? 'Permanent  no expiry'
     : new Date(suspension.suspendedUntil).toLocaleDateString('en-PH', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       })
@@ -15942,7 +16394,7 @@ const ReportEmergencyPage = () => {
 
   const inputCls = 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none backdrop-blur-sm transition-all duration-300 ease-out hover:scale-[1.02] hover:border-red-300/60 hover:shadow-[0_0_30px_rgba(248,113,113,0.35)] focus:scale-[1.02] focus:border-red-300 focus:ring-2 focus:ring-red-400/70 focus:shadow-[0_0_35px_rgba(248,113,113,0.55)]'
 
-  // Checking suspensionÃ¢â‚¬Â¦
+  // Checking suspension
   if (checkingSuspension) {
     return (
       <div className="min-h-screen relative">
@@ -15950,7 +16402,7 @@ const ReportEmergencyPage = () => {
         <div className="flex min-h-[80vh] items-center justify-center">
           <div className={`${card} px-8 py-10 text-center`}>
             <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-white" />
-            <p className="font-semibold text-white">Checking accessÃ¢â‚¬Â¦</p>
+            <p className="font-semibold text-white">Checking access</p>
           </div>
         </div>
       </div>
@@ -16034,7 +16486,7 @@ const ReportEmergencyPage = () => {
                 Report Emergency
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-                Notify barangay officials immediately Ã¢â‚¬â€ every second counts.
+                Notify barangay officials immediately  every second counts.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <a
@@ -18469,28 +18921,28 @@ export function buildConversationSummary(messages) {
 
 
 /**
- * AI Insights Service Ã¢â‚¬â€ the engine behind the "AI Decision Support" dashboard.
+ * AI Insights Service â€ the engine behind the "AI Decision Support" dashboard.
  *
  * DESIGN NOTE (read me before editing):
  * This service intentionally does NOT dump raw Firestore data into an LLM prompt
  * and ask it to "figure things out." That produces vague, unreliable, hard-to-audit
  * recommendations. Instead it follows a two-layer approach:
  *
- *   Layer 1 Ã¢â‚¬â€ Deterministic analysis (this file): reads live Firestore data through
+ *   Layer 1 â€ Deterministic analysis (this file): reads live Firestore data through
  *   the EXISTING services (healthService/bhwService, foodAidService, eventsService,
- *   emergencyService) and computes concrete signals Ã¢â‚¬â€ overdue puroks, low inventory,
+ *   emergencyService) and computes concrete signals â€ overdue puroks, low inventory,
  *   volunteer shortages, hotspots, conflicts, trends. This layer always works, even
  *   with no AI key configured, and every number it produces is traceable back to a
  *   specific Firestore field.
  *
- *   Layer 2 Ã¢â‚¬â€ AI explanation (Groq, reusing the same client pattern as
+ *   Layer 2 â€ AI explanation (Groq, reusing the same client pattern as
  *   aiHealthService.js): turns the computed signals into a clear, human-readable
  *   "why" for officials, in the required Summary / Reason / Confidence / Suggested
  *   Action format. If the AI call fails or no key is configured, a rule-based
  *   explanation is used instead so the dashboard never breaks.
  *
  * This keeps the AI explainable ("what was analyzed, why, how confident, what to do")
- * and prevents the AI from ever making a decision Ã¢â‚¬â€ it only ever recommends.
+ * and prevents the AI from ever making a decision â€ it only ever recommends.
  */
 
 import { collection, getDocs, addDoc, query, where, orderBy, limit as fbLimit } from 'firebase/firestore'
@@ -18565,7 +19017,7 @@ async function callGroqJSON(systemPrompt, userPrompt) {
 
 /**
  * Ask the AI to phrase the reasoning for a signal we already computed.
- * Falls back to the deterministic text if the AI is unavailable Ã¢â‚¬â€ the
+ * Falls back to the deterministic text if the AI is unavailable â€ the
  * recommendation itself never depends on the AI being reachable.
  */
 async function explain(signal) {
@@ -18613,7 +19065,7 @@ const daysSince = (isoDate) => {
 }
 
 // 
-// HEALTH AI Ã¢â‚¬â€ reads the existing `health_requests` collection (already used by
+// HEALTH AI â€ reads the existing `health_requests` collection (already used by
 // the BHW dashboard) so we don't duplicate data or add new collections.
 // 
 
@@ -18649,7 +19101,7 @@ async function analyzeHealth() {
     })
   }
 
-  // Overdue for checkups / multiple missed appointments Ã¢â‚¬â€ approximate using stale pending requests
+  // Overdue for checkups / multiple missed appointments â€ approximate using stale pending requests
   const stalePending = requests.filter(r => r.status === 'pending_review' && daysSince(r.createdAt) >= 3)
   if (stalePending.length > 0) {
     signals.push({
@@ -18664,7 +19116,8 @@ async function analyzeHealth() {
     })
   }
 
-  // Health trend per purok Ã¢â‚¬â€ concerning/critical rate
+  // Purok priority ranking â€” ALL Ilihan puroks ranked by their concerning/critical rate,
+  // so BHWs can see which purok to prioritize for outreach, not just the single worst one.
   const byPurok = {}
   requests.forEach(r => {
     const p = r.purok || 'Unspecified'
@@ -18672,25 +19125,44 @@ async function analyzeHealth() {
     byPurok[p].total += 1
     if (['concerning', 'critical'].includes(r.healthAssessment?.overallStatus)) byPurok[p].concerning += 1
   })
-  const trendPurok = Object.entries(byPurok)
-    .filter(([, v]) => v.total >= 3)
-    .map(([p, v]) => ({ purok: p, rate: v.concerning / v.total, ...v }))
-    .sort((a, b) => b.rate - a.rate)[0]
 
-  if (trendPurok && trendPurok.rate >= 0.3) {
+  const healthRanking = [...PUROKS_ILIHAN]
+    .map(p => {
+      const v = byPurok[p] || { total: 0, concerning: 0 }
+      const rate = v.total > 0 ? v.concerning / v.total : 0
+      return { purok: getShortPurokName(p), total: v.total, concerning: v.concerning, rate }
+    })
+    .sort((a, b) => b.rate - a.rate || b.total - a.total)
+
+  const rankedPuroksHealth = healthRanking.map(p => ({
+    purok: p.purok,
+    priority: p.rate >= 0.5 ? PRIORITY.HIGH : p.rate >= 0.3 ? PRIORITY.MEDIUM : PRIORITY.LOW,
+    detail: p.total > 0
+      ? `${p.concerning}/${p.total} recent requests flagged concerning or critical (${Math.round(p.rate * 100)}%)`
+      : 'No recent health requests recorded',
+  }))
+
+  const topHealth = healthRanking[0]
+  if (topHealth && topHealth.total >= 3) {
     signals.push({
       module: MODULES.HEALTH,
-      title: 'Health trend summary',
-      priority: trendPurok.rate >= 0.5 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      title: 'Purok health priority ranking',
+      priority: rankedPuroksHealth[0].priority,
       confidence: 'Medium',
-      dataAnalyzed: { purok: trendPurok.purok, concerning: trendPurok.concerning, total: trendPurok.total, rate: Math.round(trendPurok.rate * 100) },
-      summary: `${trendPurok.purok} shows ${Math.round(trendPurok.rate * 100)}% of recent health requests flagged concerning or critical.`,
-      reason: `${trendPurok.concerning} out of ${trendPurok.total} recent health requests from this purok were flagged concerning/critical, higher than other puroks.`,
-      suggestedAction: `Consider a targeted BHW health monitoring visit to ${trendPurok.purok}.`,
+      dataAnalyzed: {
+        purok: topHealth.purok,
+        concerning: topHealth.concerning,
+        total: topHealth.total,
+        rate: Math.round(topHealth.rate * 100),
+        rankedPuroks: rankedPuroksHealth,
+      },
+      summary: `${topHealth.purok} should be visited first â€” ${Math.round(topHealth.rate * 100)}% of its recent health requests were flagged concerning or critical.`,
+      reason: `All ${PUROKS_ILIHAN.length} puroks were ranked by the share of recent health requests flagged concerning/critical.`,
+      suggestedAction: `Visit puroks in this order: ${rankedPuroksHealth.map(p => p.purok).join(' â†’ ')}.`,
     })
   }
 
-  // Possible outbreak signal Ã¢â‚¬â€ many requests in a short window mentioning similar symptoms
+  // Possible outbreak signal â€ many requests in a short window mentioning similar symptoms
   const recent = requests.filter(r => daysSince(r.createdAt) <= 7)
   if (recent.length >= 6) {
     const symptomWords = recent
@@ -18719,41 +19191,62 @@ async function analyzeHealth() {
 }
 
 
-// FOOD AID AI â€ builds on the existing `_buildAIRecommendation`/priority-purok
-// logic already in foodAidService, and adds inventory/volunteer/risk analysis.
-
 async function analyzeFoodAid() {
   const signals = []
   const all = await foodAidService.getAllFoodAidSchedules()
   if (all.length === 0) return signals
 
-  // Priority purok: longest since last completed distribution (reuse same logic style as foodAidService)
+  // Purok priority ranking â€” ALL Ilihan puroks ranked by time since their last
+  // completed distribution, not just a single top pick. This is the main
+  // "which purok should we work on first" answer for Food Aid.
   const lastServedByPurok = {}
+  const availableByPurok = {}
   all.forEach(d => {
     const completedAt = d.completedAt || (d.progress?.workflowStatus === 'completed' ? d.updatedAt : null)
     if (completedAt && (!lastServedByPurok[d.purok] || completedAt > lastServedByPurok[d.purok])) {
       lastServedByPurok[d.purok] = completedAt
     }
+    if (!['completed', 'archived', 'cancelled'].includes(d.progress?.workflowStatus)) {
+      availableByPurok[d.purok] = (availableByPurok[d.purok] || 0) + 1
+    }
   })
+
   const priorityRanking = [...PUROKS_ILIHAN]
-    .map(p => ({ purok: getShortPurokName(p), lastServed: lastServedByPurok[p] || null, days: daysSince(lastServedByPurok[p]) }))
+    .map(p => ({
+      purok: getShortPurokName(p),
+      lastServed: lastServedByPurok[p] || null,
+      days: daysSince(lastServedByPurok[p]),
+      availableDistributions: availableByPurok[p] || 0,
+    }))
     .sort((a, b) => b.days - a.days)
 
+  const rankedPuroks = priorityRanking.map(p => ({
+    purok: p.purok,
+    priority: p.days === Infinity || p.days > 30 ? PRIORITY.HIGH : p.days > 14 ? PRIORITY.MEDIUM : PRIORITY.LOW,
+    detail: p.days === Infinity
+      ? 'No recorded completed distribution yet'
+      : `${p.days} day${p.days === 1 ? '' : 's'} since last completed distribution`,
+  }))
+
   const topPriority = priorityRanking[0]
-  if (topPriority && topPriority.days > 14) {
+  if (topPriority) {
     signals.push({
       module: MODULES.FOOD_AID,
       title: "Today's priority purok",
-      priority: topPriority.days > 30 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      priority: rankedPuroks[0].priority,
       confidence: 'High',
-      dataAnalyzed: { purok: topPriority.purok, daysSinceLastServed: topPriority.days === Infinity ? 'never' : topPriority.days },
-      summary: `${topPriority.purok} has ${topPriority.days === Infinity ? 'no recorded' : `gone ${topPriority.days} days without a`} completed distribution.`,
-      reason: `Ranked highest among all puroks by time since last completed food aid distribution.`,
-      suggestedAction: `Schedule the next distribution in ${topPriority.purok} within the next planning cycle.`,
+      dataAnalyzed: {
+        purok: topPriority.purok,
+        daysSinceLastServed: topPriority.days === Infinity ? 'never' : topPriority.days,
+        rankedPuroks,
+      },
+      summary: `${topPriority.purok} should be worked on first â€” ${topPriority.days === Infinity ? 'it has no recorded completed distribution' : `it has gone ${topPriority.days} days without one`}.`,
+      reason: `All ${PUROKS_ILIHAN.length} puroks were ranked by time since their last completed food aid distribution; ${topPriority.purok} has waited the longest.`,
+      suggestedAction: `Work puroks in this order: ${rankedPuroks.map(p => p.purok).join(' â†’ ')}.`,
     })
   }
 
-  // Active distributions needing attention: pending approval too long, or in-progress with low completion rate
+  // Active distributions needing attention: pending approval too long
   const pendingApproval = all.filter(d => d.progress?.workflowStatus === 'pending_approval')
   if (pendingApproval.length > 0) {
     signals.push({
@@ -18768,20 +19261,30 @@ async function analyzeFoodAid() {
     })
   }
 
-  // Volunteer shortage: distributions approved/ai_scheduled with no volunteer assigned
-  const needsVolunteer = all.filter(d => ['approved', 'ai_scheduled'].includes(d.progress?.workflowStatus) && !d.assignedVolunteer)
-  if (needsVolunteer.length > 0) {
-    const totalHouseholds = needsVolunteer.reduce((s, d) => s + (d.progress?.householdsTarget || 0), 0)
-    const estimatedVolunteersNeeded = Math.max(needsVolunteer.length, Math.ceil(totalHouseholds / 15))
+  // Available distributions â€” everything currently approved / AI-scheduled / volunteer
+  // assigned / in progress (i.e. not completed or cancelled), so officials can see at a
+  // glance what's actually ready to be worked on right now.
+  const availableToDistribute = all
+    .filter(d => !['completed', 'archived', 'cancelled'].includes(d.progress?.workflowStatus))
+    .map(d => ({
+      purok: getShortPurokName(d.purok),
+      status: d.progress?.workflowStatus || 'unknown',
+      householdsTarget: d.progress?.householdsTarget || 0,
+      date: d.date || null,
+    }))
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+
+  if (availableToDistribute.length > 0) {
+    const totalHouseholds = availableToDistribute.reduce((s, d) => s + d.householdsTarget, 0)
     signals.push({
       module: MODULES.FOOD_AID,
-      title: 'Volunteer shortage warning',
-      priority: needsVolunteer.length >= 3 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
-      confidence: 'Medium',
-      dataAnalyzed: { unassignedDistributions: needsVolunteer.length, totalHouseholds, estimatedVolunteersNeeded },
-      summary: `${needsVolunteer.length} scheduled distribution${needsVolunteer.length > 1 ? 's have' : ' has'} no volunteer assigned yet.`,
-      reason: `Estimated ~1 volunteer per 15 households across ${totalHouseholds} target households means roughly ${estimatedVolunteersNeeded} volunteers are needed.`,
-      suggestedAction: 'Recruit or assign volunteers before the scheduled distribution date.',
+      title: 'Available distributions',
+      priority: PRIORITY.LOW,
+      confidence: 'High',
+      dataAnalyzed: { availableCount: availableToDistribute.length, totalHouseholds, availableToDistribute },
+      summary: `${availableToDistribute.length} distribution${availableToDistribute.length > 1 ? 's are' : ' is'} currently available to distribute, covering ${totalHouseholds} households.`,
+      reason: `These distributions are approved, AI-scheduled, volunteer-assigned, or in progress and have not yet been completed or cancelled.`,
+      suggestedAction: 'Use the purok priority ranking above to decide which of these to work on first.',
     })
   }
 
@@ -18804,7 +19307,29 @@ async function analyzeFoodAid() {
     })
   }
 
-  // Inventory sufficiency Ã¢â‚¬â€ approximate via householdsTarget vs householdsCompleted gap across all active items
+  /* DISABLED (2026-07-23, per request) â€” Volunteer shortage warning.
+     Uncomment to re-enable.
+
+  const needsVolunteer = all.filter(d => ['approved', 'ai_scheduled'].includes(d.progress?.workflowStatus) && !d.assignedVolunteer)
+  if (needsVolunteer.length > 0) {
+    const totalHouseholds = needsVolunteer.reduce((s, d) => s + (d.progress?.householdsTarget || 0), 0)
+    const estimatedVolunteersNeeded = Math.max(needsVolunteer.length, Math.ceil(totalHouseholds / 15))
+    signals.push({
+      module: MODULES.FOOD_AID,
+      title: 'Volunteer shortage warning',
+      priority: needsVolunteer.length >= 3 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      confidence: 'Medium',
+      dataAnalyzed: { unassignedDistributions: needsVolunteer.length, totalHouseholds, estimatedVolunteersNeeded },
+      summary: `${needsVolunteer.length} scheduled distribution${needsVolunteer.length > 1 ? 's have' : ' has'} no volunteer assigned yet.`,
+      reason: `Estimated ~1 volunteer per 15 households across ${totalHouseholds} target households means roughly ${estimatedVolunteersNeeded} volunteers are needed.`,
+      suggestedAction: 'Recruit or assign volunteers before the scheduled distribution date.',
+    })
+  }
+  */
+
+  /* DISABLED (2026-07-23, per request) â€” Inventory sufficiency analysis.
+     Uncomment once a real inventory/stock count field exists.
+
   const totalTarget = all.reduce((s, d) => s + (d.progress?.householdsTarget || 0), 0)
   const totalServed = all.reduce((s, d) => s + (d.progress?.householdsServed || 0), 0)
   const upcoming = all.filter(d => ['approved', 'ai_scheduled', 'volunteer_assigned'].includes(d.progress?.workflowStatus))
@@ -18821,6 +19346,7 @@ async function analyzeFoodAid() {
       suggestedAction: 'Confirm actual food stock on hand covers the upcoming household count before distribution day.',
     })
   }
+  */
 
   return signals
 }
@@ -18903,6 +19429,43 @@ async function analyzeDocuments() {
     })
   }
 
+  // Purok priority ranking â€” ALL Ilihan puroks ranked by pending document request
+  // backlog, so processing can be prioritized purok by purok.
+  const pendingByPurok = {}
+  const totalByPurok = {}
+  requests.forEach(r => {
+    const p = r.purok || 'Unspecified'
+    totalByPurok[p] = (totalByPurok[p] || 0) + 1
+    if (r.status === 'pending') pendingByPurok[p] = (pendingByPurok[p] || 0) + 1
+  })
+
+  const documentRanking = [...PUROKS_ILIHAN]
+    .map(p => ({
+      purok: getShortPurokName(p),
+      pendingCount: pendingByPurok[p] || 0,
+      totalCount: totalByPurok[p] || 0,
+    }))
+    .sort((a, b) => b.pendingCount - a.pendingCount)
+
+  const rankedPuroksDocuments = documentRanking.map(p => ({
+    purok: p.purok,
+    priority: p.pendingCount >= 5 ? PRIORITY.HIGH : p.pendingCount >= 2 ? PRIORITY.MEDIUM : PRIORITY.LOW,
+    detail: `${p.pendingCount} pending (${p.totalCount} total filed)`,
+  }))
+
+  if (documentRanking.some(p => p.pendingCount > 0)) {
+    signals.push({
+      module: MODULES.DOCUMENT,
+      title: 'Purok document backlog ranking',
+      priority: rankedPuroksDocuments[0].priority,
+      confidence: 'Medium',
+      dataAnalyzed: { rankedPuroks: rankedPuroksDocuments },
+      summary: `${documentRanking[0].purok} has the largest pending document backlog (${documentRanking[0].pendingCount}) and should be processed first.`,
+      reason: `All ${PUROKS_ILIHAN.length} puroks were ranked by number of pending document requests.`,
+      suggestedAction: `Process requests in this order: ${rankedPuroksDocuments.map(p => p.purok).join(' â†’ ')}.`,
+    })
+  }
+
   // Most requested document type
   const byType = {}
   requests.forEach(r => {
@@ -18977,23 +19540,35 @@ async function analyzeEmergency() {
 
   const recent = emergencies.filter(e => daysSince(e.createdAt) <= 30)
 
-  // Hotspot detection: purok with the most reports in the last 30 days
+  // Purok priority ranking â€” ALL Ilihan puroks ranked by emergency report volume in the
+  // last 30 days, so patrol coverage can be prioritized barangay-wide, not just for a
+  // single hotspot.
   const byPurok = {}
   recent.forEach(e => {
     const p = e.purok || 'Unspecified'
     byPurok[p] = (byPurok[p] || 0) + 1
   })
-  const hotspot = Object.entries(byPurok).sort((a, b) => b[1] - a[1])[0]
-  if (hotspot && hotspot[1] >= 3) {
+
+  const emergencyRanking = [...PUROKS_ILIHAN]
+    .map(p => ({ purok: getShortPurokName(p), count: byPurok[p] || 0 }))
+    .sort((a, b) => b.count - a.count)
+
+  const rankedPuroksEmergency = emergencyRanking.map(p => ({
+    purok: p.purok,
+    priority: p.count >= 5 ? PRIORITY.HIGH : p.count >= 3 ? PRIORITY.MEDIUM : PRIORITY.LOW,
+    detail: `${p.count} report${p.count === 1 ? '' : 's'} in the last 30 days`,
+  }))
+
+  if (emergencyRanking.some(p => p.count > 0)) {
     signals.push({
       module: MODULES.EMERGENCY,
-      title: 'Emergency hotspot detected',
-      priority: hotspot[1] >= 5 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      title: 'Purok emergency priority ranking',
+      priority: rankedPuroksEmergency[0].priority,
       confidence: 'High',
-      dataAnalyzed: { purok: hotspot[0], reportsLast30Days: hotspot[1] },
-      summary: `${hotspot[0]} recorded ${hotspot[1]} emergency reports in the last 30 days â€ the highest of any purok.`,
-      reason: `Report frequency by purok over a 30-day rolling window flags this area as a recurring hotspot.`,
-      suggestedAction: `Recommend increased tanod patrol presence in ${hotspot[0]}.`,
+      dataAnalyzed: { windowDays: 30, rankedPuroks: rankedPuroksEmergency },
+      summary: `${emergencyRanking[0].purok} should get patrol priority â€” it recorded the most emergency reports (${emergencyRanking[0].count}) in the last 30 days.`,
+      reason: `All ${PUROKS_ILIHAN.length} puroks were ranked by emergency report volume over a rolling 30-day window.`,
+      suggestedAction: `Prioritize patrol and response coverage in this order: ${rankedPuroksEmergency.map(p => p.purok).join(' â†’ ')}.`,
     })
   }
 
@@ -19033,7 +19608,7 @@ async function analyzeEmergency() {
 }
 
 // 
-// AI HISTORY Ã¢â‚¬â€ persists generated recommendations for later review
+// AI HISTORY â€ persists generated recommendations for later review
 // 
 export async function saveInsightToHistory(insight) {
   try {
@@ -19089,7 +19664,7 @@ export async function generateAllInsights({ persistHistory = true } = {}) {
   const priorityOrder = { high: 0, medium: 1, low: 2 }
   rawSignals.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
 
-  // Enrich each signal with AI-phrased explanation (bounded concurrency isn't needed Ã¢â‚¬â€
+  // Enrich each signal with AI-phrased explanation (bounded concurrency isn't needed â€
   // dashboard-scale insight counts are small, typically under 15)
   const insights = await Promise.all(
     rawSignals.map(async (signal) => {
@@ -21058,6 +21633,31 @@ class FoodAidService {
     return this.updateHouseholdProgress(id, deliveredCount)
   }
 
+  // â”€â”€ AI Decision Support integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  async applyAIPriorityRecommendation(purok, { priority, reason, source = 'AI Decision Support' } = {}) {
+    try {
+      const candidates = await this.getFoodAidByPurok(purok)
+      if (!candidates.length) {
+        return { success: false, reason: 'no_matching_schedule' }
+      }
+      const active = candidates
+        .filter(d => !['completed', 'archived', 'cancelled'].includes(d.progress?.workflowStatus))
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+      const target = active[0] ||
+        [...candidates].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0]
+      const result = await this.updateFoodAidSchedule(target.id, {
+        priority,
+        prioritySource: source,
+        priorityReason: reason,
+        priorityAppliedAt: new Date().toISOString(),
+      })
+      return { success: true, schedule: result.schedule }
+    } catch (error) {
+      console.error('Error applying AI priority recommendation:', error)
+      return { success: false, reason: 'error' }
+    }
+  }
+
   async deleteFoodAidSchedule(id) {
     try {
       await deleteDoc(doc(db, 'foodAid', id))
@@ -22380,7 +22980,7 @@ export { STORAGE_KEYS }
 
 import { PUROKS_SHORT } from '../constants/puroks.js'
 
-// Toledo City, Cebu Ã¢â‚¬â€œ Barangay GPS data
+// Toledo City, Cebu â€œ Barangay GPS data
 export const TOLEDO_BARANGAYS = [
   { id: 'poblacion',       name: 'Poblacion',              lat: 10.3737, lng: 123.6384, terrain: 'flat',        accessibility: 'excellent', hub: true },
   { id: 'cantabaco',       name: 'Cantabaco',              lat: 10.3508, lng: 123.6073, terrain: 'hilly',       accessibility: 'good' },
@@ -22490,12 +23090,12 @@ export const getRouteDescription = (fromName, toBarangay) => {
     flat:        'mostly flat, well-paved roads',
     mixed:       'mixed terrain with some elevation changes',
     hilly:       'hilly roads with winding sections and moderate slopes',
-    mountainous: 'steep mountain roads Ã¢â‚¬â€ a 4Ãƒâ€”4 vehicle is recommended',
+    mountainous: 'steep mountain roads â€ a 4Ãƒâ€”4 vehicle is recommended',
   }
   const accDesc = {
     excellent: 'Roads are wide and well-maintained throughout.',
     good:      'Standard vehicles can access this barangay.',
-    moderate:  'Some sections are narrow Ã¢â‚¬â€ proceed carefully.',
+    moderate:  'Some sections are narrow â€ proceed carefully.',
   }
 
   return `From ${fromName}, travel approximately ${dist} km through ${terrainDesc[toBarangay.terrain] || terrainDesc.flat}. ${accDesc[toBarangay.accessibility] || accDesc.good} Follow barangay road signs toward ${toBarangay.name}.`
@@ -22513,13 +23113,13 @@ export const generateAIRouteAnalysis = (barangay, date) => {
   const risks = []
 
   if (barangay.terrain === 'hilly' || barangay.terrain === 'mountainous') {
-    risks.push({ severity: 'medium', text: 'Steep terrain Ã¢â‚¬â€œ use a vehicle with reliable brakes and good ground clearance.' })
+    risks.push({ severity: 'medium', text: 'Steep terrain â€œ use a vehicle with reliable brakes and good ground clearance.' })
   }
   if (barangay.accessibility === 'moderate') {
-    risks.push({ severity: 'medium', text: 'Narrow roads Ã¢â‚¬â€œ coordinate with local traffic management if needed.' })
+    risks.push({ severity: 'medium', text: 'Narrow roads â€œ coordinate with local traffic management if needed.' })
   }
   if (dist > 5) {
-    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) Ã¢â‚¬â€œ ensure adequate fuel and emergency kit on board.` })
+    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) â€œ ensure adequate fuel and emergency kit on board.` })
   }
   if (date) {
     const day = new Date(date).getDay()
@@ -22560,13 +23160,13 @@ export const generatePinpointAIAnalysis = (pinLat, pinLng, nearestBarangay, puro
   const risks = []
 
   if (terrain === 'hilly' || terrain === 'mountainous') {
-    risks.push({ severity: 'medium', text: 'Steep terrain Ã¢â‚¬â€œ use a vehicle with reliable brakes and good ground clearance.' })
+    risks.push({ severity: 'medium', text: 'Steep terrain â€œ use a vehicle with reliable brakes and good ground clearance.' })
   }
   if (accessibility === 'moderate') {
-    risks.push({ severity: 'medium', text: 'Narrow roads Ã¢â‚¬â€œ coordinate with local traffic management if needed.' })
+    risks.push({ severity: 'medium', text: 'Narrow roads â€œ coordinate with local traffic management if needed.' })
   }
   if (dist > 5) {
-    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) Ã¢â‚¬â€œ ensure adequate fuel and emergency kit on board.` })
+    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) â€œ ensure adequate fuel and emergency kit on board.` })
   }
   if (date) {
     const day = new Date(date).getDay()
@@ -22587,7 +23187,7 @@ export const generatePinpointAIAnalysis = (pinLat, pinLng, nearestBarangay, puro
   const accessDesc =
     accessibility === 'excellent' ? 'Roads are wide and well-maintained throughout.' :
     accessibility === 'good' ? 'Standard vehicles can access this area.' :
-    'Some sections are narrow Ã¢â‚¬â€ proceed carefully.'
+    'Some sections are narrow â€ proceed carefully.'
 
   return {
     distanceKm: +dist.toFixed(2),
@@ -22671,6 +23271,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        
 
         {/* Protected Routes - Main App */}
         <Route

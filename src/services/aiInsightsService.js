@@ -1,27 +1,27 @@
 
 /**
- * AI Insights Service â€” the engine behind the "AI Decision Support" dashboard.
+ * AI Insights Service ” the engine behind the "AI Decision Support" dashboard.
  *
  * DESIGN NOTE (read me before editing):
  * This service intentionally does NOT dump raw Firestore data into an LLM prompt
  * and ask it to "figure things out." That produces vague, unreliable, hard-to-audit
  * recommendations. Instead it follows a two-layer approach:
  *
- *   Layer 1 â€” Deterministic analysis (this file): reads live Firestore data through
+ *   Layer 1 ” Deterministic analysis (this file): reads live Firestore data through
  *   the EXISTING services (healthService/bhwService, foodAidService, eventsService,
- *   emergencyService) and computes concrete signals â€” overdue puroks, low inventory,
+ *   emergencyService) and computes concrete signals ” overdue puroks, low inventory,
  *   volunteer shortages, hotspots, conflicts, trends. This layer always works, even
  *   with no AI key configured, and every number it produces is traceable back to a
  *   specific Firestore field.
  *
- *   Layer 2 â€” AI explanation (Groq, reusing the same client pattern as
+ *   Layer 2 ” AI explanation (Groq, reusing the same client pattern as
  *   aiHealthService.js): turns the computed signals into a clear, human-readable
  *   "why" for officials, in the required Summary / Reason / Confidence / Suggested
  *   Action format. If the AI call fails or no key is configured, a rule-based
  *   explanation is used instead so the dashboard never breaks.
  *
  * This keeps the AI explainable ("what was analyzed, why, how confident, what to do")
- * and prevents the AI from ever making a decision â€” it only ever recommends.
+ * and prevents the AI from ever making a decision ” it only ever recommends.
  */
 
 import { collection, getDocs, addDoc, query, where, orderBy, limit as fbLimit } from 'firebase/firestore'
@@ -96,7 +96,7 @@ async function callGroqJSON(systemPrompt, userPrompt) {
 
 /**
  * Ask the AI to phrase the reasoning for a signal we already computed.
- * Falls back to the deterministic text if the AI is unavailable â€” the
+ * Falls back to the deterministic text if the AI is unavailable ” the
  * recommendation itself never depends on the AI being reachable.
  */
 async function explain(signal) {
@@ -144,7 +144,7 @@ const daysSince = (isoDate) => {
 }
 
 // 
-// HEALTH AI â€” reads the existing `health_requests` collection (already used by
+// HEALTH AI ” reads the existing `health_requests` collection (already used by
 // the BHW dashboard) so we don't duplicate data or add new collections.
 // 
 
@@ -180,7 +180,7 @@ async function analyzeHealth() {
     })
   }
 
-  // Overdue for checkups / multiple missed appointments â€” approximate using stale pending requests
+  // Overdue for checkups / multiple missed appointments ” approximate using stale pending requests
   const stalePending = requests.filter(r => r.status === 'pending_review' && daysSince(r.createdAt) >= 3)
   if (stalePending.length > 0) {
     signals.push({
@@ -195,7 +195,8 @@ async function analyzeHealth() {
     })
   }
 
-  // Health trend per purok â€” concerning/critical rate
+  // Purok priority ranking — ALL Ilihan puroks ranked by their concerning/critical rate,
+  // so BHWs can see which purok to prioritize for outreach, not just the single worst one.
   const byPurok = {}
   requests.forEach(r => {
     const p = r.purok || 'Unspecified'
@@ -203,25 +204,44 @@ async function analyzeHealth() {
     byPurok[p].total += 1
     if (['concerning', 'critical'].includes(r.healthAssessment?.overallStatus)) byPurok[p].concerning += 1
   })
-  const trendPurok = Object.entries(byPurok)
-    .filter(([, v]) => v.total >= 3)
-    .map(([p, v]) => ({ purok: p, rate: v.concerning / v.total, ...v }))
-    .sort((a, b) => b.rate - a.rate)[0]
 
-  if (trendPurok && trendPurok.rate >= 0.3) {
+  const healthRanking = [...PUROKS_ILIHAN]
+    .map(p => {
+      const v = byPurok[p] || { total: 0, concerning: 0 }
+      const rate = v.total > 0 ? v.concerning / v.total : 0
+      return { purok: getShortPurokName(p), total: v.total, concerning: v.concerning, rate }
+    })
+    .sort((a, b) => b.rate - a.rate || b.total - a.total)
+
+  const rankedPuroksHealth = healthRanking.map(p => ({
+    purok: p.purok,
+    priority: p.rate >= 0.5 ? PRIORITY.HIGH : p.rate >= 0.3 ? PRIORITY.MEDIUM : PRIORITY.LOW,
+    detail: p.total > 0
+      ? `${p.concerning}/${p.total} recent requests flagged concerning or critical (${Math.round(p.rate * 100)}%)`
+      : 'No recent health requests recorded',
+  }))
+
+  const topHealth = healthRanking[0]
+  if (topHealth && topHealth.total >= 3) {
     signals.push({
       module: MODULES.HEALTH,
-      title: 'Health trend summary',
-      priority: trendPurok.rate >= 0.5 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      title: 'Purok health priority ranking',
+      priority: rankedPuroksHealth[0].priority,
       confidence: 'Medium',
-      dataAnalyzed: { purok: trendPurok.purok, concerning: trendPurok.concerning, total: trendPurok.total, rate: Math.round(trendPurok.rate * 100) },
-      summary: `${trendPurok.purok} shows ${Math.round(trendPurok.rate * 100)}% of recent health requests flagged concerning or critical.`,
-      reason: `${trendPurok.concerning} out of ${trendPurok.total} recent health requests from this purok were flagged concerning/critical, higher than other puroks.`,
-      suggestedAction: `Consider a targeted BHW health monitoring visit to ${trendPurok.purok}.`,
+      dataAnalyzed: {
+        purok: topHealth.purok,
+        concerning: topHealth.concerning,
+        total: topHealth.total,
+        rate: Math.round(topHealth.rate * 100),
+        rankedPuroks: rankedPuroksHealth,
+      },
+      summary: `${topHealth.purok} should be visited first — ${Math.round(topHealth.rate * 100)}% of its recent health requests were flagged concerning or critical.`,
+      reason: `All ${PUROKS_ILIHAN.length} puroks were ranked by the share of recent health requests flagged concerning/critical.`,
+      suggestedAction: `Visit puroks in this order: ${rankedPuroksHealth.map(p => p.purok).join(' → ')}.`,
     })
   }
 
-  // Possible outbreak signal â€” many requests in a short window mentioning similar symptoms
+  // Possible outbreak signal ” many requests in a short window mentioning similar symptoms
   const recent = requests.filter(r => daysSince(r.createdAt) <= 7)
   if (recent.length >= 6) {
     const symptomWords = recent
@@ -250,41 +270,62 @@ async function analyzeHealth() {
 }
 
 
-// FOOD AID AI ” builds on the existing `_buildAIRecommendation`/priority-purok
-// logic already in foodAidService, and adds inventory/volunteer/risk analysis.
-
 async function analyzeFoodAid() {
   const signals = []
   const all = await foodAidService.getAllFoodAidSchedules()
   if (all.length === 0) return signals
 
-  // Priority purok: longest since last completed distribution (reuse same logic style as foodAidService)
+  // Purok priority ranking — ALL Ilihan puroks ranked by time since their last
+  // completed distribution, not just a single top pick. This is the main
+  // "which purok should we work on first" answer for Food Aid.
   const lastServedByPurok = {}
+  const availableByPurok = {}
   all.forEach(d => {
     const completedAt = d.completedAt || (d.progress?.workflowStatus === 'completed' ? d.updatedAt : null)
     if (completedAt && (!lastServedByPurok[d.purok] || completedAt > lastServedByPurok[d.purok])) {
       lastServedByPurok[d.purok] = completedAt
     }
+    if (!['completed', 'archived', 'cancelled'].includes(d.progress?.workflowStatus)) {
+      availableByPurok[d.purok] = (availableByPurok[d.purok] || 0) + 1
+    }
   })
+
   const priorityRanking = [...PUROKS_ILIHAN]
-    .map(p => ({ purok: getShortPurokName(p), lastServed: lastServedByPurok[p] || null, days: daysSince(lastServedByPurok[p]) }))
+    .map(p => ({
+      purok: getShortPurokName(p),
+      lastServed: lastServedByPurok[p] || null,
+      days: daysSince(lastServedByPurok[p]),
+      availableDistributions: availableByPurok[p] || 0,
+    }))
     .sort((a, b) => b.days - a.days)
 
+  const rankedPuroks = priorityRanking.map(p => ({
+    purok: p.purok,
+    priority: p.days === Infinity || p.days > 30 ? PRIORITY.HIGH : p.days > 14 ? PRIORITY.MEDIUM : PRIORITY.LOW,
+    detail: p.days === Infinity
+      ? 'No recorded completed distribution yet'
+      : `${p.days} day${p.days === 1 ? '' : 's'} since last completed distribution`,
+  }))
+
   const topPriority = priorityRanking[0]
-  if (topPriority && topPriority.days > 14) {
+  if (topPriority) {
     signals.push({
       module: MODULES.FOOD_AID,
       title: "Today's priority purok",
-      priority: topPriority.days > 30 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      priority: rankedPuroks[0].priority,
       confidence: 'High',
-      dataAnalyzed: { purok: topPriority.purok, daysSinceLastServed: topPriority.days === Infinity ? 'never' : topPriority.days },
-      summary: `${topPriority.purok} has ${topPriority.days === Infinity ? 'no recorded' : `gone ${topPriority.days} days without a`} completed distribution.`,
-      reason: `Ranked highest among all puroks by time since last completed food aid distribution.`,
-      suggestedAction: `Schedule the next distribution in ${topPriority.purok} within the next planning cycle.`,
+      dataAnalyzed: {
+        purok: topPriority.purok,
+        daysSinceLastServed: topPriority.days === Infinity ? 'never' : topPriority.days,
+        rankedPuroks,
+      },
+      summary: `${topPriority.purok} should be worked on first — ${topPriority.days === Infinity ? 'it has no recorded completed distribution' : `it has gone ${topPriority.days} days without one`}.`,
+      reason: `All ${PUROKS_ILIHAN.length} puroks were ranked by time since their last completed food aid distribution; ${topPriority.purok} has waited the longest.`,
+      suggestedAction: `Work puroks in this order: ${rankedPuroks.map(p => p.purok).join(' → ')}.`,
     })
   }
 
-  // Active distributions needing attention: pending approval too long, or in-progress with low completion rate
+  // Active distributions needing attention: pending approval too long
   const pendingApproval = all.filter(d => d.progress?.workflowStatus === 'pending_approval')
   if (pendingApproval.length > 0) {
     signals.push({
@@ -299,20 +340,30 @@ async function analyzeFoodAid() {
     })
   }
 
-  // Volunteer shortage: distributions approved/ai_scheduled with no volunteer assigned
-  const needsVolunteer = all.filter(d => ['approved', 'ai_scheduled'].includes(d.progress?.workflowStatus) && !d.assignedVolunteer)
-  if (needsVolunteer.length > 0) {
-    const totalHouseholds = needsVolunteer.reduce((s, d) => s + (d.progress?.householdsTarget || 0), 0)
-    const estimatedVolunteersNeeded = Math.max(needsVolunteer.length, Math.ceil(totalHouseholds / 15))
+  // Available distributions — everything currently approved / AI-scheduled / volunteer
+  // assigned / in progress (i.e. not completed or cancelled), so officials can see at a
+  // glance what's actually ready to be worked on right now.
+  const availableToDistribute = all
+    .filter(d => !['completed', 'archived', 'cancelled'].includes(d.progress?.workflowStatus))
+    .map(d => ({
+      purok: getShortPurokName(d.purok),
+      status: d.progress?.workflowStatus || 'unknown',
+      householdsTarget: d.progress?.householdsTarget || 0,
+      date: d.date || null,
+    }))
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+
+  if (availableToDistribute.length > 0) {
+    const totalHouseholds = availableToDistribute.reduce((s, d) => s + d.householdsTarget, 0)
     signals.push({
       module: MODULES.FOOD_AID,
-      title: 'Volunteer shortage warning',
-      priority: needsVolunteer.length >= 3 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
-      confidence: 'Medium',
-      dataAnalyzed: { unassignedDistributions: needsVolunteer.length, totalHouseholds, estimatedVolunteersNeeded },
-      summary: `${needsVolunteer.length} scheduled distribution${needsVolunteer.length > 1 ? 's have' : ' has'} no volunteer assigned yet.`,
-      reason: `Estimated ~1 volunteer per 15 households across ${totalHouseholds} target households means roughly ${estimatedVolunteersNeeded} volunteers are needed.`,
-      suggestedAction: 'Recruit or assign volunteers before the scheduled distribution date.',
+      title: 'Available distributions',
+      priority: PRIORITY.LOW,
+      confidence: 'High',
+      dataAnalyzed: { availableCount: availableToDistribute.length, totalHouseholds, availableToDistribute },
+      summary: `${availableToDistribute.length} distribution${availableToDistribute.length > 1 ? 's are' : ' is'} currently available to distribute, covering ${totalHouseholds} households.`,
+      reason: `These distributions are approved, AI-scheduled, volunteer-assigned, or in progress and have not yet been completed or cancelled.`,
+      suggestedAction: 'Use the purok priority ranking above to decide which of these to work on first.',
     })
   }
 
@@ -335,7 +386,29 @@ async function analyzeFoodAid() {
     })
   }
 
-  // Inventory sufficiency â€” approximate via householdsTarget vs householdsCompleted gap across all active items
+  /* DISABLED (2026-07-23, per request) — Volunteer shortage warning.
+     Uncomment to re-enable.
+
+  const needsVolunteer = all.filter(d => ['approved', 'ai_scheduled'].includes(d.progress?.workflowStatus) && !d.assignedVolunteer)
+  if (needsVolunteer.length > 0) {
+    const totalHouseholds = needsVolunteer.reduce((s, d) => s + (d.progress?.householdsTarget || 0), 0)
+    const estimatedVolunteersNeeded = Math.max(needsVolunteer.length, Math.ceil(totalHouseholds / 15))
+    signals.push({
+      module: MODULES.FOOD_AID,
+      title: 'Volunteer shortage warning',
+      priority: needsVolunteer.length >= 3 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      confidence: 'Medium',
+      dataAnalyzed: { unassignedDistributions: needsVolunteer.length, totalHouseholds, estimatedVolunteersNeeded },
+      summary: `${needsVolunteer.length} scheduled distribution${needsVolunteer.length > 1 ? 's have' : ' has'} no volunteer assigned yet.`,
+      reason: `Estimated ~1 volunteer per 15 households across ${totalHouseholds} target households means roughly ${estimatedVolunteersNeeded} volunteers are needed.`,
+      suggestedAction: 'Recruit or assign volunteers before the scheduled distribution date.',
+    })
+  }
+  */
+
+  /* DISABLED (2026-07-23, per request) — Inventory sufficiency analysis.
+     Uncomment once a real inventory/stock count field exists.
+
   const totalTarget = all.reduce((s, d) => s + (d.progress?.householdsTarget || 0), 0)
   const totalServed = all.reduce((s, d) => s + (d.progress?.householdsServed || 0), 0)
   const upcoming = all.filter(d => ['approved', 'ai_scheduled', 'volunteer_assigned'].includes(d.progress?.workflowStatus))
@@ -352,6 +425,7 @@ async function analyzeFoodAid() {
       suggestedAction: 'Confirm actual food stock on hand covers the upcoming household count before distribution day.',
     })
   }
+  */
 
   return signals
 }
@@ -434,6 +508,43 @@ async function analyzeDocuments() {
     })
   }
 
+  // Purok priority ranking — ALL Ilihan puroks ranked by pending document request
+  // backlog, so processing can be prioritized purok by purok.
+  const pendingByPurok = {}
+  const totalByPurok = {}
+  requests.forEach(r => {
+    const p = r.purok || 'Unspecified'
+    totalByPurok[p] = (totalByPurok[p] || 0) + 1
+    if (r.status === 'pending') pendingByPurok[p] = (pendingByPurok[p] || 0) + 1
+  })
+
+  const documentRanking = [...PUROKS_ILIHAN]
+    .map(p => ({
+      purok: getShortPurokName(p),
+      pendingCount: pendingByPurok[p] || 0,
+      totalCount: totalByPurok[p] || 0,
+    }))
+    .sort((a, b) => b.pendingCount - a.pendingCount)
+
+  const rankedPuroksDocuments = documentRanking.map(p => ({
+    purok: p.purok,
+    priority: p.pendingCount >= 5 ? PRIORITY.HIGH : p.pendingCount >= 2 ? PRIORITY.MEDIUM : PRIORITY.LOW,
+    detail: `${p.pendingCount} pending (${p.totalCount} total filed)`,
+  }))
+
+  if (documentRanking.some(p => p.pendingCount > 0)) {
+    signals.push({
+      module: MODULES.DOCUMENT,
+      title: 'Purok document backlog ranking',
+      priority: rankedPuroksDocuments[0].priority,
+      confidence: 'Medium',
+      dataAnalyzed: { rankedPuroks: rankedPuroksDocuments },
+      summary: `${documentRanking[0].purok} has the largest pending document backlog (${documentRanking[0].pendingCount}) and should be processed first.`,
+      reason: `All ${PUROKS_ILIHAN.length} puroks were ranked by number of pending document requests.`,
+      suggestedAction: `Process requests in this order: ${rankedPuroksDocuments.map(p => p.purok).join(' → ')}.`,
+    })
+  }
+
   // Most requested document type
   const byType = {}
   requests.forEach(r => {
@@ -508,23 +619,35 @@ async function analyzeEmergency() {
 
   const recent = emergencies.filter(e => daysSince(e.createdAt) <= 30)
 
-  // Hotspot detection: purok with the most reports in the last 30 days
+  // Purok priority ranking — ALL Ilihan puroks ranked by emergency report volume in the
+  // last 30 days, so patrol coverage can be prioritized barangay-wide, not just for a
+  // single hotspot.
   const byPurok = {}
   recent.forEach(e => {
     const p = e.purok || 'Unspecified'
     byPurok[p] = (byPurok[p] || 0) + 1
   })
-  const hotspot = Object.entries(byPurok).sort((a, b) => b[1] - a[1])[0]
-  if (hotspot && hotspot[1] >= 3) {
+
+  const emergencyRanking = [...PUROKS_ILIHAN]
+    .map(p => ({ purok: getShortPurokName(p), count: byPurok[p] || 0 }))
+    .sort((a, b) => b.count - a.count)
+
+  const rankedPuroksEmergency = emergencyRanking.map(p => ({
+    purok: p.purok,
+    priority: p.count >= 5 ? PRIORITY.HIGH : p.count >= 3 ? PRIORITY.MEDIUM : PRIORITY.LOW,
+    detail: `${p.count} report${p.count === 1 ? '' : 's'} in the last 30 days`,
+  }))
+
+  if (emergencyRanking.some(p => p.count > 0)) {
     signals.push({
       module: MODULES.EMERGENCY,
-      title: 'Emergency hotspot detected',
-      priority: hotspot[1] >= 5 ? PRIORITY.HIGH : PRIORITY.MEDIUM,
+      title: 'Purok emergency priority ranking',
+      priority: rankedPuroksEmergency[0].priority,
       confidence: 'High',
-      dataAnalyzed: { purok: hotspot[0], reportsLast30Days: hotspot[1] },
-      summary: `${hotspot[0]} recorded ${hotspot[1]} emergency reports in the last 30 days ” the highest of any purok.`,
-      reason: `Report frequency by purok over a 30-day rolling window flags this area as a recurring hotspot.`,
-      suggestedAction: `Recommend increased tanod patrol presence in ${hotspot[0]}.`,
+      dataAnalyzed: { windowDays: 30, rankedPuroks: rankedPuroksEmergency },
+      summary: `${emergencyRanking[0].purok} should get patrol priority — it recorded the most emergency reports (${emergencyRanking[0].count}) in the last 30 days.`,
+      reason: `All ${PUROKS_ILIHAN.length} puroks were ranked by emergency report volume over a rolling 30-day window.`,
+      suggestedAction: `Prioritize patrol and response coverage in this order: ${rankedPuroksEmergency.map(p => p.purok).join(' → ')}.`,
     })
   }
 
@@ -564,7 +687,7 @@ async function analyzeEmergency() {
 }
 
 // 
-// AI HISTORY â€” persists generated recommendations for later review
+// AI HISTORY ” persists generated recommendations for later review
 // 
 export async function saveInsightToHistory(insight) {
   try {
@@ -620,7 +743,7 @@ export async function generateAllInsights({ persistHistory = true } = {}) {
   const priorityOrder = { high: 0, medium: 1, low: 2 }
   rawSignals.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
 
-  // Enrich each signal with AI-phrased explanation (bounded concurrency isn't needed â€”
+  // Enrich each signal with AI-phrased explanation (bounded concurrency isn't needed ”
   // dashboard-scale insight counts are small, typically under 15)
   const insights = await Promise.all(
     rawSignals.map(async (signal) => {

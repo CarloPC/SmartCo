@@ -321,6 +321,31 @@ class FoodAidService {
     return this.updateHouseholdProgress(id, deliveredCount)
   }
 
+  // ── AI Decision Support integration ──────────────────────────
+  async applyAIPriorityRecommendation(purok, { priority, reason, source = 'AI Decision Support' } = {}) {
+    try {
+      const candidates = await this.getFoodAidByPurok(purok)
+      if (!candidates.length) {
+        return { success: false, reason: 'no_matching_schedule' }
+      }
+      const active = candidates
+        .filter(d => !['completed', 'archived', 'cancelled'].includes(d.progress?.workflowStatus))
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+      const target = active[0] ||
+        [...candidates].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0]
+      const result = await this.updateFoodAidSchedule(target.id, {
+        priority,
+        prioritySource: source,
+        priorityReason: reason,
+        priorityAppliedAt: new Date().toISOString(),
+      })
+      return { success: true, schedule: result.schedule }
+    } catch (error) {
+      console.error('Error applying AI priority recommendation:', error)
+      return { success: false, reason: 'error' }
+    }
+  }
+
   async deleteFoodAidSchedule(id) {
     try {
       await deleteDoc(doc(db, 'foodAid', id))

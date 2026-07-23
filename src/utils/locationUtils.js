@@ -1,7 +1,7 @@
 
 import { PUROKS_SHORT } from '../constants/puroks.js'
 
-// Toledo City, Cebu â€“ Barangay GPS data
+// Toledo City, Cebu “ Barangay GPS data
 export const TOLEDO_BARANGAYS = [
   { id: 'poblacion',       name: 'Poblacion',              lat: 10.3737, lng: 123.6384, terrain: 'flat',        accessibility: 'excellent', hub: true },
   { id: 'cantabaco',       name: 'Cantabaco',              lat: 10.3508, lng: 123.6073, terrain: 'hilly',       accessibility: 'good' },
@@ -111,12 +111,12 @@ export const getRouteDescription = (fromName, toBarangay) => {
     flat:        'mostly flat, well-paved roads',
     mixed:       'mixed terrain with some elevation changes',
     hilly:       'hilly roads with winding sections and moderate slopes',
-    mountainous: 'steep mountain roads â€” a 4Ã—4 vehicle is recommended',
+    mountainous: 'steep mountain roads ” a 4Ã—4 vehicle is recommended',
   }
   const accDesc = {
     excellent: 'Roads are wide and well-maintained throughout.',
     good:      'Standard vehicles can access this barangay.',
-    moderate:  'Some sections are narrow â€” proceed carefully.',
+    moderate:  'Some sections are narrow ” proceed carefully.',
   }
 
   return `From ${fromName}, travel approximately ${dist} km through ${terrainDesc[toBarangay.terrain] || terrainDesc.flat}. ${accDesc[toBarangay.accessibility] || accDesc.good} Follow barangay road signs toward ${toBarangay.name}.`
@@ -134,13 +134,13 @@ export const generateAIRouteAnalysis = (barangay, date) => {
   const risks = []
 
   if (barangay.terrain === 'hilly' || barangay.terrain === 'mountainous') {
-    risks.push({ severity: 'medium', text: 'Steep terrain â€“ use a vehicle with reliable brakes and good ground clearance.' })
+    risks.push({ severity: 'medium', text: 'Steep terrain “ use a vehicle with reliable brakes and good ground clearance.' })
   }
   if (barangay.accessibility === 'moderate') {
-    risks.push({ severity: 'medium', text: 'Narrow roads â€“ coordinate with local traffic management if needed.' })
+    risks.push({ severity: 'medium', text: 'Narrow roads “ coordinate with local traffic management if needed.' })
   }
   if (dist > 5) {
-    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) â€“ ensure adequate fuel and emergency kit on board.` })
+    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) “ ensure adequate fuel and emergency kit on board.` })
   }
   if (date) {
     const day = new Date(date).getDay()
@@ -181,13 +181,13 @@ export const generatePinpointAIAnalysis = (pinLat, pinLng, nearestBarangay, puro
   const risks = []
 
   if (terrain === 'hilly' || terrain === 'mountainous') {
-    risks.push({ severity: 'medium', text: 'Steep terrain â€“ use a vehicle with reliable brakes and good ground clearance.' })
+    risks.push({ severity: 'medium', text: 'Steep terrain “ use a vehicle with reliable brakes and good ground clearance.' })
   }
   if (accessibility === 'moderate') {
-    risks.push({ severity: 'medium', text: 'Narrow roads â€“ coordinate with local traffic management if needed.' })
+    risks.push({ severity: 'medium', text: 'Narrow roads “ coordinate with local traffic management if needed.' })
   }
   if (dist > 5) {
-    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) â€“ ensure adequate fuel and emergency kit on board.` })
+    risks.push({ severity: 'low', text: `Long distance (${dist.toFixed(1)} km) “ ensure adequate fuel and emergency kit on board.` })
   }
   if (date) {
     const day = new Date(date).getDay()
@@ -208,7 +208,7 @@ export const generatePinpointAIAnalysis = (pinLat, pinLng, nearestBarangay, puro
   const accessDesc =
     accessibility === 'excellent' ? 'Roads are wide and well-maintained throughout.' :
     accessibility === 'good' ? 'Standard vehicles can access this area.' :
-    'Some sections are narrow â€” proceed carefully.'
+    'Some sections are narrow ” proceed carefully.'
 
   return {
     distanceKm: +dist.toFixed(2),

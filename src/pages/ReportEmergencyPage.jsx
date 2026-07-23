@@ -29,11 +29,11 @@ const SEVERITIES = [
   { value: 'critical', label: 'Critical', desc: 'Life-threatening / immediate danger', color: 'text-red-300',     selBg: 'bg-gradient-to-br from-red-600/90 to-rose-700/90' },
 ]
 
-/* glass card â€” same design language as HomePage/HealthPage/FoodAidPage/EventsPage */
+/* glass card  same design language as HomePage/HealthPage/FoodAidPage/EventsPage */
 const card =
   'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
 
-/* shared full-bleed background â€” matches HomePage/HealthPage/FoodAidPage/EventsPage's hero shell */
+/* shared full-bleed background  matches HomePage/HealthPage/FoodAidPage/EventsPage's hero shell */
 const PageBackground = ({ isDarkMode }) => (
   <>
     <div className="fixed inset-0 -z-10 bg-cover bg-center" style={{ backgroundImage: `url(${toledoImage})` }}>
@@ -42,7 +42,7 @@ const PageBackground = ({ isDarkMode }) => (
         : 'bg-gradient-to-br from-blue-600/90 via-indigo-600/90 to-blue-800/90'}`}
       />
     </div>
-    {/* Decorative blobs â€” matches HomePage/HealthPage/FoodAidPage/EventsPage's gradient shell */}
+    {/* Decorative blobs  matches HomePage/HealthPage/FoodAidPage/EventsPage's gradient shell */}
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
       <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />
@@ -62,7 +62,7 @@ const SuspensionBanner = ({ suspension, isDarkMode, onBack }) => {
   const isRepeat = suspension.count >= 2
 
   const endDateStr = isPermanent
-    ? 'Permanent â€” no expiry'
+    ? 'Permanent  no expiry'
     : new Date(suspension.suspendedUntil).toLocaleDateString('en-PH', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       })
@@ -217,7 +217,7 @@ const ReportEmergencyPage = () => {
 
   const inputCls = 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none backdrop-blur-sm transition-all duration-300 ease-out hover:scale-[1.02] hover:border-red-300/60 hover:shadow-[0_0_30px_rgba(248,113,113,0.35)] focus:scale-[1.02] focus:border-red-300 focus:ring-2 focus:ring-red-400/70 focus:shadow-[0_0_35px_rgba(248,113,113,0.55)]'
 
-  // Checking suspensionâ€¦
+  // Checking suspension
   if (checkingSuspension) {
     return (
       <div className="min-h-screen relative">
@@ -225,7 +225,7 @@ const ReportEmergencyPage = () => {
         <div className="flex min-h-[80vh] items-center justify-center">
           <div className={`${card} px-8 py-10 text-center`}>
             <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-white" />
-            <p className="font-semibold text-white">Checking accessâ€¦</p>
+            <p className="font-semibold text-white">Checking access</p>
           </div>
         </div>
       </div>
@@ -309,7 +309,7 @@ const ReportEmergencyPage = () => {
                 Report Emergency
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
-                Notify barangay officials immediately â€” every second counts.
+                Notify barangay officials immediately  every second counts.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <a

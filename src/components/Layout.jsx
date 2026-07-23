@@ -66,7 +66,7 @@ const Layout = ({ children }) => {
         : isDarkMode ? 'bg-gray-950' : 'bg-gray-50'
     }`}>
 
-      {/* Global gradient â€” only rendered on pages with their own hero background */}
+      {/* Global gradient ” only rendered on pages with their own hero background */}
       {hasCustomBackground && (
         <>
           <div className={`fixed inset-0 -z-10 ${
@@ -98,7 +98,7 @@ const Layout = ({ children }) => {
 
       <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
 
-      {/* Main content â€” transparent on pages with their own hero background so it bleeds through */}
+      {/* Main content ” transparent on pages with their own hero background so it bleeds through */}
       <main
         style={{ paddingTop: 'var(--topbar-height)' }}
         className={`min-h-screen transition-all duration-300 ease-in-out ${sidebarOffset} ${

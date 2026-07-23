@@ -311,7 +311,7 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={6}
-                placeholder="Describe your symptoms for the health workerâ€¦"
+                placeholder="Describe your symptoms for the health worker"
                 className={`${inputCls} resize-y`}
               />
               {symptomsSummary && (

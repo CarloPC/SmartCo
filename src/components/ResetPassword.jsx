@@ -7,9 +7,18 @@ import { Lock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  // 1. Check if oobCode is passed directly or embedded inside resetUrl parameter
+  let oobCode = searchParams.get("oobCode");
   
-  // Firebase passes the secret token as 'oobCode' in the URL query string
-  const oobCode = searchParams.get("oobCode");
+  if (!oobCode && searchParams.get("resetUrl")) {
+    try {
+      const embeddedUrl = new URL(searchParams.get("resetUrl"));
+      oobCode = embeddedUrl.searchParams.get("oobCode");
+    } catch (e) {
+      console.error("Error parsing reset token from URL:", e);
+    }
+  }
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,7 +42,7 @@ export default function ResetPassword() {
     }
 
     if (!oobCode) {
-      setError("Invalid or missing reset token.");
+      setError("Invalid or expired password reset link.");
       return;
     }
 
@@ -43,7 +52,7 @@ export default function ResetPassword() {
       // Confirms the password reset with Firebase using the oobCode
       await confirmPasswordReset(auth, oobCode, newPassword);
       setMessage("Your password has been reset successfully! Redirecting to login...");
-      
+
       setTimeout(() => {
         navigate("/login");
       }, 3000);
@@ -52,7 +61,7 @@ export default function ResetPassword() {
       if (err.code === "auth/invalid-action-code") {
         setError("This password reset link has expired or has already been used.");
       } else {
-        setError("Failed to reset password. Please request a new link.");
+        setError("Failed to reset password. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -61,6 +70,9 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
+      {/* Background glow effects */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
       <div className="relative w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
         <h2 className="text-2xl font-bold text-white mb-2">Create New Password</h2>
         <p className="text-sm text-white/60 mb-6">
@@ -124,7 +136,7 @@ export default function ResetPassword() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Updating Password...</span>
+                <span>Saving Password...</span>
               </>
             ) : (
               "Save New Password"

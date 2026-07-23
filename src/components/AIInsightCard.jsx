@@ -35,11 +35,12 @@ const formatTimestamp = (iso) => {
 /**
  * Displays a single explainable AI recommendation.
  * Every card always shows: Title, Summary, Reason, Confidence, Suggested Action,
- * Priority Level, Timestamp â€” per the Explainable AI requirement.
+ * Priority Level, Timestamp” per the Explainable AI requirement.
  */
 const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }) => {
   const [expanded, setExpanded] = useState(false)
   const priorityStyle = PRIORITY_STYLES[insight.priority] || PRIORITY_STYLES.low
+  const isFoodAidPriorityRec = insight.module === 'food_aid' && insight.title === "Today's priority purok"
 
   const card = `${isDarkMode ? 'bg-gray-900/95 border-gray-700/50' : 'bg-white/95 border-white/30'} backdrop-blur-lg rounded-2xl shadow-xl border`
 
@@ -74,13 +75,56 @@ const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }
       </button>
 
       {expanded && (
-        <div className={`rounded-xl p-3 text-sm space-y-2 ${isDarkMode ? 'bg-gray-800/70 text-gray-300' : 'bg-gray-50 text-gray-600'}`}>
+        <div className={`rounded-xl p-3 text-sm space-y-3 ${isDarkMode ? 'bg-gray-800/70 text-gray-300' : 'bg-gray-50 text-gray-600'}`}>
           <p><span className="font-semibold">Reason: </span>{insight.reason}</p>
           <p><span className="font-semibold">Suggested Action: </span>{insight.suggestedAction}</p>
+
+          {insight.dataAnalyzed?.rankedPuroks && (
+            <div>
+              <p className="font-semibold mb-1.5">Purok priority order:</p>
+              <ol className="space-y-1">
+                {insight.dataAnalyzed.rankedPuroks.map((p, i) => {
+                  const style = PRIORITY_STYLES[p.priority] || PRIORITY_STYLES.low
+                  return (
+                    <li key={p.purok} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="flex items-center gap-1.5">
+                        <span className="opacity-60">{i + 1}.</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                        {p.purok}
+                        {p.detail && <span className="opacity-60">— {p.detail}</span>}
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded-full border text-[10px] whitespace-nowrap ${style.badge}`}>
+                        {style.label.replace(' Priority', '')}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ol>
+            </div>
+          )}
+
+          {insight.dataAnalyzed?.availableToDistribute && (
+            <div>
+              <p className="font-semibold mb-1.5">Available distributions:</p>
+              <ul className="space-y-1">
+                {insight.dataAnalyzed.availableToDistribute.map((d, i) => (
+                  <li key={i} className="text-xs flex items-center justify-between gap-2">
+                    <span>{d.purok}</span>
+                    <span className="opacity-70 whitespace-nowrap">
+                      {String(d.status).replace(/_/g, ' ')} · {d.householdsTarget} hh{d.date ? ` · ${d.date}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {insight.dataAnalyzed && (
             <p className="text-xs opacity-70 break-words">
               <span className="font-semibold">Data analyzed: </span>
-              {Object.entries(insight.dataAnalyzed).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`).join(' Â· ')}
+              {Object.entries(insight.dataAnalyzed)
+                .filter(([k]) => !['rankedPuroks', 'availableToDistribute'].includes(k))
+                .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`).join(' · ')}
             </p>
           )}
         </div>
@@ -98,16 +142,31 @@ const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }
 
         {(onAcknowledge || onDismiss) && (
           <div className="flex items-center gap-2">
-            {status && status !== 'generated' && (
+            {status && typeof status === 'object' && status.status === 'recommendation_applied' && (
+              <div className={`text-right text-xs leading-snug ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                <p className="font-semibold flex items-center justify-end gap-1">
+                  <Check className="w-3 h-3" /> Recommendation Applied
+                </p>
+                <p className="opacity-80">Applied to: {status.appliedTo}</p>
+                <p className="opacity-80">Priority: {status.priority}</p>
+                <p className="opacity-80">Applied At: {formatTimestamp(status.appliedAt)}</p>
+              </div>
+            )}
+            {typeof status === 'string' && status !== 'generated' && (
               <span className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                {status === 'acted_on' ? 'Acted on' : status === 'dismissed' ? 'Dismissed' : status}
+                {status === 'applying' ? 'Applying…' : status === 'acted_on' ? 'Acted on' : status === 'dismissed' ? 'Dismissed' : status}
               </span>
             )}
             {(!status || status === 'generated') && (
               <>
+                {isFoodAidPriorityRec && (
+                  <span className={`text-[11px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Apply Recommendation
+                  </span>
+                )}
                 <button
                   onClick={() => onAcknowledge?.(insight)}
-                  title="Mark as acted on"
+                  title={isFoodAidPriorityRec ? 'Apply Recommendation' : 'Mark as acted on'}
                   className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
                 >
                   <Check className="w-3.5 h-3.5" />

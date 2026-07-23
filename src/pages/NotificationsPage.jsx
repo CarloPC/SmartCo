@@ -56,13 +56,13 @@ const NotificationsPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  /* glass card Ã¢â‚¬â€ matches HomePage panels */
+  /* glass card Ã¢â‚¬ matches HomePage panels */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
 
   // Fetch notifications from Firebase
   useEffect(() => {
-    console.log('Ã°Å¸â€â€ [NotificationsPage] Fetching notifications...')
+    console.log('Ã°Å¸ [NotificationsPage] Fetching notifications...')
     fetchNotifications()
   }, [])
 
@@ -71,10 +71,10 @@ const NotificationsPage = () => {
       setIsLoading(true)
       setError(null)
 
-      console.log('Ã°Å¸â€œâ€¹ [NotificationsPage] Calling notificationService.getNotifications()')
+      console.log('Ã°Å¸œ¹ [NotificationsPage] Calling notificationService.getNotifications()')
       const fetchedNotifications = await notificationService.getNotifications()
 
-      console.log(`Ã¢Å“â€¦ [NotificationsPage] Received ${fetchedNotifications.length} notifications`)
+      console.log(`Ã¢Å“¦ [NotificationsPage] Received ${fetchedNotifications.length} notifications`)
       setNotifications(fetchedNotifications)
     } catch (err) {
       console.error('Ã¢Å’ [NotificationsPage] Error fetching notifications:', err)
@@ -86,7 +86,7 @@ const NotificationsPage = () => {
 
   const handleMarkAsRead = async (id) => {
     try {
-      console.log(`Ã°Å¸â€œ [NotificationsPage] Marking notification ${id} as read`)
+      console.log(`Ã°Å¸œ [NotificationsPage] Marking notification ${id} as read`)
       const result = await notificationService.markAsRead(id)
 
       if (result.success) {
@@ -94,7 +94,7 @@ const NotificationsPage = () => {
           notif.id === id ? { ...notif, read: true } : notif
         ))
         window.dispatchEvent(new Event('notifications-updated'))
-        console.log('Ã¢Å“â€¦ [NotificationsPage] Notification marked as read')
+        console.log('Ã¢Å“¦ [NotificationsPage] Notification marked as read')
       }
     } catch (err) {
       console.error('Ã¢Å’ [NotificationsPage] Error marking as read:', err)
@@ -104,13 +104,13 @@ const NotificationsPage = () => {
 
   const handleMarkAllAsRead = async () => {
     try {
-      console.log('Ã°Å¸â€œ [NotificationsPage] Marking all notifications as read')
+      console.log('Ã°Å¸œ [NotificationsPage] Marking all notifications as read')
       const result = await notificationService.markAllAsRead()
 
       if (result.success) {
         setNotifications(notifications.map(notif => ({ ...notif, read: true })))
         window.dispatchEvent(new Event('notifications-updated'))
-        console.log('Ã¢Å“â€¦ [NotificationsPage] All notifications marked as read')
+        console.log('Ã¢Å“¦ [NotificationsPage] All notifications marked as read')
       }
     } catch (err) {
       console.error('Ã¢Å’ [NotificationsPage] Error marking all as read:', err)
@@ -120,12 +120,12 @@ const NotificationsPage = () => {
 
   const handleDelete = async (id) => {
     try {
-      console.log(`Ã°Å¸â€”â€˜Ã¯Â¸ [NotificationsPage] Deleting notification ${id}`)
+      console.log(`Ã°Å¸”˜Ã¯Â¸ [NotificationsPage] Deleting notification ${id}`)
       const result = await notificationService.deleteNotification(id)
 
       if (result.success) {
         setNotifications(notifications.filter(notif => notif.id !== id))
-        console.log('Ã¢Å“â€¦ [NotificationsPage] Notification deleted')
+        console.log('Ã¢Å“¦ [NotificationsPage] Notification deleted')
       }
     } catch (err) {
       console.error('Ã¢Å’ [NotificationsPage] Error deleting notification:', err)
@@ -146,12 +146,12 @@ const NotificationsPage = () => {
     }
 
     try {
-      console.log('Ã°Å¸â€”â€˜Ã¯Â¸ [NotificationsPage] Clearing all notifications')
+      console.log('Ã°Å¸”˜Ã¯Â¸ [NotificationsPage] Clearing all notifications')
       const result = await notificationService.clearAll()
 
       if (result.success) {
         setNotifications([])
-        console.log('Ã¢Å“â€¦ [NotificationsPage] All notifications cleared')
+        console.log('Ã¢Å“¦ [NotificationsPage] All notifications cleared')
       }
     } catch (err) {
       console.error('Ã¢Å’ [NotificationsPage] Error clearing all:', err)
@@ -199,7 +199,7 @@ const NotificationsPage = () => {
   }
 
   return (
-    /* No background here Ã¢â‚¬â€ Layout.jsx paints the gradient behind everything */
+    /* No background here Ã¢â‚¬ Layout.jsx paints the gradient behind everything */
     <div className="mx-auto max-w-3xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
 
       {/* Header */}

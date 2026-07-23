@@ -73,7 +73,7 @@ const RegisterPage = () => {
     { icon: CheckCircle, text: 'Streamlined approval workflows' },
   ]
 
-  /* glass card â€” matches HomePage.jsx */
+  /* glass card ” matches HomePage.jsx */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
   const inputClass =
@@ -84,7 +84,7 @@ const RegisterPage = () => {
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
 
-      {/* Decorative glow blobs â€” matches Layout.jsx global gradient treatment */}
+      {/* Decorative glow blobs ” matches Layout.jsx global gradient treatment */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
         <div className="absolute top-1/3 right-0 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl" />

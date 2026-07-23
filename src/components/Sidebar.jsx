@@ -15,7 +15,7 @@ const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
   const isAdmin = adminService.isAdmin(user)
   const [assignmentCount, setAssignmentCount] = useState(0)
 
-  // Only show "My Assignments" once this user actually has a food aid assignment Ã¢â‚¬â€
+  // Only show "My Assignments" once this user actually has a food aid assignment 
   // keeps the sidebar clean for people who've never volunteered.
   useEffect(() => {
     if (!user?.id) return

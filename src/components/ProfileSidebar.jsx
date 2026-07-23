@@ -40,7 +40,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
 
   const isAdmin = user?.role === 'admin' || user?.role === 'barangay_official'
 
-  /* glass card â€” matches HomePage panels */
+  /* glass card ” matches HomePage panels */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40'
 
@@ -147,7 +147,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        {/* Background gradient â€” same palette as HomePage's dashboard backdrop */}
+        {/* Background gradient ” same palette as HomePage's dashboard backdrop */}
         <div
           className={`absolute inset-0 -z-10 ${
             isDarkMode

@@ -5,7 +5,10 @@ import { Brain, RefreshCw, History, LayoutGrid, Heart, Package, Calendar, AlertT
 import { db } from '../config/firebase'
 import { useTheme } from '../context/ThemeContext'
 import aiInsightsService, { MODULES } from '../services/aiInsightsService'
+import foodAidService from '../services/foodAidService'
 import AIInsightCard from '../components/AIInsightCard'
+
+const PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' }
 
 const MODULE_TABS = [
   { key: 'all',            label: 'All',       icon: LayoutGrid },
@@ -88,7 +91,36 @@ const AIInsightsPage = () => {
     setShowHistory(s => !s)
   }
 
-  const handleAcknowledge = (insight) => setActionedIds(m => ({ ...m, [insight.id]: 'acted_on' }))
+  const isPriorityPurokRecommendation = (insight) =>
+    insight.module === MODULES.FOOD_AID &&
+    insight.title === "Today's priority purok" &&
+    !!insight.dataAnalyzed?.purok
+
+  const handleAcknowledge = async (insight) => {
+    if (!isPriorityPurokRecommendation(insight)) {
+      setActionedIds(m => ({ ...m, [insight.id]: 'acted_on' }))
+      return
+    }
+    setActionedIds(m => ({ ...m, [insight.id]: 'applying' }))
+    const result = await foodAidService.applyAIPriorityRecommendation(insight.dataAnalyzed.purok, {
+      priority: PRIORITY_LABELS[insight.priority] || 'Medium',
+      reason: insight.reason,
+    })
+    if (result.success) {
+      setActionedIds(m => ({
+        ...m,
+        [insight.id]: {
+          status: 'recommendation_applied',
+          appliedTo: 'Food Aid',
+          priority: PRIORITY_LABELS[insight.priority] || 'Medium',
+          appliedAt: result.schedule?.priorityAppliedAt || new Date().toISOString(),
+        },
+      }))
+    } else {
+      setActionedIds(m => ({ ...m, [insight.id]: 'acted_on' }))
+    }
+  }
+
   const handleDismiss = (insight) => setActionedIds(m => ({ ...m, [insight.id]: 'dismissed' }))
 
   const visibleInsights = activeTab === 'all'

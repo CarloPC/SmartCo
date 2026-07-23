@@ -64,7 +64,7 @@ export default function FoodAidProjectionChart({ data = [] }) {
       <div className="mb-4 flex items-center gap-2">
         <Boxes className="h-5 w-5 text-teal-500" />
         <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-gray-100' : 'text-slate-800'}`}>
-          Food Aid Projections â€” Target vs. Served
+          Food Aid Projections  Target vs. Served
         </h2>
       </div>
 
