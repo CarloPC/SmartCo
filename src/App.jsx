@@ -33,6 +33,7 @@ import DocumentRequestsPage from './pages/DocumentRequestsPage'
 import RequestDocumentPage from './pages/RequestDocumentPage'
 import ManageDocumentRequestsPage from './pages/ManageDocumentRequestsPage'
 import ForgotPassword from "./components/ForgotPassword"
+import ResetPassword from './components/ResetPassword'
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
 
         {/* Protected Routes - Main App */}
