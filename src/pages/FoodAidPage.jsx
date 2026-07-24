@@ -1209,15 +1209,7 @@ const FoodAidPage = () => {
                     <button onClick={() => setShowPostModal(true)} className="text-sm font-semibold text-emerald-300 hover:underline">
                       + Post a new distribution
                     </button>
-                    {statusFilter === 'all' && (
-                      <div className="mx-auto mt-5 max-w-xs rounded-xl border border-yellow-300/30 bg-yellow-400/10 px-4 py-3 text-left text-xs text-yellow-200">
-                        <p className="mb-1 font-bold">⚠️ Residents can&apos;t see distributions?</p>
-                        <p>
-                          Update your <strong>Firestore Security Rules</strong> so all authenticated users can read food aid schedules.
-                          Copy the updated rules from <code className="font-mono">FIRESTORE_RULES_UPDATED.txt</code> and paste them into Firebase Console → Firestore → Rules.
-                        </p>
-                      </div>
-                    )}
+                    
                   </>
                 )}
               </div>
