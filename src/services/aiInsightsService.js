@@ -125,7 +125,11 @@ async function explain(signal) {
 
 function makeInsight({ module, title, priority, confidence, dataAnalyzed, summary, reason, suggestedAction }) {
   return {
-    id: `${module}-${title.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+    // Deterministic id (no Date.now()) — each signal type keeps the same id
+    // across regenerations, so locally-tracked UI state like "Recommendation
+    // Applied" survives the real-time regen that a Check/Apply write itself
+    // triggers, instead of silently reverting a couple seconds later.
+    id: `${module}-${title.toLowerCase().replace(/\s+/g, '-')}`,
     module,
     title,
     priority,       // 'high' | 'medium' | 'low'

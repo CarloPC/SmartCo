@@ -322,24 +322,47 @@ class FoodAidService {
   }
 
   // ── AI Decision Support integration ──────────────────────────
+  // If a distribution already exists for this purok, tag it with the AI's
+  // priority. If NOT (very common — the AI usually flags the purok that has
+  // gone longest WITHOUT a distribution, so it often has nothing posted yet),
+  // create a pending distribution for it instead of failing. This makes
+  // "Apply Recommendation" work the same whether the last post came from the
+  // Post Distribution modal or the Analyze & Optimize Route flow.
   async applyAIPriorityRecommendation(purok, { priority, reason, source = 'AI Decision Support' } = {}) {
     try {
       const candidates = await this.getFoodAidByPurok(purok)
-      if (!candidates.length) {
-        return { success: false, reason: 'no_matching_schedule' }
-      }
       const active = candidates
         .filter(d => !['completed', 'archived', 'cancelled'].includes(d.progress?.workflowStatus))
         .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
       const target = active[0] ||
         [...candidates].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0]
-      const result = await this.updateFoodAidSchedule(target.id, {
+
+      if (target) {
+        const result = await this.updateFoodAidSchedule(target.id, {
+          priority,
+          prioritySource: source,
+          priorityReason: reason,
+          priorityAppliedAt: new Date().toISOString(),
+        })
+        return { success: true, schedule: result.schedule, created: false }
+      }
+
+      // Nothing posted for this purok yet — create a pending distribution so
+      // the recommendation has somewhere to land. It still requires normal
+      // approval before it notifies residents.
+      const result = await this.createFoodAidSchedule({
+        purok,
+        date: new Date().toISOString().split('T')[0],
+        totalFamilies: 0,
+        packageType: 'Mixed',
+        notes: 'Auto-created from an applied AI Decision Support recommendation. Update the details before distribution day.',
         priority,
         prioritySource: source,
         priorityReason: reason,
         priorityAppliedAt: new Date().toISOString(),
+        aiOptimized: true,
       })
-      return { success: true, schedule: result.schedule }
+      return { success: true, schedule: result.schedule, created: true }
     } catch (error) {
       console.error('Error applying AI priority recommendation:', error)
       return { success: false, reason: 'error' }
