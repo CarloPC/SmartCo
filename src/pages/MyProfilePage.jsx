@@ -87,10 +87,10 @@ const MyProfilePage = () => {
       setUserData({ ...userData, photoURL })
       updateUser({ photoURL })
 
-      alert('âœ… Profile picture updated!')
+      alert(' Profile picture updated!')
     } catch (error) {
       console.error('Error uploading image:', error)
-      alert('âŒ Failed to upload image: ' + error.message)
+      alert('Failed to upload image: ' + error.message)
     } finally {
       setUploadingImage(false)
     }
@@ -104,7 +104,7 @@ const MyProfilePage = () => {
   const handleDelete = async () => {
     // Note: Deleting Firebase Auth users requires re-authentication
     // For now, just logout and show message
-    alert('Ã¢Å¡ Ã¯Â¸ Account deletion requires contacting administrator.')
+    alert(' Account deletion requires contacting administrator.')
     setShowDeleteConfirm(false)
 
     // Optional: Implement full deletion with re-authentication

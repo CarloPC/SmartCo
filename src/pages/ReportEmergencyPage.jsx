@@ -55,7 +55,7 @@ const PageBackground = ({ isDarkMode }) => (
   </>
 )
 
-// â”€â”€â”€ Suspension Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Suspension Banner 
 
 const SuspensionBanner = ({ suspension, isDarkMode, onBack }) => {
   const isPermanent = suspension.isPermanent
@@ -145,7 +145,7 @@ const SuspensionBanner = ({ suspension, isDarkMode, onBack }) => {
   )
 }
 
-// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Main Page 
 
 const ReportEmergencyPage = () => {
   const { isDarkMode } = useTheme()
@@ -297,7 +297,7 @@ const ReportEmergencyPage = () => {
           <ArrowLeft className="w-4 h-4" /><span>Back</span>
         </button>
 
-        {/* â”€â”€ Hero header banner â”€â”€ */}
+        {/*  Hero header banner  */}
         <section className={`${card} overflow-hidden bg-gradient-to-r from-red-500/30 via-orange-500/20 to-rose-500/30`}>
           <div className="flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-xl">

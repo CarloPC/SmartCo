@@ -186,7 +186,7 @@ const AIInsightsPage = () => {
 
         {lastGenerated && (
           <p className={`text-xs ${textSecondary}`}>
-            Last analyzed {new Date(lastGenerated).toLocaleString()} Â· updates automatically when Firestore data changes
+            Last analyzed {new Date(lastGenerated).toLocaleString()} updates automatically when Firestore data changes
           </p>
         )}
 

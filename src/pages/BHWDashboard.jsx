@@ -400,7 +400,7 @@ selectedRequest?.id===request.id
 : "border-white/15 bg-white/5 hover:border-cyan-300/40 hover:bg-white/10"
 }`}
 >
-                      {/* â”€â”€ Minimized header: name, purok, date only â”€â”€ */}
+                      {/*  Minimized header: name, purok, date only  */}
                       <button
                         type="button"
                         onClick={() => {
@@ -473,7 +473,7 @@ active:scale-[.98]
 </div>
                       </button>
 
-                      {/* â”€â”€ Expanded detail: full data + close button â”€â”€ */}
+                      {/*  Expanded detail: full data + close button  */}
                       <div
 className={`grid transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)]
 ${
@@ -548,7 +548,7 @@ isAnimating
 }
 `}
 >
-                {/* â”€â”€ Minimized header: name, purok, date only â”€â”€ */}
+                {/*  Minimized header: name, purok, date only  */}
                 <button
                   type="button"
                   onClick={() => setTriageExpanded((prev) => !prev)}
@@ -601,7 +601,7 @@ active:scale-[.98]
                   )}
                 </button>
 
-                {/* â”€â”€ Expanded detail: full data + close button â”€â”€ */}
+                {/*  Expanded detail: full data + close button  */}
                 {triageExpanded && (
                   <div className="space-y-4">
                     <div className="flex justify-end">

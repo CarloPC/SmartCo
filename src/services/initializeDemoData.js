@@ -92,7 +92,7 @@ export const initializeDemoData = async () => {
         totalFamilies: 24,
         deliveredFamilies: 24,
         status: 'completed',
-        route: 'Main Road â†’ Street A â†’ Street B',
+        route: 'Main Road  Street A  Street B',
         createdBy: 'demo',
         createdAt: new Date('2026-01-15').toISOString(),
         updatedAt: new Date('2026-01-15').toISOString()
@@ -103,7 +103,7 @@ export const initializeDemoData = async () => {
         totalFamilies: 18,
         deliveredFamilies: 18,
         status: 'completed',
-        route: 'Main Road â†’ Street C',
+        route: 'Main Road  Street C',
         createdBy: 'demo',
         createdAt: new Date('2026-01-16').toISOString(),
         updatedAt: new Date('2026-01-16').toISOString()
@@ -114,7 +114,7 @@ export const initializeDemoData = async () => {
         totalFamilies: 31,
         deliveredFamilies: 21,
         status: 'in-progress',
-        route: 'Main Road â†’ Street D â†’ Street E â†’ Street F',
+        route: 'Main Road  Street D  Street E  Street F',
         createdBy: 'demo',
         createdAt: new Date('2026-01-17').toISOString(),
         updatedAt: new Date('2026-01-17').toISOString()
@@ -125,7 +125,7 @@ export const initializeDemoData = async () => {
         totalFamilies: 28,
         deliveredFamilies: 10,
         status: 'in-progress',
-        route: 'Main Road â†’ Street G â†’ Street H',
+        route: 'Main Road  Street G  Street H',
         createdBy: 'demo',
         createdAt: new Date('2026-01-18').toISOString(),
         updatedAt: new Date('2026-01-18').toISOString()
@@ -136,7 +136,7 @@ export const initializeDemoData = async () => {
         totalFamilies: 22,
         deliveredFamilies: 0,
         status: 'scheduled',
-        route: 'Main Road â†’ Street I',
+        route: 'Main Road  Street I',
         createdBy: 'demo',
         createdAt: new Date('2026-01-19').toISOString(),
         updatedAt: new Date('2026-01-19').toISOString()
@@ -153,14 +153,14 @@ export const initializeDemoData = async () => {
       await addDoc(collection(db, 'foodAid'), schedule)
     }
 
-    console.log('âœ… Demo data initialized successfully!')
-    console.log('\nðŸ“ To use the app, please register demo accounts:')
+    console.log(' Demo data initialized successfully!')
+    console.log('\n To use the app, please register demo accounts:')
     console.log('1. Email: juan@smartco.ph | Password: password123 | Role: official | Purok: Sitio Proper Ilihan')
     console.log('2. Email: maria@smartco.ph | Password: password123 | Role: health | Purok: Cabulihan Uno')
     console.log('3. Email: pedro@smartco.ph | Password: password123 | Role: volunteer | Purok: Cabulihan Dos')
   } catch (error) {
     console.error('Error initializing demo data:', error)
-    console.log('\nâš ï¸ Could not initialize demo data. This is normal if:')
+    console.log('\n Could not initialize demo data. This is normal if:')
     console.log('- Firebase is not configured yet')
     console.log('- You are not connected to the internet')
     console.log('- Firestore security rules are not set up')

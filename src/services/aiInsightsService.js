@@ -53,7 +53,7 @@ export const PRIORITY = {
   LOW: 'low',
 }
 
-// â”€â”€ Shared Groq caller (mirrors aiHealthService.js so we don't duplicate retry logic twice) â”€â”€
+//  Shared Groq caller (mirrors aiHealthService.js so we don't duplicate retry logic twice) 
 async function callGroqJSON(systemPrompt, userPrompt) {
   if (!GROQ_API_KEY) return null
 

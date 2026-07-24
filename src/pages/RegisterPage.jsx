@@ -91,7 +91,7 @@ const RegisterPage = () => {
         <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-violet-500/15 blur-3xl" />
       </div>
 
-      {/* â”€â”€ LEFT BRAND PANEL (desktop only) â”€â”€ */}
+      {/*  LEFT BRAND PANEL (desktop only)  */}
       <div className="relative z-10 hidden lg:flex lg:w-2/5 xl:w-1/2 flex-col justify-between p-12 overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -138,10 +138,10 @@ const RegisterPage = () => {
           </div>
         </div>
 
-        <p className="relative z-10 text-blue-300/60 text-sm">Â© 2026 SmartCo. All rights reserved.</p>
+        <p className="relative z-10 text-blue-300/60 text-sm">© 2026 SmartCo. All rights reserved.</p>
       </div>
 
-      {/* â”€â”€ RIGHT FORM PANEL â”€â”€ */}
+      {/*  RIGHT FORM PANEL  */}
       <div className="relative z-10 flex-1 flex flex-col overflow-y-auto">
         {/* Mobile background */}
         <div className="absolute inset-0 lg:hidden">

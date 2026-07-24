@@ -30,7 +30,7 @@ export const PUROKS_LIST = PUROKS_SHORT
 // Distribution hub (Barangay Ilihan Hall)
 export const DISTRIBUTION_HUB = { lat: 10.3321, lng: 123.6187, name: 'Barangay Ilihan Hall' }
 
-// Area â†’ approximate barangay coordinates (for enriching legacy data)
+// Area  approximate barangay coordinates (for enriching legacy data)
 export const PUROK_COORDS = {
   'Sitio Proper Ilihan': { lat: 10.3737, lng: 123.6384, barangay: 'Poblacion' },
   'Cabulihan Uno':       { lat: 10.3825, lng: 123.6547, barangay: 'Bagakay' },
@@ -203,7 +203,7 @@ export const generatePinpointAIAnalysis = (pinLat, pinLng, nearestBarangay, puro
   efficiency = Math.max(50, efficiency)
 
   const departure = travelTime > 30 ? '7:00 AM' : '8:00 AM'
-  const purokLabel = purok ? ` Â· ${purok}` : ''
+  const purokLabel = purok ? `  ${purok}` : ''
   const areaLabel = (nearestBarangay?.name || 'target area') + purokLabel
   const accessDesc =
     accessibility === 'excellent' ? 'Roads are wide and well-maintained throughout.' :

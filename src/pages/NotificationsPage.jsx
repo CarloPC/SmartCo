@@ -56,7 +56,7 @@ const NotificationsPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  /* glass card Ã¢â‚¬ matches HomePage panels */
+  /* glass card  matches HomePage panels */
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10'
 
@@ -120,7 +120,7 @@ const NotificationsPage = () => {
 
   const handleDelete = async (id) => {
     try {
-      console.log(`Ã°Å¸”˜Ã¯Â¸ [NotificationsPage] Deleting notification ${id}`)
+      console.log(`[NotificationsPage] Deleting notification ${id}`)
       const result = await notificationService.deleteNotification(id)
 
       if (result.success) {
@@ -146,7 +146,7 @@ const NotificationsPage = () => {
     }
 
     try {
-      console.log('Ã°Å¸”˜Ã¯Â¸ [NotificationsPage] Clearing all notifications')
+      console.log('[NotificationsPage] Clearing all notifications')
       const result = await notificationService.clearAll()
 
       if (result.success) {
@@ -199,7 +199,7 @@ const NotificationsPage = () => {
   }
 
   return (
-    /* No background here Ã¢â‚¬ Layout.jsx paints the gradient behind everything */
+    /* No background here  Layout.jsx paints the gradient behind everything */
     <div className="mx-auto max-w-3xl space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
 
       {/* Header */}
