@@ -115,7 +115,7 @@ const OptimizeSchedulePage = () => {
     }
   }
 
-  // â””€ Form helpers â”””””””””””””””””””””””””””””””””””””””””””””””””””””””””€
+  //  Form helpers 
   const handlePurokToggle = purok => {
     setFormData(prev => ({
       ...prev,
@@ -130,7 +130,7 @@ const OptimizeSchedulePage = () => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  // â””€ AI helpers â”””””””””””””””””””””””””””””””””””””””””””””””””””””””””””€
+  //  AI helpers 
   const predictWeather = date => {
     const types   = ['sunny', 'partly_cloudy', 'cloudy', 'rainy', 'stormy']
     const day     = new Date(date).getDay()
@@ -198,9 +198,9 @@ const OptimizeSchedulePage = () => {
   const generateRecommendations = schedules => {
     const recommendations = []
     const avg = schedules.reduce((s, x) => s + x.efficiencyScore, 0) / schedules.length
-    if (avg >= 85)      recommendations.push({ type: 'success', message: 'âœ… Excellent schedule! High efficiency across all stops.', action: 'Proceed with this AI-optimized distribution plan.' })
-    else if (avg >= 70) recommendations.push({ type: 'good',    message: 'ðŸ‘ Good schedule with minor optimization opportunities.', action: 'Consider the risk mitigations suggested below.' })
-    else                recommendations.push({ type: 'warning', message: 'âš ï¸ Schedule has significant challenges.', action: 'Review high-risk stops and consider rescheduling.' })
+    if (avg >= 85)      recommendations.push({ type: 'success', message: ' Excellent schedule! High efficiency across all stops.', action: 'Proceed with this AI-optimized distribution plan.' })
+    else if (avg >= 70) recommendations.push({ type: 'good',    message: ' Good schedule with minor optimization opportunities.', action: 'Consider the risk mitigations suggested below.' })
+    else                recommendations.push({ type: 'warning', message: ' Schedule has significant challenges.', action: 'Review high-risk stops and consider rescheduling.' })
 
     const rainyDays = schedules.filter(s => s.weather.weather === 'rainy' || s.weather.weather === 'stormy').length
     if (rainyDays > schedules.length / 2)
@@ -208,7 +208,7 @@ const OptimizeSchedulePage = () => {
 
     const highRisk = schedules.filter(s => s.risks.some(r => r.severity === 'high'))
     if (highRisk.length)
-      recommendations.push({ type: 'risk', message: 'âš ï¸ ' + highRisk.length + ' high-risk stop(s) detected.',
+      recommendations.push({ type: 'risk', message: ' ' + highRisk.length + ' high-risk stop(s) detected.',
         action: 'Priority attention needed for: ' + highRisk.map(s => s.purok).join(', ') })
 
     const totalTime = schedules.reduce((s, x) => s + x.routeAnalysis.estimatedTime, 0)
@@ -218,7 +218,7 @@ const OptimizeSchedulePage = () => {
     return recommendations
   }
 
-  // â””€ Main AI analysis â”””””””””””””””””””””””””””””””””””””””””””””””””””””€
+  //  Main AI analysis ”
   const handleAnalyze = async () => {
     if (!formData.selectedPuroks.length || !formData.startDate || !formData.endDate || !formData.totalFamilies) {
       alert('Please fill in all required fields.')
@@ -393,14 +393,14 @@ const OptimizeSchedulePage = () => {
             <h2 className="text-xl font-bold">AI-Optimized Distribution Schedule</h2>
           </div>
           <p className={isDarkMode ? 'text-green-200' : 'text-green-100'}>
-            GPS-aware route planning · Nearest-neighbour optimization · Risk analysis
+            GPS-aware route planning  Nearest-neighbour optimization  Risk analysis
           </p>
         </div>
 
-        {/* â””€ GPS Start Location â””€ */}
+        {/*  GPS Start Location  */}
         <div className={card + ' p-4'}>
           <p className={'text-xs font-bold uppercase tracking-wide mb-3 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
-            ðŸ“ Distribution Start Location (GPS)
+             Distribution Start Location (GPS)
           </p>
 
           {gpsStatus === 'idle' || gpsStatus === 'detecting' ? (
@@ -422,7 +422,7 @@ const OptimizeSchedulePage = () => {
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   </div>
                   <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                    GPS detected · {startCoords?.accuracy}m · AI will optimize route from here
+                    GPS detected  {startCoords?.accuracy}m  AI will optimize route from here
                   </p>
                 </div>
               </div>
@@ -469,7 +469,7 @@ const OptimizeSchedulePage = () => {
                   <span>{purok}</span>
                   {formData.selectedPuroks.includes(purok) && (
                     <span className={'block text-xs mt-0.5 ' + (isDarkMode ? 'text-green-400' : 'text-green-600')}>
-                      ~{PUROK_DATA[purok].distance} km · {PUROK_DATA[purok].terrain}
+                      ~{PUROK_DATA[purok].distance} km  {PUROK_DATA[purok].terrain}
                     </span>
                   )}
                 </button>
@@ -541,10 +541,10 @@ const OptimizeSchedulePage = () => {
                 }
                 <div>
                   <p className={'font-bold text-lg ' + (isDarkMode ? 'text-gray-100' : 'text-gray-900')}>
-                    AI-Optimized Route · {analysisResult.averageEfficiency}% Efficiency
+                    AI-Optimized Route  {analysisResult.averageEfficiency}% Efficiency
                   </p>
                   <p className={'text-sm ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
-                    Starting from <strong>{analysisResult.startName}</strong> Â· {analysisResult.totalDays} stops optimized via GPS
+                    Starting from <strong>{analysisResult.startName}</strong>  {analysisResult.totalDays} stops optimized via GPS
                   </p>
                 </div>
               </div>
@@ -552,7 +552,7 @@ const OptimizeSchedulePage = () => {
 
             {/* Summary stats */}
             <div className={card + ' p-4'}>
-              <p className={'text-sm font-bold mb-3 ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>ðŸ“Š Distribution Summary</p>
+              <p className={'text-sm font-bold mb-3 ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}> Distribution Summary</p>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
                   { Icon: Calendar, text: analysisResult.totalDays + ' days' },
@@ -607,7 +607,7 @@ const OptimizeSchedulePage = () => {
                         <Popup>
                           <div style={{ minWidth: 160 }}>
                             <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Stop {i + 1}: {s.purok}</p>
-                            <p style={{ fontSize: 12 }}> {s.date} · {s.timeSlot}</p>
+                            <p style={{ fontSize: 12 }}> {s.date}  {s.timeSlot}</p>
                             <p style={{ fontSize: 12 }}> {s.families} families</p>
                             <p style={{ fontSize: 12 }}> {s.routeAnalysis.distance} km from prev stop</p>
                             <div style={{ marginTop: 6, display: 'inline-block', padding: '2px 8px', borderRadius: 999,
@@ -704,7 +704,7 @@ const OptimizeSchedulePage = () => {
                       </span>
                     </div>
                     <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                      {schedule.weather.temperature}°C · {schedule.weather.humidity}% humidity
+                      {schedule.weather.temperature}°C  {schedule.weather.humidity}% humidity
                     </p>
                   </div>
                   <div>

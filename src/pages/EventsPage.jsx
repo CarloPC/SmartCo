@@ -1,13 +1,25 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Megaphone, Plus, Loader2, RefreshCw, Users, Sparkles, ChevronRight, Calendar } from 'lucide-react'
+import {
+  Megaphone, Plus, Loader2, RefreshCw, Users, Sparkles,
+  ChevronRight, Calendar, Brain, X, ChevronDown, ChevronUp,
+} from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import adminService from '../services/adminService'
 import announcementsService from '../services/announcementsService'
+import aiInsightsService, { MODULES } from '../services/aiInsightsService'
 import PostCard from '../components/PostCard'
 import CreatePostModal from '../components/CreatePostModal'
+
+// Glass badge colors per AI priority level — kept in sync with the frosted
+// aesthetic used across the rest of this page (no solid/opaque badges).
+const PRIORITY_GLASS = {
+  high:   { dot: 'bg-red-400',     ring: 'ring-red-400/30',     text: 'text-red-200' },
+  medium: { dot: 'bg-amber-400',   ring: 'ring-amber-400/30',   text: 'text-amber-200' },
+  low:    { dot: 'bg-emerald-400', ring: 'ring-emerald-400/30', text: 'text-emerald-200' },
+}
 
 const EventsPage = () => {
   const { isDarkMode } = useTheme()
@@ -19,6 +31,12 @@ const EventsPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+
+  // ── Real AI insight state (Groq-backed via aiInsightsService) ──
+  const [aiInsights, setAiInsights] = useState([])
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiExpanded, setAiExpanded] = useState(false)
+  const [aiDismissed, setAiDismissed] = useState(false)
 
   /* glass card — same design language as HomePage/HealthPage/FoodAidPage */
   const card =
@@ -39,6 +57,24 @@ const EventsPage = () => {
   }, [])
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
+
+  // Pull real, explainable AI recommendations for the Events module and
+  // surface the top one right on this page — no more fake/simulated copy.
+  const fetchAiInsights = useCallback(async () => {
+    if (!isOfficial) return
+    setAiLoading(true)
+    try {
+      const all = await aiInsightsService.generateAllInsights({ persistHistory: false })
+      setAiInsights(all.filter(i => i.module === MODULES.EVENTS))
+    } catch (err) {
+      console.error('Events AI insight fetch failed:', err)
+      setAiInsights([])
+    } finally {
+      setAiLoading(false)
+    }
+  }, [isOfficial])
+
+  useEffect(() => { fetchAiInsights() }, [fetchAiInsights])
 
   const handlePostCreated = (newPost) => {
     setPosts(prev => [newPost, ...prev])
@@ -61,6 +97,8 @@ const EventsPage = () => {
 
   const totalPosts = posts.length
   const totalComments = posts.reduce((s, p) => s + (p.commentCount || 0), 0)
+  const topInsight = aiInsights[0]
+  const priorityStyle = topInsight ? (PRIORITY_GLASS[topInsight.priority] || PRIORITY_GLASS.low) : null
 
   if (isLoading) {
     return (
@@ -176,19 +214,24 @@ const EventsPage = () => {
           )}
         </section>
 
-        {/* ── AI Event Scheduler banner — officials only ── */}
-        {isOfficial && (
-          <button
-            onClick={() => navigate('/events/create')}
-            className={`${card} w-full text-left p-5 group`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 shadow-lg shadow-violet-500/30">
-                  <Sparkles className="h-6 w-6 text-white" />
+        {/* ── AI Event Scheduler — officials only ── */}
+        {/* Now backed by the real aiInsightsService (deterministic analysis + Groq
+            explanation), the same engine that powers the AI Decision Support
+            dashboard — no more static/simulated copy. */}
+        {isOfficial && !aiDismissed && (
+          <section className={`${card} p-5`}>
+            <div className="flex items-start justify-between gap-3">
+              <button
+                onClick={() => navigate('/events/create')}
+                className="group flex flex-1 items-center gap-3 text-left"
+              >
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 shadow-lg shadow-violet-500/30">
+                  {aiLoading
+                    ? <Loader2 className="h-6 w-6 animate-spin text-white" />
+                    : <Sparkles className="h-6 w-6 text-white" />}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-base font-bold text-white">AI Event Scheduler</span>
                     <span className="flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs font-semibold text-white/80">
                       <Calendar className="h-2.5 w-2.5" /> Smart planning
@@ -198,10 +241,77 @@ const EventsPage = () => {
                     Analyze weather, venue &amp; attendance with AI
                   </p>
                 </div>
+              </button>
+              <div className="flex flex-shrink-0 items-center gap-1">
+                {aiInsights.length > 0 && (
+                  <button
+                    onClick={() => setAiExpanded(e => !e)}
+                    className="rounded-lg p-1.5 text-white/50 transition hover:bg-white/10 hover:text-white"
+                    aria-label={aiExpanded ? 'Collapse AI insight' : 'Expand AI insight'}
+                  >
+                    {aiExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                )}
+                <button
+                  onClick={() => navigate('/events/create')}
+                  className="rounded-lg p-1.5 text-white/50 transition hover:bg-white/10 hover:text-white"
+                  aria-label="Open AI Event Scheduler"
+                >
+                  <ChevronRight className="h-5 w-5 transition group-hover:translate-x-1" />
+                </button>
               </div>
-              <ChevronRight className="h-5 w-5 flex-shrink-0 text-white/50 transition group-hover:translate-x-1 group-hover:text-white" />
             </div>
-          </button>
+
+            {/* Real AI insight preview (Brain icon = deterministic analysis + Groq explanation) */}
+            {aiLoading ? (
+              <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/50">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Analyzing upcoming events…
+              </div>
+            ) : topInsight ? (
+              <div className={`mt-4 rounded-xl border border-white/15 bg-white/5 p-4 ring-1 ${priorityStyle.ring}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <Brain className="mt-0.5 h-4 w-4 flex-shrink-0 text-violet-300" />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`h-1.5 w-1.5 rounded-full ${priorityStyle.dot}`} />
+                        <p className="text-sm font-semibold text-white">{topInsight.title}</p>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${priorityStyle.text}`}>
+                          {topInsight.priority} · {topInsight.confidence} confidence
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-white/70">{topInsight.summary}</p>
+                      {aiExpanded && (
+                        <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                          <p className="text-xs text-white/60"><span className="font-semibold text-white/80">Why: </span>{topInsight.reason}</p>
+                          <p className="text-xs text-white/60"><span className="font-semibold text-white/80">Suggested action: </span>{topInsight.suggestedAction}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setAiDismissed(true)}
+                    className="flex-shrink-0 rounded-lg p-1 text-white/40 transition hover:bg-white/10 hover:text-white"
+                    aria-label="Dismiss AI insight"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {aiInsights.length > 1 && (
+                  <p className="mt-2 pl-6 text-xs text-white/40">
+                    +{aiInsights.length - 1} more event insight{aiInsights.length - 1 > 1 ? 's' : ''} in{' '}
+                    <button onClick={() => navigate('/ai-insights')} className="underline hover:text-white/60">
+                      AI Decision Support
+                    </button>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/50">
+                No urgent scheduling issues detected right now — open the scheduler to plan your next event.
+              </div>
+            )}
+          </section>
         )}
 
         {/* ── Feed ── */}
@@ -257,7 +367,7 @@ const EventsPage = () => {
         </section>
       </div>
 
-      {/* Create Announcement Modal */}
+      {/* Create Announcement Modal — now glass-synced, see CreatePostModal.jsx */}
       {showCreateModal && (
         <CreatePostModal
           onClose={() => setShowCreateModal(false)}
