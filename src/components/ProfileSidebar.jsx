@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, User, Settings, Bell, Shield, LogOut, ChevronRight, Moon, Sun, HelpCircle, Info, Lock } from 'lucide-react'
@@ -37,8 +38,6 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
     purok: user?.purok || '',
     avatar: user?.photoURL || null
   }
-
-  const isAdmin = user?.role === 'admin' || user?.role === 'barangay_official'
 
   /* glass card ” matches HomePage panels */
   const card =
@@ -86,12 +85,12 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
       iconBg: 'bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-500',
       iconRing: 'ring-amber-300/40',
     },
-    ...(!isAdmin
+    ...(user?.role === 'resident'
       ? [{
           icon: Lock,
-          label: 'Request Admin Access',
-          description: 'Contact an admin to get elevated access',
-          path: '/request-admin',
+          label: 'Request Role Upgrade',
+          description: 'Ask an admin to become a Barangay Official or BHW',
+          path: '/request-role-upgrade',
           iconBg: 'bg-gradient-to-br from-slate-500 via-gray-500 to-zinc-600',
           iconRing: 'ring-slate-300/40',
         }]

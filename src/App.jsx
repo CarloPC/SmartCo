@@ -1,4 +1,5 @@
 
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -23,8 +24,8 @@ import AboutPage from './pages/AboutPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminApprovalsPage from './pages/AdminApprovalsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
-import AdminRequestsPage from './pages/AdminRequestsPage'
-import RequestAdminPage from './pages/RequestAdminPage'
+import RoleUpgradeRequestsPage from './pages/RoleUpgradeRequestsPage'
+import RequestRoleUpgradePage from './pages/RequestRoleUpgradePage'
 import AIInsightsPage from './pages/AIInsightsPage'
 import ReportEmergencyPage from './pages/ReportEmergencyPage'
 import EmergencyManagementPage from './pages/EmergencyManagementPage'
@@ -157,7 +158,9 @@ function App() {
         <Route path="/privacy-security" element={<ProtectedRoute><PrivacySecurityPage /></ProtectedRoute>} />
         <Route path="/help-support" element={<ProtectedRoute><HelpSupportPage /></ProtectedRoute>} />
         <Route path="/about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
-        <Route path="/request-admin" element={<ProtectedRoute><RequestAdminPage /></ProtectedRoute>} />
+        <Route path="/request-role-upgrade" element={<ProtectedRoute><RequestRoleUpgradePage /></ProtectedRoute>} />
+        {/* Legacy URL — keep working for existing bookmarks/links */}
+        <Route path="/request-admin" element={<Navigate to="/request-role-upgrade" replace />} />
 
         {/* Emergency Routes */}
         <Route
@@ -267,15 +270,17 @@ function App() {
           }
         />
         <Route
-          path="/admin/requests"
+          path="/admin/role-requests"
           element={
             <AdminRoute>
               <Layout>
-                <AdminRequestsPage />
+                <RoleUpgradeRequestsPage />
               </Layout>
             </AdminRoute>
           }
         />
+        {/* Legacy URL — keep working for existing bookmarks/links */}
+        <Route path="/admin/requests" element={<Navigate to="/admin/role-requests" replace />} />
 
         {/* Redirect to welcome if no match */}
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -285,3 +290,4 @@ function App() {
 }
 
 export default App
+

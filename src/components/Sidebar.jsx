@@ -1,5 +1,6 @@
 
 
+
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Stethoscope, Truck, Brain, FileText } from 'lucide-react'
@@ -52,7 +53,7 @@ const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
   if (user?.role === 'bhw') navItems.splice(1, 0, { icon: Stethoscope, label: 'BHW', path: '/bhw' })
   if (isAdmin) navItems.push({ icon: Brain, label: 'AI Decision Support', path: '/ai-insights', accent: true })
   if (isAdmin) navItems.push({ icon: Shield, label: 'Admin', path: '/admin' })
-  if (user?.role === 'admin') navItems.push({ icon: UserCheck, label: 'Admin Requests', path: '/admin/requests' })
+  if (user?.role === 'admin') navItems.push({ icon: UserCheck, label: 'Role Upgrade Requests', path: '/admin/role-requests' })
 
   return (
     <aside  
@@ -207,3 +208,4 @@ blur-[140px]
 }
 
 export default Sidebar
+

@@ -1,4 +1,5 @@
 
+
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, Loader2, CheckCircle, Shield, Zap, Bell } from 'lucide-react'
@@ -19,7 +20,6 @@ const RegisterPage = () => {
     fullName: '',
     email: '',
     phone: '',
-    role: '',
     purok: '',
     password: '',
     confirmPassword: '',
@@ -44,7 +44,7 @@ const RegisterPage = () => {
         fullName: formData.fullName,
         email: formData.email,
         phone: formData.phone,
-        role: formData.role,
+        role: 'resident', // enforced again in authService.register as defense-in-depth
         purok: formData.purok,
         password: formData.password
       })
@@ -258,46 +258,30 @@ const RegisterPage = () => {
                   </div>
                 </div>
 
-                {/* Role + Purok grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-1.5">Role</label>
-                    <select
-                      name="role"
-                      value={formData.role}
-                      onChange={handleChange}
-                      className={selectClass}
-                      required
-                    >
-                      <option value="">Select role</option>
-                      <option value="resident">Resident</option>
-                      <option value="bhw">Barangay Health Worker</option>
-                      <option value="barangay_official">Barangay Official</option>
-                    </select>
-                    <p className="mt-1.5 text-xs text-white/40">
-                      Need admin access?{' '}
-                      <Link to="/login" className="text-blue-300 font-medium hover:underline">
-                        Sign in and request it here
-                      </Link>
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-1.5">Purok</label>
-                    <select
-                      name="purok"
-                      value={formData.purok}
-                      onChange={handleChange}
-                      className={selectClass}
-                      required
-                    >
-                      <option value="">Select your purok</option>
-                      {PUROKS_ILIHAN.map((purok) => (
-                        <option key={purok} value={purok}>
-                          {purok}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Purok */}
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">Purok</label>
+                  <select
+                    name="purok"
+                    value={formData.purok}
+                    onChange={handleChange}
+                    className={selectClass}
+                    required
+                  >
+                    <option value="">Select your purok</option>
+                    {PUROKS_ILIHAN.map((purok) => (
+                      <option key={purok} value={purok}>
+                        {purok}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1.5 text-xs text-white/40">
+                    New accounts start as a <span className="text-white/70 font-medium">Resident</span>.
+                    Need to be listed as a Barangay Official or Health Worker?{' '}
+                    <Link to="/login" className="text-blue-300 font-medium hover:underline">
+                      Sign in and request a role upgrade
+                    </Link>{' '}from your profile.
+                  </p>
                 </div>
 
                 {/* Password + Confirm grid */}
@@ -391,4 +375,5 @@ const RegisterPage = () => {
 }
 
 export default RegisterPage
+
 

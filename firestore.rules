@@ -1,7 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
+		
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -144,14 +144,30 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // ─── Admin Access Requests ───────────────────────────────────────────────
+    // ─── Role Upgrade Requests (formerly "Admin Access Requests") ───────────
+    // Reuses the adminRequests collection. Note: `allow update` here is
+    // isSuperAdmin() rather than isAdmin(), even though AdminRoute also lets
+    // barangay_official/bhw reach the review page in the UI. This is
+    // intentional — only isSuperAdmin() can write users/{uid}.role above, so
+    // letting a barangay_official mark a request "approved" here would leave
+    // it stuck in a false "approved" state with the user's role unchanged.
     match /adminRequests/{requestId} {
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.requestedRole in ['barangay_official', 'bhw'] &&
+        request.resource.data.proofFileUrl is string &&
+        request.resource.data.proofFileUrl != '';
+
       allow read: if isAuthenticated() && (
         resource.data.userId == request.auth.uid || isAdmin()
       );
       allow list: if isAdmin();
-      allow update: if isAdmin();
+
+      allow update: if isSuperAdmin() &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.requestedRole == resource.data.requestedRole;
+
       allow delete: if isSuperAdmin();
     }
 

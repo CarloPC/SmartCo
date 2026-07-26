@@ -1,11 +1,20 @@
 
+
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Edit2, Save, X, Trash2, User, Mail, Phone, MapPin, Briefcase, Loader, Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import authService from '../services/authService'
 import storageService from '../services/storageService'
+import roleUpgradeService from '../services/roleUpgradeService'
 import { PUROKS_ILIHAN } from '../constants/puroks'
+
+const SYSTEM_ROLE_LABELS = {
+  admin: 'Administrator',
+  barangay_official: 'Barangay Official',
+  bhw: 'Barangay Health Worker',
+  resident: 'Resident'
+}
 
 const MyProfilePage = () => {
   const navigate = useNavigate()
@@ -19,6 +28,7 @@ const MyProfilePage = () => {
   // User data from Firebase
   const [userData, setUserData] = useState(null)
   const [editedData, setEditedData] = useState(null)
+  const [pendingRoleRequest, setPendingRoleRequest] = useState(null)
 
   // Fetch user data on mount
   useEffect(() => {
@@ -26,6 +36,17 @@ const MyProfilePage = () => {
       setUserData(user)
       setEditedData(user)
     }
+  }, [user])
+
+  // Check for a pending role upgrade request so "Current Role" can show
+  // a "Pending Review" badge (see Profile step of the role upgrade flow)
+  useEffect(() => {
+    const fetchPendingRequest = async () => {
+      if (!user?.id) return
+      const req = await roleUpgradeService.getUserRequest(user.id)
+      setPendingRoleRequest(req?.status === 'pending' ? req : null)
+    }
+    fetchPendingRequest()
   }, [user])
 
   /* glass card  matches HomePage panels */
@@ -38,11 +59,12 @@ const MyProfilePage = () => {
     try {
       setSaving(true)
 
-      // Prepare updates (exclude fields that shouldn't change)
+      // Prepare updates (exclude fields that shouldn't change).
+      // NOTE: role is intentionally excluded — it can only change through an
+      // approved Role Upgrade Request, never through a direct profile edit.
       const updates = {
         fullName: editedData.fullName,
         phone: editedData.phone,
-        role: editedData.role,
         purok: editedData.purok
       }
 
@@ -238,30 +260,30 @@ const MyProfilePage = () => {
             )}
           </div>
 
-          {/* Role */}
+          {/* Current Role — read-only. Role changes only happen through an
+              approved Role Upgrade Request, never through a direct profile
+              edit (see roleUpgradeService). */}
           <div>
             <label className="mb-1.5 flex items-center space-x-2 text-sm font-medium text-white/70">
               <Briefcase className="h-4 w-4" />
-              <span>Role</span>
+              <span>Current Role</span>
             </label>
-            {isEditing ? (
-              <select
-                value={editedData.role}
-                onChange={(e) => handleInputChange('role', e.target.value)}
-                className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-white backdrop-blur-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 [&>option]:text-gray-900"
-              >
-                <option value="official">Barangay Official</option>
-                <option value="health">Health Worker</option>
-                <option value="volunteer">Volunteer</option>
-                <option value="resident">Resident</option>
-              </select>
-            ) : (
-              <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-medium text-white">
-                {userData.role === 'official' && 'Barangay Official'}
-                {userData.role === 'health' && 'Health Worker'}
-                {userData.role === 'volunteer' && 'Volunteer'}
-                {userData.role === 'resident' && 'Resident'}
-                {!userData.role && 'Not set'}
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <span className="font-medium text-white">
+                {SYSTEM_ROLE_LABELS[userData.role] || 'Resident'}
+              </span>
+              {pendingRoleRequest && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/20 px-2.5 py-1 text-xs font-semibold text-yellow-300">
+                  🟡 Role Upgrade Request — Pending Review
+                </span>
+              )}
+            </div>
+            {!pendingRoleRequest && userData.role === 'resident' && (
+              <p className="mt-1.5 text-xs text-white/40">
+                Need to be listed as a Barangay Official or Health Worker?{' '}
+                <Link to="/request-role-upgrade" className="font-medium text-blue-300 hover:underline">
+                  Request a role upgrade
+                </Link>
               </p>
             )}
           </div>
@@ -390,4 +412,5 @@ const MyProfilePage = () => {
 }
 
 export default MyProfilePage
+
 

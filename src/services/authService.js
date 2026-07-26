@@ -1,3 +1,4 @@
+
 import { 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -57,11 +58,15 @@ class AuthService {
       })
 
       // Save additional data to Firestore
+      // SECURITY: role is always forced to 'resident' at registration, even
+      // if a caller passes something else. Elevated roles (Barangay Official /
+      // BHW) can only be granted by an admin approving a Role Upgrade Request
+      // — see roleUpgradeService.approveRequest().
       const userDataToSave = {
         fullName: userData.fullName,
         email: userData.email,
         phone: userData.phone,
-        role: userData.role,
+        role: 'resident',
         purok: userData.purok,
         createdAt: new Date().toISOString()
       }
@@ -128,16 +133,22 @@ class AuthService {
   // Update profile
   async updateProfile(userId, updates) {
     try {
-      await updateDoc(doc(db, 'users', userId), updates)
-      
+      // SECURITY: role/status/review fields must never be settable through a
+      // generic profile edit — that was effectively a self role-escalation
+      // hole. Role changes only happen via the Role Upgrade Request approval
+      // flow (see roleUpgradeService.approveRequest()).
+      const { role: _role, status: _status, ...safeUpdates } = updates
+
+      await updateDoc(doc(db, 'users', userId), safeUpdates)
+
       // Update display name in auth if fullName changed
-      if (updates.fullName && auth.currentUser) {
+      if (safeUpdates.fullName && auth.currentUser) {
         await updateProfile(auth.currentUser, {
-          displayName: updates.fullName
+          displayName: safeUpdates.fullName
         })
       }
-      
-      return { success: true, user: updates }
+
+      return { success: true, user: safeUpdates }
     } catch (error) {
       throw new Error('Failed to update profile')
     }
@@ -183,3 +194,4 @@ class AuthService {
 }
 
 export default new AuthService()
+
