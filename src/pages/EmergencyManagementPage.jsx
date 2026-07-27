@@ -3,11 +3,13 @@ import {
   AlertTriangle, Flame, Stethoscope, ShieldAlert, Waves, Car, HelpCircle,
   Clock, CheckCircle, XCircle, Shield, MapPin, Phone, User, FileText,
   Loader2, RefreshCw, Filter, Navigation, ExternalLink,
-  AlertOctagon, Ban, Unlock, Calendar, ChevronDown, ChevronUp
+  AlertOctagon, Ban, Unlock, Calendar, ChevronDown, ChevronUp,
+  Camera, Eye, ImageOff, ShieldQuestion
 } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import emergencyService from '../services/emergencyService'
+import ProofPreviewModal from '../components/ProofPreviewModal'
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +38,29 @@ const STATUS_CONFIG = {
 }
 
 const FILTER_TABS = ['all', 'pending', 'active', 'resolved', 'rejected', 'fake']
+
+// ─── Proof Status Badge ──────────────────────────────────────────────────────
+// 🟢 Proof Attached  — a photo was uploaded with the report
+// 🟠 Emergency Override — reporter certified they couldn't safely take a photo
+// 🔴 Invalid Report — neither (should never happen; form + rules block this)
+const getProofBadge = (emergency) => {
+  if (emergency.proofProvided) {
+    return { emoji: '🟢', label: 'Proof Attached', cls: 'bg-green-100 text-green-700' }
+  }
+  if (emergency.emergencyOverride) {
+    return { emoji: '🟠', label: 'Emergency Override', cls: 'bg-orange-100 text-orange-700' }
+  }
+  return { emoji: '🔴', label: 'Invalid Report', cls: 'bg-red-100 text-red-700 font-bold' }
+}
+
+const ProofBadge = ({ emergency }) => {
+  const badge = getProofBadge(emergency)
+  return (
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
+      {badge.emoji} {badge.label}
+    </span>
+  )
+}
 
 const SUSPENSION_PRESETS = [
   { label: '3 Days',   days: 3 },
@@ -291,6 +316,7 @@ const EmergencyCard = ({ emergency, isDarkMode, onRefresh }) => {
   const [showDispatch, setShowDispatch] = useState(false)
   const [showReject, setShowReject]     = useState(false)
   const [showFake, setShowFake]         = useState(false)
+  const [showProofModal, setShowProofModal] = useState(false)
 
   const typeInfo     = TYPE_MAP[emergency.type] || TYPE_MAP.other
   const statusCfg    = STATUS_CONFIG[emergency.status] || STATUS_CONFIG.pending
@@ -337,6 +363,7 @@ const EmergencyCard = ({ emergency, isDarkMode, onRefresh }) => {
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${isDarkMode ? statusCfg.dark : statusCfg.light}`}>
                 <StatusIcon className="w-3 h-3" />{statusCfg.label}
               </span>
+              <ProofBadge emergency={emergency} />
             </div>
             <div className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
               <span className="flex items-center gap-1">
@@ -363,6 +390,46 @@ const EmergencyCard = ({ emergency, isDarkMode, onRefresh }) => {
             <div className="flex items-center space-x-1.5"><MapPin className="w-3.5 h-3.5 flex-shrink-0" /><span>{emergency.purok}{emergency.location ? ` — ${emergency.location}` : ''}</span></div>
             <div className="flex items-center space-x-1.5"><User className="w-3.5 h-3.5 flex-shrink-0" /><span>{emergency.reporterName || 'Anonymous'}</span></div>
             {emergency.reporterPhone && <div className="flex items-center space-x-1.5"><Phone className="w-3.5 h-3.5 flex-shrink-0" /><span>{emergency.reporterPhone}</span></div>}
+            {emergency.coords?.lat && emergency.coords?.lng && (
+              <div className="flex items-center space-x-1.5">
+                <Navigation className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="font-mono">{emergency.coords.lat.toFixed(5)}, {emergency.coords.lng.toFixed(5)}</span>
+              </div>
+            )}
+            <div className="flex items-center space-x-1.5"><Clock className="w-3.5 h-3.5 flex-shrink-0" /><span>{new Date(emergency.reportedAt || emergency.createdAt).toLocaleString('en-PH')}</span></div>
+          </div>
+
+          {/* Proof Status */}
+          <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800/40 border-gray-700/60' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <p className={`text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <Camera className="w-3.5 h-3.5" />Proof Status
+              </p>
+              <ProofBadge emergency={emergency} />
+            </div>
+
+            {emergency.proofProvided && emergency.proofImageUrl ? (
+              <button
+                type="button"
+                onClick={() => setShowProofModal(true)}
+                className="group relative w-full max-w-[180px] aspect-video rounded-lg overflow-hidden border border-black/5"
+              >
+                <img src={emergency.proofImageUrl} alt="Emergency proof" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
+                  <Eye className="w-4 h-4 text-white" />
+                </div>
+              </button>
+            ) : emergency.emergencyOverride ? (
+              <div className={`flex items-start gap-2 text-xs ${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>
+                <ShieldQuestion className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>Reporter certified they could not safely take a photo. No image was provided for this report.</span>
+              </div>
+            ) : (
+              <div className={`flex items-start gap-2 text-xs font-semibold ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
+                <ImageOff className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>No photo and no Emergency Override on file — this report should not exist. Please investigate.</span>
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -491,6 +558,15 @@ const EmergencyCard = ({ emergency, isDarkMode, onRefresh }) => {
             </div>
           )}
         </div>
+      )}
+
+      {showProofModal && emergency.proofImageUrl && (
+        <ProofPreviewModal
+          url={emergency.proofImageUrl}
+          fileName={`${emergency.type || 'emergency'}-proof.jpg`}
+          isDarkMode={isDarkMode}
+          onClose={() => setShowProofModal(false)}
+        />
       )}
     </div>
   )

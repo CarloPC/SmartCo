@@ -1,10 +1,14 @@
-
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bell, Trash2, Check, X, Loader2, AlertTriangle, Calendar, Heart, Package, AlertCircle, FileText, ExternalLink } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const isOfficial = (user) => user?.role === 'admin' || user?.role === 'barangay_official'
+// AdminRoute additionally lets 'bhw' reach /emergency, so the notification
+// link needs its own check here rather than reusing isOfficial() (which is
+// also used by the unrelated document-notification routing below).
+const canManageEmergencies = (user) =>
+  user?.role === 'admin' || user?.role === 'barangay_official' || user?.role === 'bhw'
 
 const getNotificationPath = (notification, user) => {
   const category = notification.category || notification.type
@@ -17,7 +21,7 @@ const getNotificationPath = (notification, user) => {
     case 'foodaid':
       return '/food-aid'
     case 'emergency':
-      return '/emergency/report'
+      return canManageEmergencies(user) ? '/emergency' : '/emergency/report'
     case 'document':
       return isOfficial(user) ? '/documents/manage' : '/documents'
     case 'community':

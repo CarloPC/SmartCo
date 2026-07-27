@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, AlertCircle, Bell, Loader2, Calendar, Heart, Package, AlertTriangle, FileText, ChevronRight } from 'lucide-react'
@@ -7,6 +6,11 @@ import { useAuth } from '../context/AuthContext'
 import notificationService from '../services/notificationService'
 
 const isOfficial = (user) => user?.role === 'admin' || user?.role === 'barangay_official'
+// AdminRoute additionally lets 'bhw' reach /emergency, so the notification
+// link needs its own check here rather than reusing isOfficial() (which is
+// also used by the unrelated document-notification routing above/below).
+const canManageEmergencies = (user) =>
+  user?.role === 'admin' || user?.role === 'barangay_official' || user?.role === 'bhw'
 
 const getNotificationPath = (notification, user) => {
   const category = notification.category || notification.type
@@ -19,7 +23,7 @@ const getNotificationPath = (notification, user) => {
     case 'foodaid':
       return '/food-aid'
     case 'emergency':
-      return '/emergency/report'
+      return canManageEmergencies(user) ? '/emergency' : '/emergency/report'
     case 'document':
       return isOfficial(user) ? '/documents/manage' : '/documents'
     case 'community':
@@ -40,7 +44,7 @@ const getCategoryIcon = (category, type) => {
     case 'foodaid':
       return <Package className={`${cls} text-green-500`} />
     case 'emergency':
-      return <AlertTriangle className={`${cls} text-red-500`} />
+      return <AlertTriangle className={`${cls} text-red-400 animate-pulse`} />
     case 'document':
       return <FileText className={`${cls} text-blue-500`} />
     default:
@@ -63,8 +67,16 @@ const NotificationDropdown = ({ onClose, onNotificationRead }) => {
     try {
       setIsLoading(true)
       const fetchedNotifications = await notificationService.getNotifications()
-      // Get only the latest 3 notifications
-      setNotifications(fetchedNotifications.slice(0, 3))
+      // Emergency notifications are high priority — always surface them
+      // first, then fall back to the existing recency ordering.
+      const sorted = [...fetchedNotifications].sort((a, b) => {
+        const aEmergency = (a.category || a.type) === 'emergency' ? 1 : 0
+        const bEmergency = (b.category || b.type) === 'emergency' ? 1 : 0
+        if (aEmergency !== bEmergency) return bEmergency - aEmergency
+        return new Date(b.createdAt) - new Date(a.createdAt)
+      })
+      // Get only the latest 3 notifications (post-sort)
+      setNotifications(sorted.slice(0, 3))
     } catch (error) {
       console.error('Error fetching notifications:', error)
     } finally {
@@ -141,14 +153,18 @@ const NotificationDropdown = ({ onClose, onNotificationRead }) => {
           </div>
         ) : (
           <>
-            {notifications.map(notification => (
+            {notifications.map(notification => {
+              const isEmergency = (notification.category || notification.type) === 'emergency'
+              return (
               <button
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
                 className={`w-full text-left p-3 rounded-xl text-sm transition-all duration-200 group border ${
-                  !notification.read
-                    ? 'bg-blue-500/10 border-blue-400/30 hover:bg-blue-500/20 hover:border-blue-400/40'
-                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                  isEmergency
+                    ? 'bg-red-500/10 border-red-400/40 hover:bg-red-500/20 hover:border-red-400/60 shadow-[0_0_20px_rgba(248,113,113,0.15)]'
+                    : !notification.read
+                      ? 'bg-blue-500/10 border-blue-400/30 hover:bg-blue-500/20 hover:border-blue-400/40'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
                 }`}
               >
                 <div className="flex items-start space-x-2">
@@ -163,13 +179,18 @@ const NotificationDropdown = ({ onClose, onNotificationRead }) => {
                   </div>
                   <div className="flex items-center space-x-1 flex-shrink-0">
                     {!notification.read && (
-                      <span className="w-2 h-2 bg-blue-400 rounded-full mt-1.5 shadow-[0_0_6px_rgba(96,165,250,.8)]"></span>
+                      <span className={`w-2 h-2 rounded-full mt-1.5 ${
+                        isEmergency
+                          ? 'bg-red-400 animate-pulse shadow-[0_0_6px_rgba(248,113,113,.9)]'
+                          : 'bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,.8)]'
+                      }`}></span>
                     )}
                     <ChevronRight className="w-3.5 h-3.5 mt-0.5 opacity-0 group-hover:opacity-100 transition text-white/50" />
                   </div>
                 </div>
               </button>
-            ))}
+              )
+            })}
 
             <button
               onClick={handleViewAll}

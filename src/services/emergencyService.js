@@ -5,13 +5,78 @@ import {
 import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
 
+// ─── Anti-Spam Limits ────────────────────────────────────────────────────────
+// Residents are capped at MAX_PER_HOUR reports within a rolling hour and
+// MAX_PER_DAY within a rolling 24h day. Admins/officials are exempt — they
+// may need to log multiple reports on behalf of residents during an incident.
+const MAX_PER_HOUR = 3
+const MAX_PER_DAY = 10
+const SPAM_LIMIT_MESSAGE =
+  'You have reached the emergency reporting limit. If this is a new life-threatening emergency, please contact emergency services directly.'
+
 class EmergencyService {
+  // Check whether the current user has hit the hourly/daily reporting cap.
+  // Admins and barangay officials are exempt from this check.
+  async checkSpamLimit() {
+    try {
+      const userId = auth.currentUser?.uid
+      if (!userId) return { limited: false }
+
+      // Exempt admins/officials
+      const userSnap = await getDoc(doc(db, 'users', userId))
+      const role = userSnap.exists() ? userSnap.data().role : null
+      if (role === 'admin' || role === 'barangay_official') return { limited: false }
+
+      const q = query(collection(db, 'emergencies'), where('userId', '==', userId))
+      const snapshot = await getDocs(q)
+
+      const now = Date.now()
+      const oneHourAgo = now - 60 * 60 * 1000
+      const oneDayAgo = now - 24 * 60 * 60 * 1000
+
+      let countLastHour = 0
+      let countLastDay = 0
+      snapshot.docs.forEach(d => {
+        const createdAt = new Date(d.data().createdAt).getTime()
+        if (createdAt >= oneDayAgo) countLastDay++
+        if (createdAt >= oneHourAgo) countLastHour++
+      })
+
+      if (countLastHour >= MAX_PER_HOUR || countLastDay >= MAX_PER_DAY) {
+        return { limited: true, message: SPAM_LIMIT_MESSAGE }
+      }
+      return { limited: false }
+    } catch (error) {
+      console.error('Error checking spam limit:', error)
+      // Fail open — don't block a genuine emergency report because the
+      // rate-limit check itself failed.
+      return { limited: false }
+    }
+  }
+
   // Report a new emergency (resident)
   async reportEmergency(data) {
     try {
       const userId = auth.currentUser?.uid
       if (!userId) throw new Error('User not authenticated')
 
+      // Server-side (client-enforced) anti-spam check — mirrors the UI check
+      // so the limit still holds even if the form is bypassed.
+      const spamCheck = await this.checkSpamLimit()
+      if (spamCheck.limited) {
+        return { success: false, error: spamCheck.message }
+      }
+
+      // A report must include either a proof photo or an acknowledged
+      // Emergency Override — never neither. A photo, if present, always
+      // takes precedence over the override flag.
+      const proofProvided = !!data.proofImageUrl
+      const emergencyOverride = !proofProvided && !!data.emergencyOverride
+      if (!proofProvided && !emergencyOverride) {
+        return { success: false, error: 'Please upload a photo as proof of the emergency.' }
+      }
+
+      const nowIso = new Date().toISOString()
       const emergency = {
         userId,
         reporterName: data.reporterName || '',
@@ -30,14 +95,21 @@ class EmergencyService {
         responseNote: '',
         rejectedBy: null,
         rejectionReason: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        // ─── Proof Photo / Emergency Override ───────────────────────────
+        proofProvided,
+        emergencyOverride,
+        proofImageUrl: proofProvided ? data.proofImageUrl : null,
+        proofImagePath: proofProvided ? (data.proofImagePath || null) : null,
+        reportedAt: nowIso,
+        createdAt: nowIso,
+        updatedAt: nowIso,
       }
 
       const docRef = await addDoc(collection(db, 'emergencies'), emergency)
 
+      const overrideTag = emergencyOverride ? ' ⚠️ NO PROOF PHOTO (Emergency Override used)' : ''
       await this._notifyAdminsAndOfficials({
-        message: `🚨 Emergency reported in ${data.purok}: ${data.type} — ${data.description?.slice(0, 80)}`,
+        message: `🚨 Emergency reported in ${data.purok}: ${data.type} — ${data.description?.slice(0, 80)}${overrideTag}`,
         relatedId: docRef.id,
         category: 'emergency',
         type: 'emergency',
@@ -392,12 +464,32 @@ class EmergencyService {
 
   // ─── Internal helpers ──────────────────────────────────────────────────────
 
+  // FIX: Query only for admin/barangay_official docs instead of fetching the
+  // whole `users` collection. The Firestore rule for `users`:
+  //
+  //   allow list: if isAdmin() || (isAuthenticated() &&
+  //     resource.data.role in ['bhw', 'admin', 'barangay_official']);
+  //
+  // is evaluated against EVERY document a query could return. An unfiltered
+  // collection(db, 'users') query tries to return every user, including plain
+  // residents whose role doesn't match — so the rule fails for those docs and
+  // Firestore denies the ENTIRE query for a non-admin caller (like the
+  // resident who just reported the emergency). That's why officials/admins
+  // never got notified: this call was silently failing and being swallowed
+  // by the try/catch below (same root cause already fixed in
+  // documentRequestService.js — mirrored here).
+  //
+  // Adding the `where('role', 'in', [...])` filter means every doc the query
+  // can possibly return already satisfies the rule, so it succeeds for
+  // residents too.
   async _notifyAdminsAndOfficials({ message, relatedId, category, type }) {
     try {
-      const snapshot = await getDocs(collection(db, 'users'))
-      const admins = snapshot.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(u => u.role === 'admin' || u.role === 'barangay_official')
+      const q = query(
+        collection(db, 'users'),
+        where('role', 'in', ['admin', 'barangay_official'])
+      )
+      const snapshot = await getDocs(q)
+      const admins = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
 
       await Promise.all(
         admins.map(admin =>
@@ -408,6 +500,7 @@ class EmergencyService {
             message,
             relatedId,
             relatedType: 'emergency',
+            priority: 'high',
           })
         )
       )

@@ -1,17 +1,24 @@
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, Flame, Stethoscope, ShieldAlert, Waves,
   Car, HelpCircle, MapPin, Phone, FileText, ChevronDown,
-  Loader2, CheckCircle, ArrowLeft, Ban, Clock, ShieldOff
+  Loader2, CheckCircle, ArrowLeft, Ban, Clock, ShieldOff,
+  Camera, Upload, X, Eye, ShieldQuestion
 } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import emergencyService from '../services/emergencyService'
+import storageService from '../services/storageService'
 import LocationPicker from '../components/LocationPicker'
+import ProofPreviewModal from '../components/ProofPreviewModal'
 import { PUROKS_ILIHAN } from '../constants/puroks'
+
+const PROOF_MAX_SIZE = 5 * 1024 * 1024 // 5MB
+const PROOF_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const COOLDOWN_SECONDS = 30
 
 const EMERGENCY_TYPES = [
   { value: 'fire',     label: 'Fire',         icon: Flame,       color: 'text-red-300',    grad: 'from-red-500/30 to-orange-500/10',    ring: 'ring-red-400/50' },
@@ -145,6 +152,44 @@ const SuspensionBanner = ({ suspension, isDarkMode, onBack }) => {
   )
 }
 
+//  Emergency Override Confirmation Dialog 
+
+const OverrideConfirmDialog = ({ onCancel, onContinue }) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onCancel}>
+    <div
+      className="w-full max-w-md rounded-2xl border border-white/20 bg-gradient-to-br from-slate-900/95 via-red-950/90 to-slate-900/95 p-6 shadow-2xl backdrop-blur-xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-orange-500/20">
+          <ShieldQuestion className="h-6 w-6 text-orange-300" />
+        </div>
+        <h3 className="text-lg font-bold text-white">Emergency Override</h3>
+      </div>
+      <p className="mb-2 text-sm leading-relaxed text-white/70">
+        You are reporting an emergency without photo evidence. Only continue if taking a photo is unsafe.
+      </p>
+      <p className="mb-6 text-sm font-medium leading-relaxed text-red-300">
+        False emergency reports may result in penalties.
+      </p>
+      <div className="flex gap-3">
+        <button
+          onClick={onCancel}
+          className="flex-1 rounded-xl border border-white/15 bg-white/10 py-2.5 text-sm font-medium text-white/80 transition hover:bg-white/20"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onContinue}
+          className="flex-1 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 py-2.5 text-sm font-bold text-white shadow-lg transition hover:from-orange-600 hover:to-red-700"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  </div>
+)
+
 //  Main Page 
 
 const ReportEmergencyPage = () => {
@@ -159,6 +204,7 @@ const ReportEmergencyPage = () => {
   const [coords, setCoords] = useState(null)
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [uploadingProof, setUploadingProof] = useState(false)
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     purok: '',
@@ -168,15 +214,44 @@ const ReportEmergencyPage = () => {
     reporterPhone: user?.phone || '',
   })
 
-  // Check suspension on mount
+  // Proof photo + Emergency Override
+  const [proofFile, setProofFile] = useState(null)
+  const [proofPreviewUrl, setProofPreviewUrl] = useState(null)
+  const [emergencyOverride, setEmergencyOverride] = useState(false)
+  const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
+  const [showProofPreview, setShowProofPreview] = useState(false)
+  const fileInputRef = useRef(null)
+
+  // Cooldown after a successful submission
+  const [cooldown, setCooldown] = useState(0)
+
+  // Check suspension + spam limit on mount
   useEffect(() => {
     const check = async () => {
       const result = await emergencyService.checkUserSuspension()
       setSuspension(result.suspended ? result : null)
+      if (!result.suspended) {
+        const spam = await emergencyService.checkSpamLimit()
+        if (spam.limited) setError(spam.message)
+      }
       setCheckingSuspension(false)
     }
     check()
   }, [])
+
+  // Revoke the local proof preview URL on unmount / replacement
+  useEffect(() => {
+    return () => {
+      if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl)
+    }
+  }, [proofPreviewUrl])
+
+  // Countdown ticker for the post-submit cooldown
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setTimeout(() => setCooldown(c => Math.max(0, c - 1)), 1000)
+    return () => clearTimeout(timer)
+  }, [cooldown])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -189,30 +264,90 @@ const ReportEmergencyPage = () => {
     setSeverity('medium')
     setCoords(null)
     setFormData({ purok: '', location: '', description: '', reporterName: user?.fullName || '', reporterPhone: user?.phone || '' })
+    if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl)
+    setProofFile(null)
+    setProofPreviewUrl(null)
+    setEmergencyOverride(false)
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!selectedType) { setError('Please select an emergency type.'); return }
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (!PROOF_ALLOWED_TYPES.includes(file.type)) {
+      setError('Only JPG, PNG, or WEBP photos are accepted.')
+      return
+    }
+    if (file.size > PROOF_MAX_SIZE) {
+      setError('Photo must be smaller than 5MB.')
+      return
+    }
+    setError('')
+    if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl)
+    setProofFile(file)
+    setProofPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const handleRemoveProof = () => {
+    if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl)
+    setProofFile(null)
+    setProofPreviewUrl(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const submitReport = async () => {
     setError('')
     setLoading(true)
     try {
+      let proofImageUrl = null
+      let proofImagePath = null
+
+      if (proofFile) {
+        setUploadingProof(true)
+        const uploaded = await storageService.uploadEmergencyProof(user.id, proofFile)
+        proofImageUrl = uploaded.url
+        proofImagePath = uploaded.path
+        setUploadingProof(false)
+      }
+
       const result = await emergencyService.reportEmergency({
         ...formData,
         type: selectedType,
         severity,
         coords: coords || null,
+        emergencyOverride,
+        proofImageUrl,
+        proofImagePath,
       })
       if (result.success) {
         setSubmitted(true)
+        setCooldown(COOLDOWN_SECONDS)
       } else {
         setError(result.error || 'Failed to submit emergency report.')
       }
-    } catch {
-      setError('An unexpected error occurred. Please try again.')
+    } catch (err) {
+      setError(err.message || 'An unexpected error occurred. Please try again.')
     } finally {
+      setUploadingProof(false)
       setLoading(false)
     }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!selectedType) { setError('Please select an emergency type.'); return }
+    if (!proofFile && !emergencyOverride) {
+      setError('Please upload a photo as proof of the emergency.')
+      return
+    }
+    setError('')
+
+    // If reporting without a photo, confirm intent first.
+    if (emergencyOverride && !proofFile) {
+      setShowOverrideConfirm(true)
+      return
+    }
+
+    await submitReport()
   }
 
   const inputCls = 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none backdrop-blur-sm transition-all duration-300 ease-out hover:scale-[1.02] hover:border-red-300/60 hover:shadow-[0_0_30px_rgba(248,113,113,0.35)] focus:scale-[1.02] focus:border-red-300 focus:ring-2 focus:ring-red-400/70 focus:shadow-[0_0_35px_rgba(248,113,113,0.55)]'
@@ -266,8 +401,16 @@ const ReportEmergencyPage = () => {
               Please ensure this is a real emergency. Filing false reports may result in account suspension.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <button onClick={handleReset} className="flex-1 rounded-xl bg-white/10 py-3 text-sm font-medium text-white/80 transition hover:bg-white/20">
-                Report Another
+              <button
+                onClick={handleReset}
+                disabled={cooldown > 0}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-white/10 py-3 text-sm font-medium text-white/80 transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {cooldown > 0 ? (
+                  <><Clock className="h-3.5 w-3.5" /><span>Submit Again ({cooldown}s)</span></>
+                ) : (
+                  <span>Report Another</span>
+                )}
               </button>
               <div className="inline-block">
   <button
@@ -467,6 +610,84 @@ const ReportEmergencyPage = () => {
             />
           </div>
 
+          {/* Proof Photo + Emergency Override */}
+          <div className={`${card} space-y-4 p-5`}>
+            <div>
+              <label className="mb-1 flex items-center text-sm font-semibold text-white">
+                <Camera className="mr-1.5 h-4 w-4" />
+                Proof Photo {!emergencyOverride && <span className="ml-1 text-red-400">*</span>}
+              </label>
+              <p className="mb-3 text-xs text-white/50">
+                Upload a photo of the emergency scene — JPG, PNG, or WEBP, up to 5MB.
+              </p>
+
+              {!proofFile ? (
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-white/25 bg-white/5 px-4 py-6 text-sm text-white/60 transition hover:border-red-300/50 hover:bg-white/10">
+                  <Upload className="h-4 w-4" />
+                  <span>Tap to upload a photo</span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                <div className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/5 p-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowProofPreview(true)}
+                    className="group relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg"
+                  >
+                    <img src={proofPreviewUrl} alt="Proof preview" className="h-full w-full object-cover" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
+                      <Eye className="h-4 w-4 text-white" />
+                    </div>
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-white/80">{proofFile.name}</p>
+                    <p className="mt-0.5 text-xs text-emerald-300">Photo attached ✓</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveProof}
+                    className="flex-shrink-0 rounded-lg p-1.5 text-white/50 transition hover:bg-white/10 hover:text-white"
+                    title="Remove photo"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+              {!proofFile && !emergencyOverride && error === 'Please upload a photo as proof of the emergency.' && (
+                <p className="mt-2 text-xs font-medium text-rose-300">
+                  Please upload a photo as proof of the emergency.
+                </p>
+              )}
+            </div>
+
+            {/* Emergency Override */}
+            <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition ${
+              emergencyOverride ? 'border-orange-400/50 bg-orange-500/10' : 'border-white/15 bg-white/5 hover:bg-white/10'
+            }`}>
+              <input
+                type="checkbox"
+                checked={emergencyOverride}
+                onChange={(e) => setEmergencyOverride(e.target.checked)}
+                className="mt-0.5 h-4 w-4 flex-shrink-0 accent-orange-500"
+              />
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  ⚠ I cannot safely take a photo because this is an active emergency.
+                </p>
+                <p className="mt-1 text-xs text-white/60">
+                  Use this only if taking a photo would put you or someone else in danger.
+                </p>
+              </div>
+            </label>
+          </div>
+
           {/* Reporter Info */}
           <div className={`${card} space-y-4 p-5`}>
             <label className="block text-sm font-semibold text-white">Your Contact Information</label>
@@ -491,13 +712,29 @@ const ReportEmergencyPage = () => {
             className="flex w-full items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-red-500 to-orange-600 py-4 text-base font-bold text-white transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1 hover:from-red-600 hover:to-orange-700 hover:shadow-[0_0_45px_rgba(239,68,68,0.60)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading
-              ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Submitting Report...</span></>
+              ? <><Loader2 className="w-5 h-5 animate-spin" /><span>{uploadingProof ? 'Uploading Photo...' : 'Submitting Report...'}</span></>
               : <><AlertTriangle className="w-5 h-5" /><span>Submit Emergency Report</span></>
             }
           </button>
 </div>
         </form>
       </div>
+
+      {showOverrideConfirm && (
+        <OverrideConfirmDialog
+          onCancel={() => setShowOverrideConfirm(false)}
+          onContinue={() => { setShowOverrideConfirm(false); submitReport() }}
+        />
+      )}
+
+      {showProofPreview && proofFile && (
+        <ProofPreviewModal
+          url={proofPreviewUrl}
+          fileName={proofFile.name}
+          isDarkMode={isDarkMode}
+          onClose={() => setShowProofPreview(false)}
+        />
+      )}
     </div>
   )
 }

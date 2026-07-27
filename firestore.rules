@@ -134,8 +134,30 @@ service cloud.firestore {
     }
 
     // ─── Emergencies ─────────────────────────────────────────────────────────
+    // ✅ UPDATED (Emergency Reporting Enhancement): a report must now include
+    // either a proof photo (proofProvided == true, with a non-empty
+    // proofImageUrl) OR an acknowledged Emergency Override
+    // (emergencyOverride == true). This mirrors the client-side validation in
+    // ReportEmergencyPage/emergencyService so a bypassed/forged client can't
+    // create an "Invalid Report" (no proof, no override) directly against
+    // Firestore. Both fields are still required to be present and boolean —
+    // legacy documents created before this change won't have them, which is
+    // fine since this rule only runs on new writes.
+    function hasValidProof() {
+      return request.resource.data.emergencyOverride is bool &&
+        request.resource.data.proofProvided is bool &&
+        (
+          (request.resource.data.proofProvided == true &&
+           request.resource.data.proofImageUrl is string &&
+           request.resource.data.proofImageUrl != '') ||
+          request.resource.data.emergencyOverride == true
+        );
+    }
+
     match /emergencies/{emergencyId} {
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        hasValidProof();
       allow read: if isAuthenticated() && (
         resource.data.userId == request.auth.uid || isAdmin()
       );
