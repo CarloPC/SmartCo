@@ -68,8 +68,17 @@ const HomePage = () => {
       setHealthTrendsData(processHealthMonthlyTrend(healthStats.monthly))
       setFoodAidData(processFoodAidTrend(foodAidItems))
       setEventAttendanceData(processEventAttendance(events))
-      const alerts = notifications
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      // Priority Alerts: emergencies always sort first — otherwise 5 newer
+      // non-emergency notifications could push an active emergency out of
+      // the top-5 slice entirely. Recency still governs ordering within
+      // each group (emergencies vs everything else).
+      const alerts = [...notifications]
+        .sort((a, b) => {
+          const aEmergency = a.type === 'emergency' ? 1 : 0
+          const bEmergency = b.type === 'emergency' ? 1 : 0
+          if (aEmergency !== bEmergency) return bEmergency - aEmergency
+          return new Date(b.createdAt) - new Date(a.createdAt)
+        })
         .slice(0, 5)
         .map((n) => ({ id: n.id, type: n.category, message: n.message, time: getRelativeTime(n.createdAt), urgent: n.type === 'emergency' }))
       setRecentAlerts(alerts)
@@ -402,20 +411,27 @@ const HomePage = () => {
             </button>
           </div>
           {recentAlerts.length > 0 ? (
-            <div className="divide-y divide-white/10">
+            <div className="space-y-2">
               {recentAlerts.map((alert) => (
-                <div key={alert.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                  <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${alert.urgent ? 'animate-pulse bg-rose-400' : 'bg-white/30'}`} />
+                <div
+                  key={alert.id}
+                  className={
+                    alert.urgent
+                      ? 'relative flex items-start gap-3 rounded-xl border border-rose-400/60 bg-rose-500/15 px-3 py-3 shadow-[0_0_18px_rgba(244,63,94,0.35)] ring-1 ring-rose-400/30 animate-[pulse-glow_2s_ease-in-out_infinite]'
+                      : 'flex items-start gap-3 border-b border-white/10 px-1 py-3 last:border-0'
+                  }
+                >
+                  <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${alert.urgent ? 'animate-pulse bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.9)]' : 'bg-white/30'}`} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-2">
-                      <p className="text-sm font-medium leading-5 text-white">{alert.message}</p>
+                      <p className={`text-sm leading-5 ${alert.urgent ? 'font-bold text-white' : 'font-medium text-white'}`}>{alert.message}</p>
                       {alert.urgent && (
-                        <span className="flex-shrink-0 rounded-full border border-rose-300/30 bg-rose-400/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-200">
-                          Urgent
+                        <span className="flex-shrink-0 animate-pulse rounded-full border border-rose-300/40 bg-rose-500/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-100">
+                          🚨 Urgent
                         </span>
                       )}
                     </div>
-                    <div className="mt-1 flex items-center gap-1 text-xs text-white/40">
+                    <div className={`mt-1 flex items-center gap-1 text-xs ${alert.urgent ? 'text-rose-200/80' : 'text-white/40'}`}>
                       <MapPin className="h-3 w-3" />{alert.time}
                     </div>
                   </div>

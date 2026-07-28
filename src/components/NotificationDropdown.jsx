@@ -161,7 +161,7 @@ const NotificationDropdown = ({ onClose, onNotificationRead }) => {
                 onClick={() => handleNotificationClick(notification)}
                 className={`w-full text-left p-3 rounded-xl text-sm transition-all duration-200 group border ${
                   isEmergency
-                    ? 'bg-red-500/10 border-red-400/40 hover:bg-red-500/20 hover:border-red-400/60 shadow-[0_0_20px_rgba(248,113,113,0.15)]'
+                    ? 'bg-red-500/10 border-red-400/40 hover:bg-red-500/20 hover:border-red-400/60 animate-[pulse-glow_2s_ease-in-out_infinite]'
                     : !notification.read
                       ? 'bg-blue-500/10 border-blue-400/30 hover:bg-blue-500/20 hover:border-blue-400/40'
                       : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
