@@ -15,6 +15,7 @@ import foodAidService, { WORKFLOW_LABELS } from '../services/foodAidService'
 import adminService from '../services/adminService'
 import LocationPicker from '../components/LocationPicker'
 import BARANGAY_CONFIG from '../config/barangayConfig'
+import { ilihanBoundary, ILIHAN_BOUNDS_LATLNG, ILIHAN_CENTER_LATLNG } from '../data/ilihanBoundary'
 import {
   TOLEDO_BARANGAYS, PUROKS_LIST, PUROK_COORDS,
   getPositionAsync, detectNearestBarangay,
@@ -258,6 +259,12 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
                 isDarkMode={isDarkMode}
                 originPin={DISTRIBUTION_HUB}
                 originLabel="Distribution Hub (Barangay Hall)"
+                boundaryGeoJSON={ilihanBoundary}
+                boundaryBounds={ILIHAN_BOUNDS_LATLNG}
+                lockCenter={ILIHAN_CENTER_LATLNG}
+                lockZoom={{ initial: 16, min: 15, max: 19 }}
+                boundaryLabel="Barangay Ilihan"
+                outsideBoundaryMessage="Delivery location must be inside Barangay Ilihan."
               />
 
             {/* Pin confirmation - barangay is fixed to Ilihan */}

@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
+import { isPointInIlihan } from '../utils/locationUtils'
 
 // ─── Anti-Spam Limits ────────────────────────────────────────────────────────
 // Residents are capped at MAX_PER_HOUR reports within a rolling hour and
@@ -74,6 +75,14 @@ class EmergencyService {
       const emergencyOverride = !proofProvided && !!data.emergencyOverride
       if (!proofProvided && !emergencyOverride) {
         return { success: false, error: 'Please upload a photo as proof of the emergency.' }
+      }
+
+      // Geofence check — mirrors the UI check in ReportEmergencyPage so a
+      // report with an out-of-barangay pin can't be saved even if the form
+      // check was somehow bypassed. A report with no pin at all is still
+      // allowed through (Purok is the required location signal in that case).
+      if (data.coords && !isPointInIlihan(data.coords.lat, data.coords.lng)) {
+        return { success: false, error: 'Emergency location must be inside Barangay Ilihan.' }
       }
 
       const nowIso = new Date().toISOString()

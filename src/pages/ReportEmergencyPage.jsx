@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -15,6 +14,8 @@ import storageService from '../services/storageService'
 import LocationPicker from '../components/LocationPicker'
 import ProofPreviewModal from '../components/ProofPreviewModal'
 import { PUROKS_ILIHAN } from '../constants/puroks'
+import { ilihanBoundary, ILIHAN_BOUNDS_LATLNG, ILIHAN_CENTER_LATLNG } from '../data/ilihanBoundary'
+import { isPointInIlihan } from '../utils/locationUtils'
 
 const PROOF_MAX_SIZE = 5 * 1024 * 1024 // 5MB
 const PROOF_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -339,6 +340,16 @@ const ReportEmergencyPage = () => {
       setError('Please upload a photo as proof of the emergency.')
       return
     }
+    // Geofence check: if a pin was dropped, it must fall inside Barangay
+    // Ilihan. (LocationPicker already blocks placing a pin outside the
+    // boundary in the first place — this is a second, defense-in-depth
+    // check right before submission, e.g. in case `coords` was set another
+    // way.) A report with no pin at all is still allowed — the Purok field
+    // is the required location signal in that case.
+    if (coords && !isPointInIlihan(coords.lat, coords.lng)) {
+      setError('Emergency location must be inside Barangay Ilihan.')
+      return
+    }
     setError('')
 
     // If reporting without a photo, confirm intent first.
@@ -590,7 +601,19 @@ const ReportEmergencyPage = () => {
               <label className="mb-1.5 block text-xs font-medium text-white/60">Specific Location / Landmark</label>
               <input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="e.g. Near the old chapel..." className={inputCls} />
             </div>
-            <LocationPicker value={coords} onChange={setCoords} isDarkMode={isDarkMode} />
+            <LocationPicker
+              value={coords}
+              onChange={setCoords}
+              isDarkMode={isDarkMode}
+              boundaryGeoJSON={ilihanBoundary}
+              boundaryBounds={ILIHAN_BOUNDS_LATLNG}
+              lockCenter={ILIHAN_CENTER_LATLNG}
+              lockZoom={{ initial: 16, min: 15, max: 19 }}
+              boundaryLabel="Barangay Ilihan"
+              outsideBoundaryMessage="Emergency location must be inside Barangay Ilihan."
+              pinLabel="Pin the Emergency Location"
+              pinLabelHint=""
+            />
           </div>
 
           {/* Description */}
@@ -691,18 +714,45 @@ const ReportEmergencyPage = () => {
           {/* Reporter Info */}
           <div className={`${card} space-y-4 p-5`}>
             <label className="block text-sm font-semibold text-white">Your Contact Information</label>
+            <p className="-mt-2 text-xs text-white/50">
+              Auto-filled from your profile and locked for accuracy. To change it, update your{' '}
+              <button type="button" onClick={() => navigate('/profile')} className="underline hover:text-white">
+                profile
+              </button>.
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-white/60">Full Name</label>
-                <input type="text" name="reporterName" value={formData.reporterName} onChange={handleChange} placeholder="Your full name" className={inputCls} required />
+                <input
+                  type="text"
+                  name="reporterName"
+                  value={formData.reporterName}
+                  readOnly
+                  placeholder="Your full name"
+                  className={`${inputCls} cursor-not-allowed opacity-70 hover:scale-100 hover:shadow-none focus:scale-100 focus:shadow-none`}
+                  required
+                />
               </div>
               <div>
                 <label className="mb-1.5 flex items-center text-xs font-medium text-white/60">
                   <Phone className="mr-1 h-3.5 w-3.5" />Phone Number
                 </label>
-                <input type="tel" name="reporterPhone" value={formData.reporterPhone} onChange={handleChange} placeholder="+63 xxx xxx xxxx" className={inputCls} required />
+                <input
+                  type="tel"
+                  name="reporterPhone"
+                  value={formData.reporterPhone}
+                  readOnly
+                  placeholder="+63 xxx xxx xxxx"
+                  className={`${inputCls} cursor-not-allowed opacity-70 hover:scale-100 hover:shadow-none focus:scale-100 focus:shadow-none`}
+                  required
+                />
               </div>
             </div>
+            {(!formData.reporterName || !formData.reporterPhone) && (
+              <p className="text-xs font-medium text-amber-300">
+                Your profile is missing a name or phone number — please add it in your profile before submitting.
+              </p>
+            )}
           </div>
 
           <div className="pt-2">
@@ -740,4 +790,3 @@ const ReportEmergencyPage = () => {
 }
 
 export default ReportEmergencyPage
-

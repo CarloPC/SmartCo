@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Polyline, GeoJSON, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { MapPin, Navigation, AlertCircle, CheckCircle2, Loader2, RotateCcw, Truck } from 'lucide-react'
-import { haversineDistance, estimateTravelTime } from '../utils/locationUtils'
+import { MapPin, Navigation, AlertCircle, CheckCircle2, Loader2, RotateCcw, Truck, ShieldAlert } from 'lucide-react'
+import { haversineDistance, estimateTravelTime, isPointInGeoJSONPolygon } from '../utils/locationUtils'
 
 // Fix Leaflet default icon broken by Vite bundler
 const _pinIcon = L.icon({
@@ -110,10 +110,46 @@ const GEO_STATES = {
  *  - isDarkMode: boolean
  *  - originPin: { lat, lng, name? } | null  ← optional Pin 1 (e.g. Distribution Hub)
  *  - originLabel: string                 ← label for Pin 1
+ *
+ * ─── Optional geofencing (all optional — omitting them keeps the map exactly
+ *     as it behaves today, e.g. for FoodAidPage's city-wide delivery picker) ───
+ *  - boundaryGeoJSON: GeoJSON Polygon Feature | null
+ *      When provided: drawn as an outline on the map, AND used to validate
+ *      every click/drag/GPS-fix — points outside it are rejected instead of
+ *      being placed.
+ *  - boundaryBounds: [[southLat,westLng],[northLat,eastLng]] | null
+ *      Leaflet `maxBounds` — panning/dragging beyond this elastically
+ *      bounces back. Should fully contain `boundaryGeoJSON`.
+ *  - lockCenter: [lat, lng] | null   ← permanent map center
+ *  - lockZoom: { initial, min, max } | null
+ *  - boundaryLabel: string           ← used in the default rejection message
+ *  - outsideBoundaryMessage: string  ← overrides the default rejection message
+ *  - pinLabel: string                ← header text (default: "Pin the Delivery Destination")
+ *  - pinLabelHint: string            ← small text next to pinLabel (default: "(recommended)"); pass '' to hide
  */
-const LocationPicker = ({ value, onChange, isDarkMode, originPin, originLabel }) => {
+const LocationPicker = ({
+  value, onChange, isDarkMode, originPin, originLabel,
+  boundaryGeoJSON = null,
+  boundaryBounds = null,
+  lockCenter = null,
+  lockZoom = null,
+  boundaryLabel = 'the allowed area',
+  outsideBoundaryMessage = null,
+  pinLabel = 'Pin the Delivery Destination',
+  pinLabelHint = '(recommended)',
+}) => {
   const [geoState, setGeoState] = useState(GEO_STATES.IDLE)
   const [mapRef] = useState(() => ({ current: null }))
+  const [boundaryWarning, setBoundaryWarning] = useState('')
+
+  const rejectMessage = outsideBoundaryMessage || `Location must be inside ${boundaryLabel}.`
+
+  // Returns true if the given coords pass the boundary check (or if there's
+  // no boundary restriction configured at all).
+  const isAllowed = useCallback((lat, lng) => {
+    if (!boundaryGeoJSON) return true
+    return isPointInGeoJSONPolygon(lat, lng, boundaryGeoJSON)
+  }, [boundaryGeoJSON])
 
   // Route info: compute when both origin and destination pins are set
   const routeInfo = (originPin && value)
@@ -129,25 +165,45 @@ const LocationPicker = ({ value, onChange, isDarkMode, originPin, originLabel })
     setGeoState(GEO_STATES.REQUESTING)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        onChange({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        const { latitude: lat, longitude: lng } = pos.coords
+        if (!isAllowed(lat, lng)) {
+          setBoundaryWarning(`Your current GPS location is outside ${boundaryLabel}. ${rejectMessage}`)
+          setGeoState(GEO_STATES.DENIED)
+          return
+        }
+        setBoundaryWarning('')
+        onChange({ lat, lng })
         setGeoState(GEO_STATES.GRANTED)
       },
       () => setGeoState(GEO_STATES.DENIED),
       { enableHighAccuracy: true, timeout: 12000 }
     )
-  }, [onChange])
+  }, [onChange, isAllowed, boundaryLabel, rejectMessage])
 
   const handleMarkerDrag = useCallback((e) => {
     const { lat, lng } = e.target.getLatLng()
+    if (!isAllowed(lat, lng)) {
+      setBoundaryWarning(rejectMessage)
+      // Snap the marker back — don't call onChange, so on re-render the
+      // Marker's `position` prop (driven by `value`) reverts it visually.
+      if (value) e.target.setLatLng([value.lat, value.lng])
+      return
+    }
+    setBoundaryWarning('')
     onChange({ lat, lng })
-  }, [onChange])
+  }, [onChange, isAllowed, rejectMessage, value])
 
   const handleMapClick = useCallback((coords) => {
+    if (!isAllowed(coords.lat, coords.lng)) {
+      setBoundaryWarning(rejectMessage)
+      return
+    }
+    setBoundaryWarning('')
     onChange(coords)
     if (geoState === GEO_STATES.IDLE) setGeoState(GEO_STATES.GRANTED)
-  }, [onChange, geoState])
+  }, [onChange, geoState, isAllowed, rejectMessage])
 
-  const handleReset = () => { onChange(null); setGeoState(GEO_STATES.IDLE) }
+  const handleReset = () => { onChange(null); setGeoState(GEO_STATES.IDLE); setBoundaryWarning('') }
 
   // Build positions list for auto-fit bounds
   const boundsPositions = [
@@ -155,9 +211,9 @@ const LocationPicker = ({ value, onChange, isDarkMode, originPin, originLabel })
     ...(value     ? [[value.lat,     value.lng    ]] : []),
   ]
 
-  // Default map center: origin hub if available, else Toledo City
-  const defaultCenter = originPin ? [originPin.lat, originPin.lng] : [10.3770, 123.6410]
-  const mapCenter     = value ? [value.lat, value.lng] : defaultCenter
+  // Default map center: locked center (when geofenced) > origin hub > Toledo City
+  const defaultCenter = lockCenter || (originPin ? [originPin.lat, originPin.lng] : [10.3770, 123.6410])
+  const mapCenter     = lockCenter || (value ? [value.lat, value.lng] : defaultCenter)
 
   return (
     <div className="space-y-3">
@@ -166,8 +222,8 @@ const LocationPicker = ({ value, onChange, isDarkMode, originPin, originLabel })
       <div className="flex items-center justify-between flex-wrap gap-2">
         <label className={`text-sm font-semibold flex items-center space-x-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
           <MapPin className="w-4 h-4 text-green-500" />
-          <span>Pin the Delivery Destination</span>
-          <span className={`text-xs font-normal ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>(recommended)</span>
+          <span>{pinLabel}</span>
+          {pinLabelHint && <span className={`text-xs font-normal ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{pinLabelHint}</span>}
         </label>
         {value && (
           <button
@@ -259,6 +315,16 @@ const LocationPicker = ({ value, onChange, isDarkMode, originPin, originLabel })
         </div>
       )}
 
+      {/* Boundary rejection banner */}
+      {boundaryWarning && (
+        <div className={`${isDarkMode ? 'bg-amber-950/30 border-amber-800/50' : 'bg-amber-50 border-amber-200'} border rounded-xl p-3 flex items-start space-x-3`}>
+          <ShieldAlert className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className={`text-sm font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+            {boundaryWarning}
+          </p>
+        </div>
+      )}
+
       {/* Destination coordinates display */}
       {value && (
         <div className={`${isDarkMode ? 'bg-green-950/30 border-green-800/50' : 'bg-green-50 border-green-200'} border rounded-xl px-4 py-2.5 flex items-center justify-between flex-wrap gap-2`}>
@@ -287,7 +353,11 @@ const LocationPicker = ({ value, onChange, isDarkMode, originPin, originLabel })
       >
         <MapContainer
           center={mapCenter}
-          zoom={value ? 14 : 13}
+          zoom={lockZoom?.initial ?? (value ? 14 : 13)}
+          minZoom={lockZoom?.min}
+          maxZoom={lockZoom?.max}
+          maxBounds={boundaryBounds || undefined}
+          maxBoundsViscosity={boundaryBounds ? 1.0 : undefined}
           style={{ height: '100%', width: '100%' }}
           whenCreated={(map) => { mapRef.current = map }}
         >
@@ -297,9 +367,17 @@ const LocationPicker = ({ value, onChange, isDarkMode, originPin, originLabel })
           />
           <MapClickHandler onMapClick={handleMapClick} />
 
-          {/* Auto-fit to show both pins */}
-          {boundsPositions.length > 0 && (
+          {/* Auto-fit to show both pins (skipped when the map is locked to a boundary) */}
+          {!lockCenter && boundsPositions.length > 0 && (
             <MapBoundsAutoFit positions={boundsPositions} />
+          )}
+
+          {/* Boundary outline — semi-transparent, purely visual guide */}
+          {boundaryGeoJSON && (
+            <GeoJSON
+              data={boundaryGeoJSON}
+              style={{ color: '#2563eb', weight: 3, fillOpacity: 0.08 }}
+            />
           )}
 
           {/* Pin 1: Origin hub (blue) — fixed */}
@@ -331,9 +409,11 @@ const LocationPicker = ({ value, onChange, isDarkMode, originPin, originLabel })
       </div>
 
       <p className={`text-xs text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-        {originPin
-          ? '🔵 Blue = Distribution Hub (origin)  ·  🟢 Green = Delivery destination. Click map or drag pin to adjust.'
-          : '📍 Click on the map to drop a pin, or drag the pin to adjust the location.'}
+        {boundaryGeoJSON
+          ? `📍 Click inside the outlined area to drop a pin. Map is locked to ${boundaryLabel}.`
+          : originPin
+            ? '🔵 Blue = Distribution Hub (origin)  ·  🟢 Green = Delivery destination. Click map or drag pin to adjust.'
+            : '📍 Click on the map to drop a pin, or drag the pin to adjust the location.'}
       </p>
     </div>
   )

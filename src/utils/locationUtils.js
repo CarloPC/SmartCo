@@ -1,5 +1,5 @@
-
 import { PUROKS_SHORT } from '../constants/puroks.js'
+import { ilihanBoundary } from '../data/ilihanBoundary.js'
 
 // Toledo City, Cebu “ Barangay GPS data
 export const TOLEDO_BARANGAYS = [
@@ -14,7 +14,7 @@ export const TOLEDO_BARANGAYS = [
   { id: 'tibag',           name: 'Tibag',                  lat: 10.3456, lng: 123.6234, terrain: 'mixed',       accessibility: 'good' },
   { id: 'subayon',         name: 'Subayon',                lat: 10.3889, lng: 123.6089, terrain: 'flat',        accessibility: 'good' },
   { id: 'ibo',             name: 'Ibo',                    lat: 10.3654, lng: 123.6445, terrain: 'flat',        accessibility: 'excellent' },
-  { id: 'ilihan',          name: 'Ilihan',                 lat: 10.3321, lng: 123.6187, terrain: 'hilly',       accessibility: 'moderate' },
+  { id: 'ilihan',          name: 'Ilihan',                 lat: 10.3820, lng: 123.6604, terrain: 'hilly',       accessibility: 'moderate' },
   { id: 'capitan-claudio', name: 'Capitan Claudio',        lat: 10.4102, lng: 123.6334, terrain: 'mixed',       accessibility: 'good' },
   { id: 'carolina',        name: 'Carolina',               lat: 10.3876, lng: 123.6621, terrain: 'flat',        accessibility: 'good' },
   { id: 'loay',            name: 'Loay',                   lat: 10.3567, lng: 123.6398, terrain: 'flat',        accessibility: 'good' },
@@ -28,7 +28,11 @@ export const TOLEDO_BARANGAYS = [
 export const PUROKS_LIST = PUROKS_SHORT
 
 // Distribution hub (Barangay Ilihan Hall)
-export const DISTRIBUTION_HUB = { lat: 10.3321, lng: 123.6187, name: 'Barangay Ilihan Hall' }
+// Verified against Toledo City Hall / Barangay Ilihan location (~10.3808–
+// 10.3820 N, 123.6594–123.6604 E per PhilAtlas and public geocoding
+// sources). Previous values (10.3321, 123.6187) actually pointed at
+// neighboring Barangay Awihao.
+export const DISTRIBUTION_HUB = { lat: 10.3820, lng: 123.6604, name: 'Barangay Ilihan Hall' }
 
 // Area  approximate barangay coordinates (for enriching legacy data)
 export const PUROK_COORDS = {
@@ -52,6 +56,48 @@ export const haversineDistance = (lat1, lng1, lat2, lng2) => {
     Math.cos(toR(lat1)) * Math.cos(toR(lat2)) * Math.sin(dLng / 2) ** 2
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
+
+/**
+ * Ray-casting point-in-polygon test.
+ * @param {number} lat
+ * @param {number} lng
+ * @param {Array<[number,number]>} ring  Array of [lat, lng] points forming a
+ *   closed (or unclosed — first/last need not match) polygon ring.
+ * @returns {boolean} true if (lat,lng) is inside the ring.
+ */
+export const isPointInRing = (lat, lng, ring) => {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [latI, lngI] = ring[i]
+    const [latJ, lngJ] = ring[j]
+    const intersects =
+      (lngI > lng) !== (lngJ > lng) &&
+      lat < ((latJ - latI) * (lng - lngI)) / (lngJ - lngI) + latI
+    if (intersects) inside = !inside
+  }
+  return inside
+}
+
+/**
+ * Checks whether a GeoJSON Polygon Feature contains the given point.
+ * Only supports a single outer ring (no holes) — sufficient for a barangay
+ * boundary. Coordinates in the GeoJSON are [lng, lat]; this function
+ * accepts plain lat/lng args to match the rest of this file's API.
+ */
+export const isPointInGeoJSONPolygon = (lat, lng, geoJsonFeature) => {
+  try {
+    const ring = geoJsonFeature.geometry.coordinates[0].map(([lngPt, latPt]) => [latPt, lngPt])
+    return isPointInRing(lat, lng, ring)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Convenience check specifically for the Barangay Ilihan boundary
+ * (used by the Emergency Report map/marker/submission validation).
+ */
+export const isPointInIlihan = (lat, lng) => isPointInGeoJSONPolygon(lat, lng, ilihanBoundary)
 
 /**
  * Returns the nearest Toledo City barangay to given GPS coordinates.
@@ -243,4 +289,3 @@ export const getPositionAsync = () =>
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     )
   })
-

@@ -25,16 +25,20 @@ export const BARANGAY_CONFIG = {
   implementationArea: 'Barangay Ilihan, Toledo City, Cebu',
   
   // Default Coordinates (Barangay Ilihan, Toledo City)
+  // Verified against Toledo City Hall / Barangay Ilihan location
+  // (~10.3808–10.3820 N, 123.6594–123.6604 E per PhilAtlas and public
+  // geocoding sources). Previous values (10.3321, 123.6187) actually
+  // pointed at neighboring Barangay Awihao.
   defaultCoordinates: {
-    lat: 10.3321,
-    lng: 123.6187,
+    lat: 10.3820,
+    lng: 123.6604,
   },
   
   // Distribution Hub (Barangay Hall)
   distributionHub: {
     name: 'Barangay Ilihan Hall',
-    lat: 10.3321,
-    lng: 123.6187,
+    lat: 10.3820,
+    lng: 123.6604,
   },
   
   // Multi-barangay expansion flag (currently false)
