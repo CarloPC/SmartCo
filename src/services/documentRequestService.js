@@ -1,4 +1,3 @@
-
 import {
   collection, addDoc, getDocs, getDoc, doc, updateDoc,
   query, where, orderBy, onSnapshot
@@ -136,6 +135,20 @@ class DocumentRequestService {
     }, error => {
       console.error('Error in document requests listener:', error)
       callback([])
+    })
+  }
+
+  // Live count of requests still needing action (official/admin dashboard
+  // badge). Unlike notification "unread" state, this only goes down when a
+  // request is actually approved/rejected — pressing/viewing the badge
+  // itself does nothing.
+  subscribeToPendingCount(callback) {
+    const q = query(collection(db, COLLECTION), where('status', '==', 'pending'))
+    return onSnapshot(q, snapshot => {
+      callback(snapshot.size)
+    }, error => {
+      console.error('Error in document pending-count listener:', error)
+      callback(0)
     })
   }
 

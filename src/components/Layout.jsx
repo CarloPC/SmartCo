@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Home, Calendar, Heart, Package, Shield, AlertTriangle } from 'lucide-react'
@@ -9,14 +8,30 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import adminService from '../services/adminService'
 import notificationService from '../services/notificationService'
+import documentRequestService from '../services/documentRequestService'
+import emergencyService from '../services/emergencyService'
 
 const Layout = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [showProfileSidebar, setShowProfileSidebar] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [notifBadges, setNotifBadges] = useState({})
+  const [actionBadges, setActionBadges] = useState({})
   const location = useLocation()
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
+  const isOfficial = adminService.isAdmin(user) || user?.role === 'barangay_official'
+
+  // Health / Food Aid / Events keep the original "unread notification" badge
+  // behavior. Document Requests and Emergencies instead reflect records that
+  // still need action (pending document requests / unactioned emergencies)
+  // — those two only clear once an official actually does something about
+  // them (approve/reject, or respond/reject/mark-fake), not just by viewing
+  // the sidebar or opening Notifications.
+  const navBadges = {
+    ...notifBadges,
+    ...(isOfficial ? actionBadges : {}),
+  }
 
   const isActive = (path) => location.pathname === path
 
@@ -37,6 +52,41 @@ const Layout = ({ children }) => {
       window.removeEventListener('notifications-updated', fetchUnreadCount)
     }
   }, [])
+
+  // Real-time per-module badges (Health, Food Aid, Events, Documents,
+  // Emergencies) so officials/admins see a red indicator on the nav item
+  // as soon as something new comes in, without needing to open Notifications.
+  useEffect(() => {
+    const unsubscribe = notificationService.subscribeToUnreadCounts(setNotifBadges)
+    return () => unsubscribe()
+  }, [user?.id])
+
+  // Action-based badges for Document Requests + Emergencies (officials/
+  // admins only — residents don't have permission to list all requests/
+  // emergencies, and the count wouldn't mean anything for their own view
+  // anyway). These override the notification-based counts above for just
+  // those two keys.
+  useEffect(() => {
+    if (!isOfficial) { setActionBadges({}); return }
+
+    let pendingDocs = 0
+    let pendingEmergencies = 0
+    const publish = () => setActionBadges({ document: pendingDocs, emergency: pendingEmergencies })
+
+    const unsubDocs = documentRequestService.subscribeToPendingCount((count) => {
+      pendingDocs = count
+      publish()
+    })
+    const unsubEmergencies = emergencyService.subscribeToPendingCount((count) => {
+      pendingEmergencies = count
+      publish()
+    })
+
+    return () => {
+      unsubDocs()
+      unsubEmergencies()
+    }
+  }, [isOfficial])
 
   const fetchUnreadCount = async () => {
     try {
@@ -97,7 +147,7 @@ const Layout = ({ children }) => {
         onNotificationRead={handleNotificationRead}
       />
 
-      <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={handleToggleSidebar} navBadges={navBadges} />
 
       {/* Main content ” transparent on pages with their own hero background so it bleeds through */}
       <main
@@ -125,18 +175,19 @@ const Layout = ({ children }) => {
         <div className={`flex items-center ${adminService.isAdmin(user) ? 'justify-between' : 'justify-around'} h-full px-2`}>
           {[
             { to: '/home',     Icon: Home,          label: 'Home',      match: '/home' },
-            { to: '/health',   Icon: Heart,         label: 'Health',    match: '/health' },
-            { to: '/food-aid', Icon: Package,       label: 'Food Aid',  match: '/food-aid' },
-            { to: '/events',   Icon: Calendar,      label: 'Events',    match: '/events' },
+            { to: '/health',   Icon: Heart,         label: 'Health',    match: '/health',   badgeKey: 'health' },
+            { to: '/food-aid', Icon: Package,       label: 'Food Aid',  match: '/food-aid', badgeKey: 'foodAid' },
+            { to: '/events',   Icon: Calendar,      label: 'Events',    match: '/events',   badgeKey: 'events' },
             { to: adminService.isAdmin(user) ? '/emergency' : '/emergency/report',
-                               Icon: AlertTriangle, label: 'Emergency', match: '/emergency', accent: true },
-          ].map(({ to, Icon, label, match, accent }) => {
+                               Icon: AlertTriangle, label: 'Emergency', match: '/emergency', accent: true, badgeKey: 'emergency' },
+          ].map(({ to, Icon, label, match, accent, badgeKey }) => {
             const active = location.pathname.startsWith(match)
+            const badgeCount = badgeKey ? (navBadges[badgeKey] || 0) : 0
             return (
               <Link
                 key={to}
                 to={to}
-                className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition ${
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition ${
                   hasCustomBackground
                     ? active
                       ? 'text-white'
@@ -150,7 +201,14 @@ const Layout = ({ children }) => {
                         : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <span className="relative">
+                  <Icon className="w-5 h-5" />
+                  {badgeCount > 0 && (
+                    <span className="absolute -top-1 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-900">
+                      {badgeCount > 9 ? '9+' : badgeCount}
+                    </span>
+                  )}
+                </span>
                 <span className="text-[10px] font-medium">{label}</span>
               </Link>
             )

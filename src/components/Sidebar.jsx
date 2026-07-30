@@ -1,6 +1,3 @@
-
-
-
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Stethoscope, Truck, Brain, FileText } from 'lucide-react'
@@ -9,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import adminService from '../services/adminService'
 import foodAidService from '../services/foodAidService'
 
-const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
+const Sidebar = ({ isCollapsed, onToggleCollapse, navBadges = {} }) => {
   const location = useLocation()
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
@@ -30,19 +27,21 @@ const Sidebar = ({ isCollapsed, onToggleCollapse }) => {
 
   const navItems = [
     { icon: Home,          label: 'Home',             path: '/home' },
-    { icon: Heart,         label: 'Health',           path: '/health' },
-    { icon: Package,       label: 'Food Aid',         path: '/food-aid' },
-    { icon: Calendar,      label: 'Events',           path: '/events' },
+    { icon: Heart,         label: 'Health',           path: '/health', badgeKey: 'health' },
+    { icon: Package,       label: 'Food Aid',         path: '/food-aid', badgeKey: 'foodAid' },
+    { icon: Calendar,      label: 'Events',           path: '/events', badgeKey: 'events' },
     {
       icon: FileText,
       label: 'Document Requests',
       path: (user?.role === 'admin' || user?.role === 'barangay_official') ? '/documents/manage' : '/documents',
+      badgeKey: 'document',
     },
     {
       icon: AlertTriangle,
       label: isAdmin ? 'Emergencies' : 'Report Emergency',
       path: isAdmin ? '/emergency' : '/emergency/report',
       accent: true,
+      badgeKey: 'emergency',
     },
   ]
 
@@ -123,6 +122,7 @@ blur-[140px]
         <div className="space-y-2 px-1">
           {navItems.map((item) => {
             const active = isActive(item.path)
+            const badgeCount = item.badgeKey ? (navBadges[item.badgeKey] || 0) : 0
             return (
               <Link
                 key={item.path}
@@ -146,13 +146,21 @@ blur-[140px]
                   />
                 )}
 
-                <item.icon
-                  className={`flex-shrink-0 w-5 h-5 transition-colors
-                    ${active ? 'text-white' : item.accent ? 'text-rose-200' : 'text-white/60 group-hover:text-white'}`}
-                />
+                <span className="relative flex-shrink-0">
+                  <item.icon
+                    className={`w-5 h-5 transition-colors
+                      ${active ? 'text-white' : item.accent ? 'text-rose-200' : 'text-white/60 group-hover:text-white'}`}
+                  />
+                  {/* Unread indicator ” shown even when collapsed */}
+                  {badgeCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-slate-900/80">
+                      {badgeCount > 9 ? '9+' : badgeCount}
+                    </span>
+                  )}
+                </span>
 
                 {!isCollapsed && (
-                  <span className={`font-medium text-sm ${active ? 'text-white font-semibold' : ''}`}>
+                  <span className={`flex-1 font-medium text-sm ${active ? 'text-white font-semibold' : ''}`}>
                     {item.label}
                   </span>
                 )}
@@ -160,7 +168,7 @@ blur-[140px]
                 {/* Tooltip on collapse */}
                 {isCollapsed && (
                   <div className="absolute left-full ml-3 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-lg bg-slate-900 text-white border border-white/10">
-                    {item.label}
+                    {item.label}{badgeCount > 0 ? ` (${badgeCount} new)` : ''}
                   </div>
                 )}
               </Link>
@@ -208,4 +216,3 @@ blur-[140px]
 }
 
 export default Sidebar
-

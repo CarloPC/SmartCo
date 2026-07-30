@@ -1,6 +1,6 @@
 import {
   collection, addDoc, getDocs, getDoc, doc, updateDoc,
-  query, where, orderBy
+  query, where, orderBy, onSnapshot
 } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
@@ -129,6 +129,20 @@ class EmergencyService {
       console.error('Error reporting emergency:', error)
       return { success: false, error: error.message }
     }
+  }
+
+  // Live count of emergencies still needing action (official/admin dashboard
+  // badge). An emergency only stops counting once an official actually acts
+  // on it — responds (status → 'active'), rejects, or marks it fake.
+  // Viewing/opening the sidebar or the Emergencies page does NOT clear this.
+  subscribeToPendingCount(callback) {
+    const q = query(collection(db, 'emergencies'), where('status', '==', 'pending'))
+    return onSnapshot(q, snapshot => {
+      callback(snapshot.size)
+    }, error => {
+      console.error('Error in emergency pending-count listener:', error)
+      callback(0)
+    })
   }
 
   // Get all emergencies (admin/official)

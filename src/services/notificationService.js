@@ -1,5 +1,18 @@
-import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore'
+import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot } from 'firebase/firestore'
 import { db, auth } from '../config/firebase'
+
+// Maps a notification's raw `category` field (set by whichever service created
+// it) to the nav item it should badge in the Sidebar / bottom nav. Some
+// services historically used slightly different category strings for the
+// same module (e.g. 'food_aid' vs 'foodaid'), so both are normalized here.
+const NAV_BADGE_CATEGORY_MAP = {
+  health: 'health',
+  food_aid: 'foodAid',
+  foodaid: 'foodAid',
+  events: 'events',
+  document: 'document',
+  emergency: 'emergency',
+}
 
 class NotificationService {
   async getNotifications() {
@@ -42,6 +55,46 @@ class NotificationService {
       console.error('Error fetching unread count:', error)
       return 0
     }
+  }
+
+  /**
+   * Real-time subscription used to badge the sidebar / bottom nav with a red
+   * indicator whenever a nav item (Health, Food Aid, Events, Document
+   * Requests, Emergencies) has unread notifications, so officials/admins
+   * don't miss anything new.
+   *
+   * `callback` is invoked with an object like { health: 2, foodAid: 1 } —
+   * only keys with count > 0 are included. Returns an unsubscribe function.
+   */
+  subscribeToUnreadCounts(callback) {
+    const userId = auth.currentUser?.uid
+    if (!userId) {
+      callback({})
+      return () => {}
+    }
+
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', userId),
+      where('read', '==', false)
+    )
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const counts = {}
+        snapshot.docs.forEach((docSnap) => {
+          const navKey = NAV_BADGE_CATEGORY_MAP[docSnap.data().category]
+          if (!navKey) return
+          counts[navKey] = (counts[navKey] || 0) + 1
+        })
+        callback(counts)
+      },
+      (error) => {
+        console.error('Error subscribing to unread counts:', error)
+        callback({})
+      }
+    )
   }
 
   async markAsRead(notificationId) {
