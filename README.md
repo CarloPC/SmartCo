@@ -27,7 +27,7 @@ SmartCo is an AI-powered Barangay Management System developed for **Barangay Ili
 
 ## ❤️ Health Management
 
-- AI Health Assistant (Google Gemini 2.5 Flash)
+- AI Health Assistant (Groq)
 - AI Health Assessment
 - Online Checkup Scheduling
 - Health Record Management
@@ -177,7 +177,7 @@ Official Puroks:
 
 ## Artificial Intelligence
 
-- Google Gemini 2.5 Flash
+- Groq
 - AI Health Assistant
 - AI Decision Support
 
@@ -291,6 +291,11 @@ Developed as a Bachelor of Science in Information Technology (BSIT) Capstone Pro
 # 👨‍💻 Developers
 
 Developed by the SmartCo Capstone Team
+Carlo Cañezares
+Gia Grace Vansie Aguilos
+Anilov Hector Climaco
+Levie Villarino
+
 
 Consolatrix College of Toledo City (CCTC)
 
