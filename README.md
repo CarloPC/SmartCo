@@ -291,9 +291,13 @@ Developed as a Bachelor of Science in Information Technology (BSIT) Capstone Pro
 # 👨‍💻 Developers
 
 Developed by the SmartCo Capstone Team
+
 Carlo Cañezares
+
 Gia Grace Vansie Aguilos
+
 Anilov Hector Climaco
+
 Levie Villarino
 
 
