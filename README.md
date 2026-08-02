@@ -1,66 +1,303 @@
-# SmartCo - Barangay Management System
 
-> **AI-Powered Community Management for Modern Barangays**
+# SmartCo
 
-## 🌟 Features
+![React](https://img.shields.io/badge/React-19-blue)
+![Firebase](https://img.shields.io/badge/Firebase-12-orange)
+![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-success)
+![Vite](https://img.shields.io/badge/Vite-7-purple)
+![License](https://img.shields.io/badge/License-Educational-green)
+### AI-Powered Barangay Health, Community Assistance, Event, and Emergency Management System
 
-- ✅ **Authentication System** - Secure login/register with protected routes
-- ✅ **Health Management** - AI-powered health checkup analysis and recommendations
-- ✅ **Event Management** - AI-optimized event scheduling with weather forecasts
-- ✅ **Food Aid Distribution** - Smart scheduling and route optimization
-- ✅ **Analytics Dashboard** - Real-time charts and statistics
-- ✅ **Dark Mode** - Beautiful dark/light theme support
-- ✅ **Responsive Design** - Works on all devices
-- ✅ **Data Persistence** - All data saved locally (ready for backend integration)
+SmartCo is an AI-powered Barangay Management System developed for **Barangay Ilihan, Toledo City, Cebu**. It digitalizes barangay services by providing centralized management for health services, community assistance, emergency reporting, document requests, events, and AI-assisted decision support.
 
-## 🚀 Quick Start
+---
 
-1. **Install dependencies**
-   ```bash
-   npm install 
-   ```
+# 🌟 Key Features
 
-2. **Start the app**
-   ```bash
-   npm run dev
-   ```
+## 👥 User Management
+- Secure Firebase Authentication
+- Resident Registration
+- Request Official/BHW Access with Proof Upload
+- Admin Approval for Role Requests
+- Profile Management
+- Password Reset via Email
+- Role-Based Access Control (Resident, Barangay Official, BHW, Admin)
 
-3. **Login with demo account**
-   - Email: `juan@smartco.ph`
-   - Password: `password123`
+---
 
-## 📝 Demo Accounts
+## ❤️ Health Management
 
-| Email | Password | Role |
-|-------|----------|------|
-| juan@smartco.ph | password123 | Barangay Official |
-| maria@smartco.ph | password123 | Health Worker |
-| pedro@smartco.ph | password123 | Volunteer |
+- AI Health Assistant (Google Gemini 2.5 Flash)
+- AI Health Assessment
+- Online Checkup Scheduling
+- Health Record Management
+- Checkup Approval Workflow
+- Dashboard Analytics
+- Purok-Based Statistics
+- Resident Health History
 
-## 📖 Documentation
+---
 
-See [BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md) for detailed documentation on:
-- Authentication system
-- Data services
-- API integration guide
-- Security considerations
-- How to connect to real backend
+## 🤝 Community Assistance
 
+*(Formerly Food Aid Module)*
 
+- Community Assistance Distribution
+- Beneficiary Management
+- Family Assignment
+- Cash Assistance / Food Assistance Support
+- Distribution Status Tracking
+- Priority Labels (Low / Medium / High)
+- CSV / Excel Export
+- AI Decision Support
+- Purok-Based Distribution Analytics
 
-# React + Vite
+---
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 🚨 Emergency Management
 
-Currently, two official plugins are available:
+- Emergency Reporting
+- Required Photo Evidence
+- GPS Location Detection
+- Barangay Ilihan Map Restriction
+- Emergency Priority Detection
+- Notification Override
+- Anti-Spam Protection
+- Emergency Status Tracking
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## 📄 Document Requests
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Residents can request:
 
-## Expanding the ESLint configuration
+- Barangay Certificate
+- Barangay Clearance
+- Certificate of Indigency
+- Certificate of Residency
+- Business Clearance
+- Other Documents
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Features:
+
+- Request Tracking
+- Approval / Rejection Workflow
+- Resident Notifications
+- Official Dashboard
+- Completion Status
+
+---
+
+## 📅 Event Management
+
+- Event Scheduling
+- Event Announcements
+- AI Schedule Recommendations
+- Attendance Monitoring
+- Weather-Aware Scheduling
+
+---
+
+## 🤖 AI Decision Support
+
+SmartCo includes an AI Decision Support module that analyzes barangay data and provides administrative recommendations.
+
+### AI analyzes:
+
+- Health Trends
+- Community Assistance Distribution
+- Emergency Reports
+- Document Requests
+- Event Scheduling
+
+Provides recommendations such as:
+
+- Assistance Prioritization
+- High-Risk Puroks
+- Workload Distribution
+- Pending Requests
+- Community Trends
+
+---
+
+## 🔔 Notification System
+
+- Real-Time Notifications
+- Notification Dropdown
+- Category Indicators
+- Read/Unread Status
+- Dashboard Badges
+- Emergency Priority Alerts
+
+---
+
+## 📊 Dashboard & Analytics
+
+- Health Charts
+- Community Assistance Charts
+- Emergency Statistics
+- Document Request Statistics
+- Event Analytics
+- Purok-Based Analytics
+- AI Insights Dashboard
+
+---
+
+## 🌍 Barangay Ilihan Integration
+
+Official Puroks:
+
+- Sitio Proper Ilihan
+- Cabulihan Uno
+- Cabulihan Dos
+- Sitio Mangga
+- Sambag Ilihan
+
+---
+
+# 🛠 Technology Stack
+
+## Frontend
+
+- React 19
+- Vite
+- Tailwind CSS
+- CSS Modules
+- React Router
+- Recharts
+- React Leaflet
+- Lucide React
+
+## Backend
+
+- Firebase Authentication
+- Firebase Firestore
+- Firebase Storage
+- Supabase Storage (Profile Images)
+
+## Artificial Intelligence
+
+- Google Gemini 2.5 Flash
+- AI Health Assistant
+- AI Decision Support
+
+## Database
+
+- Firebase Firestore (NoSQL)
+
+## Storage
+
+- Firebase Storage
+- Supabase Storage
+
+## Maps
+
+- OpenStreetMap
+- Leaflet
+- React Leaflet
+
+---
+
+# 🔐 Security Features
+
+- Firebase Authentication
+- Firestore Security Rules
+- Protected Routes
+- Role-Based Permissions
+- Admin Approval System
+- Proof Upload Verification
+- Emergency Anti-Spam Protection
+- Secure Password Reset
+
+---
+
+# 📱 Responsive Design
+
+Supports:
+
+- Desktop
+- Tablet
+- Mobile Phones
+
+Includes:
+
+- Dark Mode
+- Light Mode
+- Responsive Sidebar
+- Mobile Navigation
+
+---
+
+# 🚀 Installation
+
+Clone the repository
+
+```bash
+git clone https://github.com/CarloPC/SmartCo.git
+```
+
+Install dependencies
+
+```bash
+npm install
+```
+
+Run the development server
+
+```bash
+npm run dev
+```
+
+Build production
+
+```bash
+npm run build
+```
+
+Preview production build
+
+```bash
+npm run preview
+```
+
+---
+
+# 📂 Project Structure
+
+```
+src/
+ ├── components/
+ ├── pages/
+ ├── services/
+ ├── hooks/
+ ├── utils/
+ ├── config/
+ ├── assets/
+ └── styles/
+```
+
+---
+
+# 🎯 Capstone Project
+
+**Title**
+
+> SmartCo: An AI-Powered Barangay Health, Community Assistance, Event, Emergency, and Document Management System for Barangay Ilihan, Toledo City, Cebu
+
+Developed as a Bachelor of Science in Information Technology (BSIT) Capstone Project.
+
+---
+
+# 👨‍💻 Developers
+
+Developed by the SmartCo Capstone Team
+
+Consolatrix College of Toledo City (CCTC)
+
+Academic Year 2026–2027
+
+---
+
+# 📄 License
+
+This project is developed for educational and research purposes.
