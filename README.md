@@ -3,7 +3,7 @@
 
 ![React](https://img.shields.io/badge/React-19-blue)
 ![Firebase](https://img.shields.io/badge/Firebase-12-orange)
-![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-success)
+![Groq](https://img.shields.io/badge/AI-Groq-000000?logo=groq&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-7-purple)
 ![License](https://img.shields.io/badge/License-Educational-green)
 ### AI-Powered Barangay Health, Community Assistance, Event, and Emergency Management System
