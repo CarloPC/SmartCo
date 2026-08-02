@@ -313,6 +313,53 @@ async function analyzeFoodAid() {
 
   const topPriority = priorityRanking[0]
   if (topPriority) {
+    // Community Assistance AI Recommendation — beyond "which purok is
+    // overdue," also suggest WHICH assistance type(s) that purok most
+    // likely needs and why. Uses only data already collected elsewhere:
+    // beneficiaries logged on this purok's own schedules (Phase 2), and
+    // recent emergency/disaster reports for the same purok. Note: `purok`
+    // here is already the full/official name (PUROKS_ILIHAN name === short
+    // name — see constants/puroks.js), so it matches `d.purok` and `e.purok`
+    // directly with no extra lookup.
+    const purokSchedules = all.filter(d => d.purok === topPriority.purok)
+    const purokBeneficiaries = purokSchedules.flatMap(d => d.beneficiaries || [])
+    const qualifiedBeneficiaries = purokBeneficiaries.filter(b => b.status === 'pending' || b.status === 'scheduled')
+
+    const typeCounts = {}
+    qualifiedBeneficiaries.forEach(b => {
+      const t = (b.assistanceType === 'Others' && b.assistanceTypeOther) ? b.assistanceTypeOther : (b.assistanceType || 'Food Assistance')
+      typeCounts[t] = (typeCounts[t] || 0) + 1
+    })
+    const rankedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).map(([t]) => t)
+    const suggestedAssistanceTypes = rankedTypes.length > 0 ? rankedTypes.slice(0, 2) : ['Food Assistance']
+
+    let recentDisasterReports = 0
+    try {
+      const emergencies = await emergencyService.getEmergencies()
+      recentDisasterReports = (emergencies || []).filter(e =>
+        e.purok === topPriority.purok && daysSince(e.createdAt) <= 30 &&
+        /fire|flood|landslide|typhoon|disaster|earthquake/i.test(e.type || '')
+      ).length
+    } catch {
+      // Emergency data is a bonus signal here, not required — fail quietly.
+    }
+
+    const reasonBullets = []
+    if (qualifiedBeneficiaries.length > 0) {
+      reasonBullets.push(`Highest number of qualified beneficiaries (${qualifiedBeneficiaries.length} pending/scheduled)`)
+    }
+    reasonBullets.push(
+      topPriority.days === Infinity
+        ? 'No recorded completed distribution yet'
+        : `Longest waiting time (${topPriority.days} days since last completed distribution)`
+    )
+    if (recentDisasterReports > 0) {
+      reasonBullets.push(`Recent disaster reports (${recentDisasterReports} in the last 30 days)`)
+    }
+    if (topPriority.days === Infinity || topPriority.days >= 30) {
+      reasonBullets.push('No assistance received within the last 30 days')
+    }
+
     signals.push({
       module: MODULES.FOOD_AID,
       title: "Today's priority purok",
@@ -322,10 +369,12 @@ async function analyzeFoodAid() {
         purok: topPriority.purok,
         daysSinceLastServed: topPriority.days === Infinity ? 'never' : topPriority.days,
         rankedPuroks,
+        suggestedAssistanceTypes,
+        reasonBullets,
       },
-      summary: `${topPriority.purok} should be worked on first — ${topPriority.days === Infinity ? 'it has no recorded completed distribution' : `it has gone ${topPriority.days} days without one`}.`,
-      reason: `All ${PUROKS_ILIHAN.length} puroks were ranked by time since their last completed food aid distribution; ${topPriority.purok} has waited the longest.`,
-      suggestedAction: `Work puroks in this order: ${rankedPuroks.map(p => p.purok).join(' → ')}.`,
+      summary: `${topPriority.purok} should be worked on first for ${suggestedAssistanceTypes.join(' / ')} — ${topPriority.days === Infinity ? 'it has no recorded completed distribution' : `it has gone ${topPriority.days} days without one`}.`,
+      reason: reasonBullets.map(b => `• ${b}`).join('\n'),
+      suggestedAction: `Prioritize ${suggestedAssistanceTypes.join(' / ')} for ${topPriority.purok}. Work puroks in this order: ${rankedPuroks.map(p => p.purok).join(' → ')}.`,
     })
   }
 

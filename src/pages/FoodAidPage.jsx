@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -6,12 +6,18 @@ import 'leaflet/dist/leaflet.css'
 import {
   Package, MapPin, Navigation, AlertCircle, Clock, Users,
   TrendingUp, Loader2, XCircle, RefreshCw, Plus, Map, List,
-  Sparkles, Truck, Star, AlertTriangle, Shield
+  Sparkles, Truck, Star, AlertTriangle, Shield, UserPlus, Trash2, CheckCircle2, Download, Upload,
+  Search, X, Calendar, ChevronRight
 } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import foodAidService, { WORKFLOW_LABELS } from '../services/foodAidService'
+import foodAidService, {
+  WORKFLOW_LABELS, ASSISTANCE_TYPES, getAssistanceTypeLabel,
+  BENEFICIARY_STATUSES, BENEFICIARY_STATUS_LABELS,
+} from '../services/foodAidService'
+import { exportBeneficiariesToCSV, exportBeneficiariesToExcel } from '../utils/beneficiaryExport'
+import { readBeneficiaryFile } from '../utils/beneficiaryImport'
 import adminService from '../services/adminService'
 import LocationPicker from '../components/LocationPicker'
 import BARANGAY_CONFIG from '../config/barangayConfig'
@@ -102,11 +108,18 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
     timeSlot: 'Morning (8AM-10AM)', scheduleMode: 'preset',
     customStartTime: '08:00', customHours: '',
     totalFamilies: '', packageType: 'Mixed', description: '',
+    assistanceType: 'Food Assistance', assistanceTypeOther: '',
   })
   const [aiAnalysis,      setAiAnalysis]      = useState(null)
   const [isPosting,       setIsPosting]       = useState(false)
   const [pinCoords,       setPinCoords]       = useState(null)
   const [customPurokMode, setCustomPurokMode] = useState(false)
+
+  // ── Import Beneficiaries (staged locally, saved once the post is created) ──
+  const [pendingBeneficiaries, setPendingBeneficiaries] = useState([]) // [{ localId, name, purok, assistanceType, assistanceTypeOther, remarks }]
+  const [importFileName,       setImportFileName]       = useState('')
+  const [importSkipped,        setImportSkipped]        = useState(0)
+  const importFileInputRef = useRef(null)
 
   // Barangay is fixed to Ilihan for this deployment.
   const ilihanBarangay = TOLEDO_BARANGAYS.find(b => b.id === 'ilihan')
@@ -126,6 +139,47 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
   }, [pinCoords, form.date, form.purok])
 
   const set = (key, val) => setForm(p => ({ ...p, [key]: val }))
+
+  // ── Import Beneficiaries handlers ──────────────────────────────────────
+  const makeLocalId = () => `pb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+  const handleImportFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const { rows, skipped } = await readBeneficiaryFile(file)
+      if (rows.length === 0) { alert('No beneficiary rows were found. Make sure the file has a "Name" column.'); return }
+      const staged = rows.map(r => ({
+        localId: makeLocalId(),
+        name: r.name,
+        purok: r.purok || form.purok || '',
+        assistanceType: ASSISTANCE_TYPES.includes(r.assistanceType) ? r.assistanceType : (r.assistanceType ? 'Others' : form.assistanceType),
+        assistanceTypeOther: ASSISTANCE_TYPES.includes(r.assistanceType) ? '' : (r.assistanceType || (form.assistanceType === 'Others' ? form.assistanceTypeOther : '')),
+        remarks: r.remarks || '',
+      }))
+      setPendingBeneficiaries(prev => [...prev, ...staged])
+      setImportFileName(file.name)
+      setImportSkipped(skipped)
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  const addManualBeneficiaryRow = () => {
+    setPendingBeneficiaries(prev => [...prev, {
+      localId: makeLocalId(), name: '', purok: form.purok || '',
+      assistanceType: form.assistanceType, assistanceTypeOther: '', remarks: '',
+    }])
+  }
+
+  const updateBeneficiaryRow = (localId, key, val) => {
+    setPendingBeneficiaries(prev => prev.map(r => r.localId === localId ? { ...r, [key]: val } : r))
+  }
+
+  const removeBeneficiaryRow = (localId) => {
+    setPendingBeneficiaries(prev => prev.filter(r => r.localId !== localId))
+  }
 
   // ── Time helpers for the custom-hours / whole-day schedule modes ──
   const formatTime12h = (t) => {
@@ -170,13 +224,18 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
         return
       }
     }
+    const incompleteRow = pendingBeneficiaries.find(r => !r.name.trim())
+    if (incompleteRow) {
+      alert('Every beneficiary row needs a resident name — remove empty rows or fill them in.')
+      return
+    }
 
     const targetLat = pinCoords?.lat ?? ilihanBarangay?.lat
     const targetLng = pinCoords?.lng ?? ilihanBarangay?.lng
 
     try {
       setIsPosting(true)
-      await foodAidService.postDistribution({
+      const posted = await foodAidService.postDistribution({
         barangay:            ilihanBarangay?.name ?? BARANGAY_CONFIG.barangayName,
         barangayId:          ilihanBarangay?.id   ?? 'ilihan',
         barangayLat:         targetLat,
@@ -190,6 +249,8 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
         totalFamilies:       parseInt(form.totalFamilies),
         packageType:         form.packageType,
         description:         form.description,
+        assistanceType:      form.assistanceType,
+        assistanceTypeOther: form.assistanceType === 'Others' ? form.assistanceTypeOther.trim() : '',
         routeDistance:       aiAnalysis?.distanceKm,
         estimatedTravelTime: aiAnalysis?.travelTimeMin,
         terrain:             aiAnalysis?.terrain ?? ilihanBarangay?.terrain,
@@ -197,6 +258,23 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
         createdByName:       user?.fullName,
         aiOptimized:         !!pinCoords,
       })
+
+      // Beneficiaries staged during creation (imported file + manual rows) are
+      // saved with the same importBeneficiaries() call the standalone
+      // Beneficiary Manager uses, now targeting the distribution we just created.
+      if (pendingBeneficiaries.length > 0) {
+        await foodAidService.importBeneficiaries(
+          posted.id,
+          pendingBeneficiaries.map(r => ({
+            name: r.name.trim(),
+            purok: r.purok,
+            assistanceType: r.assistanceType === 'Others' ? (r.assistanceTypeOther.trim() || 'Others') : r.assistanceType,
+            remarks: r.remarks,
+          })),
+          form.assistanceType === 'Others' ? (form.assistanceTypeOther.trim() || 'Others') : form.assistanceType
+        )
+      }
+
       onSuccess()
     } catch (err) {
       alert('Error: ' + err.message)
@@ -210,27 +288,27 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
     ? ' bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-500'
     : ' bg-white border-gray-300 text-gray-900 placeholder-gray-400')
   const labelCls  = 'block text-xs font-semibold mb-1.5 uppercase tracking-wide ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')
-  const sectionCls = 'rounded-2xl p-4 border space-y-3 ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')
+  const sectionCls = 'rounded-2xl p-4 sm:p-5 border space-y-3.5 ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')
   const stepNum    = (n, color) => `w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-${color}-500`
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className={
-        'relative w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl shadow-2xl ' +
+        'relative w-full sm:max-w-2xl lg:max-w-4xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl shadow-2xl ' +
         (isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white')
       }>
         {/* Header */}
         <div className={
-          'sticky top-0 z-10 flex items-center justify-between p-4 border-b rounded-t-3xl sm:rounded-t-2xl ' +
+          'sticky top-0 z-10 flex items-center justify-between p-4 sm:p-5 border-b rounded-t-3xl sm:rounded-t-2xl ' +
           (isDarkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-100 bg-white')
         }>
-          <div className="flex items-center space-x-2">
-            <div className={'w-8 h-8 rounded-lg flex items-center justify-center ' + (isDarkMode ? 'bg-green-900/50' : 'bg-green-50')}>
-              <Package className={'w-4 h-4 ' + (isDarkMode ? 'text-green-400' : 'text-green-600')} />
+          <div className="flex items-center space-x-3">
+            <div className={'w-9 h-9 rounded-xl flex items-center justify-center ' + (isDarkMode ? 'bg-green-900/50' : 'bg-green-50')}>
+              <Package className={'w-4.5 h-4.5 ' + (isDarkMode ? 'text-green-400' : 'text-green-600')} />
             </div>
             <div>
-              <h3 className={'font-bold text-base ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Post Distribution Event</h3>
+              <h3 className={'font-bold text-base sm:text-lg ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Create Community Assistance</h3>
               <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>Barangay Official · Pin-First AI Route Analysis</p>
             </div>
           </div>
@@ -239,7 +317,7 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
           </button>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
 
           {/* ── Step 1: Pinpoint Location ── */}
           <div className={sectionCls}>
@@ -332,6 +410,18 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
               )}
             </div>
 
+            {/* Community Assistance Type */}
+            <div>
+              <label className={labelCls}>Community Assistance Type</label>
+              <select value={form.assistanceType} onChange={e => set('assistanceType', e.target.value)} className={inputCls}>
+                {ASSISTANCE_TYPES.map(t => <option key={t}>{t}</option>)}
+              </select>
+              {form.assistanceType === 'Others' && (
+                <input type="text" placeholder="Specify assistance type…" value={form.assistanceTypeOther}
+                  onChange={e => set('assistanceTypeOther', e.target.value)} className={inputCls + ' mt-2'} />
+              )}
+            </div>
+
             {/* Package Type */}
             <div>
               <label className={labelCls}>Package Type</label>
@@ -341,17 +431,110 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
             </div>
           </div>
 
-          {/* ── Step 3: Schedule ── */}
+          {/* ── Step 3: Import Beneficiaries ── */}
           <div className={sectionCls}>
             <div className="flex items-center space-x-2 mb-1">
-              <div className={stepNum(3, 'purple')}>3</div>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-amber-500">3</div>
+              <div>
+                <p className={'text-sm font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Import Beneficiaries</p>
+                <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>Optional — bring in a beneficiary list now, or add them later from the post.</p>
+              </div>
+            </div>
+
+            <input ref={importFileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleImportFileChange} className="hidden" />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button type="button" onClick={() => importFileInputRef.current?.click()}
+                className="flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition">
+                <Upload className="w-4 h-4" />
+                <span>Import CSV / Excel…</span>
+              </button>
+              <button type="button" onClick={addManualBeneficiaryRow}
+                className={'flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold transition border ' +
+                  (isDarkMode ? 'border-gray-700 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-100')}>
+                <UserPlus className="w-4 h-4" />
+                <span>Add Beneficiary Manually</span>
+              </button>
+            </div>
+
+            {importFileName && (
+              <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+                Loaded <strong>{importFileName}</strong> — {pendingBeneficiaries.length} row{pendingBeneficiaries.length === 1 ? '' : 's'} staged
+                {importSkipped > 0 && ` (${importSkipped} skipped — missing name)`}
+              </p>
+            )}
+
+            {/* Preview table — editable, removable, scrolls if long */}
+            {pendingBeneficiaries.length > 0 && (
+              <div className={'rounded-xl border overflow-hidden ' + (isDarkMode ? 'border-gray-700' : 'border-gray-200')}>
+                <div className="max-h-64 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className={'sticky top-0 ' + (isDarkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500')}>
+                      <tr>
+                        <th className="text-left font-semibold px-2 py-2">Resident Name</th>
+                        <th className="text-left font-semibold px-2 py-2">Purok</th>
+                        <th className="text-left font-semibold px-2 py-2">Remarks</th>
+                        <th className="px-2 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody className={'divide-y ' + (isDarkMode ? 'divide-gray-800' : 'divide-gray-100')}>
+                      {pendingBeneficiaries.map(row => (
+                        <tr key={row.localId}>
+                          <td className="px-2 py-1.5">
+                            <input value={row.name} onChange={e => updateBeneficiaryRow(row.localId, 'name', e.target.value)}
+                              placeholder="Resident name…"
+                              className={'w-full bg-transparent px-1.5 py-1 rounded border text-xs focus:outline-none focus:ring-1 focus:ring-green-500 ' +
+                                (isDarkMode ? 'border-gray-700 text-gray-200' : 'border-gray-200 text-gray-800')} />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <select value={row.purok} onChange={e => updateBeneficiaryRow(row.localId, 'purok', e.target.value)}
+                              className={'w-full bg-transparent px-1.5 py-1 rounded border text-xs focus:outline-none focus:ring-1 focus:ring-green-500 ' +
+                                (isDarkMode ? 'border-gray-700 text-gray-200' : 'border-gray-200 text-gray-800')}>
+                              <option value="">—</option>
+                              {PUROKS_LIST.map(p => <option key={p}>{p}</option>)}
+                            </select>
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input value={row.remarks} onChange={e => updateBeneficiaryRow(row.localId, 'remarks', e.target.value)}
+                              placeholder="Notes…"
+                              className={'w-full bg-transparent px-1.5 py-1 rounded border text-xs focus:outline-none focus:ring-1 focus:ring-green-500 ' +
+                                (isDarkMode ? 'border-gray-700 text-gray-200' : 'border-gray-200 text-gray-800')} />
+                          </td>
+                          <td className="px-2 py-1.5 text-right">
+                            <button type="button" onClick={() => removeBeneficiaryRow(row.localId)}
+                              className={'p-1 rounded ' + (isDarkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500')}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className={'px-3 py-2 text-xs border-t ' + (isDarkMode ? 'border-gray-700 text-gray-500 bg-gray-900/60' : 'border-gray-200 text-gray-500 bg-gray-50')}>
+                  Rows without their own assistance type will use <strong>{form.assistanceType === 'Others' ? (form.assistanceTypeOther || 'Others') : form.assistanceType}</strong> by default.
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Step 4: Schedule ── */}
+          <div className={sectionCls}>
+            <div className="flex items-center space-x-2 mb-1">
+              <div className={stepNum(4, 'purple')}>4</div>
               <p className={'text-sm font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Schedule & Capacity</p>
             </div>
 
-            <div>
-              <label className={labelCls}>Date *</label>
-              <input type="date" value={form.date} min={new Date().toISOString().split('T')[0]}
-                onChange={e => set('date', e.target.value)} className={inputCls} />
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Date *</label>
+                <input type="date" value={form.date} min={new Date().toISOString().split('T')[0]}
+                  onChange={e => set('date', e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Total Families to Serve *</label>
+                <input type="number" value={form.totalFamilies} min="1" placeholder="e.g. 50"
+                  onChange={e => set('totalFamilies', e.target.value)} className={inputCls} />
+              </div>
             </div>
 
             <div>
@@ -413,12 +596,6 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
                   )}
                 </div>
               )}
-            </div>
-
-            <div>
-              <label className={labelCls}>Total Families to Serve *</label>
-              <input type="number" value={form.totalFamilies} min="1" placeholder="e.g. 50"
-                onChange={e => set('totalFamilies', e.target.value)} className={inputCls} />
             </div>
 
             <div>
@@ -848,6 +1025,641 @@ function FoodAidWorkflowActions({ dist }) {
   return null
 }
 
+// ── Export Beneficiaries Modal ──────────────────────────────────────────
+// Scope is computed from the already-subscribed `distributions` list, so no
+// extra Firestore reads are needed for "All" / "Per Purok" / "Per Schedule".
+function ExportBeneficiariesModal({ distributions, isDarkMode, onClose }) {
+  const [scope, setScope] = useState('all')       // all | purok | schedule
+  const [purok, setPurok]   = useState(PUROKS_LIST[0] || '')
+  const [scheduleId, setScheduleId] = useState(distributions[0]?.id || '')
+
+  const inputBase = 'w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+  const inputCls  = inputBase + (isDarkMode
+    ? ' bg-gray-800 border-gray-700 text-gray-200'
+    : ' bg-white border-gray-300 text-gray-900')
+  const labelCls  = 'block text-xs font-semibold mb-1 uppercase tracking-wide ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+
+  const getBeneficiaries = () => {
+    if (scope === 'purok') {
+      return distributions.filter(d => d.purok === purok).flatMap(d => d.beneficiaries || [])
+    }
+    if (scope === 'schedule') {
+      const dist = distributions.find(d => d.id === scheduleId)
+      return dist?.beneficiaries || []
+    }
+    return distributions.flatMap(d => d.beneficiaries || [])
+  }
+
+  const filenameSuffix = scope === 'purok' ? purok.replace(/\s+/g, '_')
+    : scope === 'schedule' ? (distributions.find(d => d.id === scheduleId)?.date || scheduleId)
+    : 'all'
+
+  const handleExport = (format) => {
+    const beneficiaries = getBeneficiaries()
+    if (beneficiaries.length === 0) { alert('No beneficiaries found for this scope.'); return }
+    if (format === 'csv') exportBeneficiariesToCSV(beneficiaries, `beneficiaries_${filenameSuffix}.csv`)
+    else exportBeneficiariesToExcel(beneficiaries, `beneficiaries_${filenameSuffix}.xlsx`)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className={'relative w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl p-4 space-y-4 ' +
+        (isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white')}>
+        <div className="flex items-center justify-between">
+          <h3 className={'font-bold text-base ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Export Beneficiaries</h3>
+          <button onClick={onClose} className={'p-1.5 rounded-lg ' + (isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500')}>
+            <XCircle className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div>
+          <label className={labelCls}>Scope</label>
+          <select value={scope} onChange={e => setScope(e.target.value)} className={inputCls}>
+            <option value="all">All Beneficiaries</option>
+            <option value="purok">Per Purok</option>
+            <option value="schedule">Per Assistance Schedule</option>
+          </select>
+        </div>
+
+        {scope === 'purok' && (
+          <div>
+            <label className={labelCls}>Purok</label>
+            <select value={purok} onChange={e => setPurok(e.target.value)} className={inputCls}>
+              {PUROKS_LIST.map(p => <option key={p}>{p}</option>)}
+            </select>
+          </div>
+        )}
+
+        {scope === 'schedule' && (
+          <div>
+            <label className={labelCls}>Schedule</label>
+            <select value={scheduleId} onChange={e => setScheduleId(e.target.value)} className={inputCls}>
+              {distributions.map(d => (
+                <option key={d.id} value={d.id}>{d.purok} · {d.date} · {getAssistanceTypeLabel(d)}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <button onClick={() => handleExport('csv')}
+            className="flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-600 transition">
+            <Download className="w-4 h-4" /><span>CSV</span>
+          </button>
+          <button onClick={() => handleExport('excel')}
+            className="flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition">
+            <Download className="w-4 h-4" /><span>Excel</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Beneficiary Manager Modal ───────────────────────────────────────────
+// `dist` is passed in live from the parent's subscribeToFoodAid() list, so
+// this modal re-renders automatically as beneficiaries are added/updated.
+function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
+  const [form, setForm] = useState({ name: '', purok: dist.purok || '', assistanceType: dist.assistanceType || 'Food Assistance', assistanceTypeOther: '', remarks: '' })
+  const [busy, setBusy] = useState(false)
+  const [showManualAdd, setShowManualAdd] = useState(false)
+  const [importPreview, setImportPreview] = useState(null) // { rows, fileName, skipped }
+  const [importDefaultType, setImportDefaultType] = useState(dist.assistanceType || 'Food Assistance')
+  const [importDefaultOther, setImportDefaultOther] = useState('')
+  const [importBusy, setImportBusy] = useState(false)
+  const fileInputRef = useRef(null)
+  const beneficiaries = dist.beneficiaries || []
+  const [searchQuery, setSearchQuery] = useState('')
+  const filteredBeneficiaries = searchQuery.trim()
+    ? beneficiaries.filter(b => (b.name || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))
+    : beneficiaries
+
+  const set = (key, val) => setForm(p => ({ ...p, [key]: val }))
+
+  const inputBase = 'w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
+  const inputCls  = inputBase + (isDarkMode
+    ? ' bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-500'
+    : ' bg-white border-gray-300 text-gray-900 placeholder-gray-400')
+  const labelCls  = 'block text-xs font-semibold mb-1 uppercase tracking-wide ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+
+  const STATUS_CLS = {
+    pending:   'bg-amber-500/15 text-amber-500 border border-amber-500/30',
+    scheduled: 'bg-blue-500/15 text-blue-500 border border-blue-500/30',
+    received:  'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30',
+    completed: 'bg-gray-500/15 text-gray-400 border border-gray-500/30',
+  }
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // lets the same file be re-selected later if needed
+    if (!file) return
+    try {
+      const { rows, skipped } = await readBeneficiaryFile(file)
+      if (rows.length === 0) { alert('No beneficiary rows were found. Make sure the file has a "Name" column.'); return }
+      setImportPreview({ rows, fileName: file.name, skipped })
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  const handleConfirmImport = async () => {
+    if (!importPreview) return
+    if (importDefaultType === 'Others' && !importDefaultOther.trim()) {
+      alert('Please specify the default assistance type.'); return
+    }
+    try {
+      setImportBusy(true)
+      const resolvedDefault = importDefaultType === 'Others' ? importDefaultOther.trim() : importDefaultType
+      await foodAidService.importBeneficiaries(dist.id, importPreview.rows, resolvedDefault)
+      setImportPreview(null)
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setImportBusy(false)
+    }
+  }
+
+  const handleAdd = async () => {
+    if (!form.name.trim()) { alert('Resident name is required.'); return }
+    if (form.assistanceType === 'Others' && !form.assistanceTypeOther.trim()) {
+      alert('Please specify the assistance type.'); return
+    }
+    try {
+      setBusy(true)
+      await foodAidService.addBeneficiary(dist.id, form)
+      setForm({ name: '', purok: dist.purok || '', assistanceType: dist.assistanceType || 'Food Assistance', assistanceTypeOther: '', remarks: '' })
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleRemove = async (id) => {
+    if (!confirm('Remove this beneficiary?')) return
+    try { await foodAidService.removeBeneficiary(dist.id, id) }
+    catch (err) { alert('Error: ' + err.message) }
+  }
+
+  const handleStatus = async (id, status) => {
+    try { await foodAidService.updateBeneficiaryStatus(dist.id, id, status) }
+    catch (err) { alert('Error: ' + err.message) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className={
+        'relative w-full sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl shadow-2xl ' +
+        (isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white')
+      }>
+        {/* Sticky header + search — combined into one sticky block so both stay pinned while scrolling */}
+        <div className={
+          'sticky top-0 z-10 border-b rounded-t-3xl sm:rounded-t-2xl ' +
+          (isDarkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-100 bg-white')
+        }>
+          <div className="flex items-center justify-between p-4 pb-3">
+            <div>
+              <h3 className={'font-bold text-base ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>
+                {readOnly ? 'Beneficiaries' : 'Beneficiary Management'}
+              </h3>
+              <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+                {dist.barangay ? dist.barangay + ' · ' : ''}{dist.purok || 'Unspecified Purok'} · {dist.date}
+              </p>
+            </div>
+            <button onClick={onClose} className={'p-1.5 rounded-lg flex-shrink-0 ' + (isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500')}>
+              <XCircle className="w-5 h-5" />
+            </button>
+          </div>
+          {beneficiaries.length > 0 && (
+            <div className="px-4 pb-3">
+              <div className={'flex items-center gap-2 px-3 py-2 rounded-xl border ' +
+                (isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+                <Search className={'w-4 h-4 flex-shrink-0 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search Resident…"
+                  className={'flex-1 bg-transparent text-sm focus:outline-none ' + (isDarkMode ? 'text-gray-200 placeholder-gray-500' : 'text-gray-800 placeholder-gray-400')}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className={isDarkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}>
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 space-y-4">
+          {!readOnly && (
+            <>
+              {/* Import from CSV/Excel — primary way to bring in beneficiaries */}
+              <div className={'rounded-2xl p-4 border space-y-3 ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+                <p className={'text-sm font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Import Beneficiaries</p>
+                <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+                  Upload a CSV or Excel file with a <strong>Name</strong> column (Purok, Assistance Type, and Remarks columns are optional).
+                </p>
+                <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} className="hidden" />
+                <button onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition">
+                  <Upload className="w-4 h-4" />
+                  <span>Choose CSV / Excel File…</span>
+                </button>
+
+                {importPreview && (
+                  <div className={'rounded-xl border p-3 space-y-3 ' + (isDarkMode ? 'border-gray-700 bg-gray-900/60' : 'border-gray-200 bg-white')}>
+                    <div className="flex items-center justify-between">
+                      <p className={'text-xs font-semibold ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>
+                        {importPreview.fileName} — {importPreview.rows.length} row{importPreview.rows.length === 1 ? '' : 's'} ready
+                        {importPreview.skipped > 0 && ` (${importPreview.skipped} skipped — missing name)`}
+                      </p>
+                      <button onClick={() => setImportPreview(null)} className={isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}>
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="max-h-40 overflow-y-auto rounded-lg border divide-y text-xs "
+                      style={{ borderColor: isDarkMode ? '#374151' : '#e5e7eb' }}>
+                      {importPreview.rows.slice(0, 50).map((r, i) => (
+                        <div key={i} className={'px-2 py-1.5 flex justify-between gap-2 ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>
+                          <span className="truncate">{r.name}</span>
+                          <span className={'flex-shrink-0 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
+                            {r.purok || '—'} {r.assistanceType ? `· ${r.assistanceType}` : ''}
+                          </span>
+                        </div>
+                      ))}
+                      {importPreview.rows.length > 50 && (
+                        <p className={'px-2 py-1.5 italic ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
+                          + {importPreview.rows.length - 50} more…
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Default Assistance Type <span className="normal-case font-normal">(used for rows without their own type)</span></label>
+                      <select value={importDefaultType} onChange={e => setImportDefaultType(e.target.value)} className={inputCls}>
+                        {ASSISTANCE_TYPES.map(t => <option key={t}>{t}</option>)}
+                      </select>
+                      {importDefaultType === 'Others' && (
+                        <input type="text" placeholder="Specify assistance type…" value={importDefaultOther}
+                          onChange={e => setImportDefaultOther(e.target.value)} className={inputCls + ' mt-2'} />
+                      )}
+                    </div>
+
+                    <button disabled={importBusy} onClick={handleConfirmImport}
+                      className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-green-500 hover:bg-green-600 transition disabled:opacity-50">
+                      {importBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      <span>Import {importPreview.rows.length} Beneficiar{importPreview.rows.length === 1 ? 'y' : 'ies'}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Manual single add — kept as a fallback for one-off corrections */}
+              <button onClick={() => setShowManualAdd(v => !v)}
+                className={'text-xs font-semibold ' + (isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700')}>
+                {showManualAdd ? '− Hide manual add' : '+ Add one beneficiary manually'}
+              </button>
+
+              {showManualAdd && (
+                <div className={'rounded-2xl p-4 border space-y-3 ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+                  <div>
+                    <label className={labelCls}>Resident Name *</label>
+                    <input type="text" value={form.name} onChange={e => set('name', e.target.value)} className={inputCls} placeholder="e.g. Juan Dela Cruz" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Purok</label>
+                      <select value={form.purok} onChange={e => set('purok', e.target.value)} className={inputCls}>
+                        <option value="">Select Purok…</option>
+                        {PUROKS_LIST.map(p => <option key={p}>{p}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Assistance Type</label>
+                      <select value={form.assistanceType} onChange={e => set('assistanceType', e.target.value)} className={inputCls}>
+                        {ASSISTANCE_TYPES.map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  {form.assistanceType === 'Others' && (
+                    <input type="text" placeholder="Specify assistance type…" value={form.assistanceTypeOther}
+                      onChange={e => set('assistanceTypeOther', e.target.value)} className={inputCls} />
+                  )}
+                  <div>
+                    <label className={labelCls}>Remarks (optional)</label>
+                    <input type="text" value={form.remarks} onChange={e => set('remarks', e.target.value)} className={inputCls} placeholder="Notes…" />
+                  </div>
+                  <button disabled={busy} onClick={handleAdd}
+                    className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-green-500 hover:bg-green-600 transition disabled:opacity-50">
+                    {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                    <span>Add Beneficiary</span>
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Beneficiary list — visible to everyone; export/download always available */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className={'text-sm font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>
+                Beneficiaries ({filteredBeneficiaries.length}{searchQuery ? ` of ${beneficiaries.length}` : ''})
+              </p>
+              {beneficiaries.length > 0 && (
+                <div className="flex gap-1.5">
+                  <button onClick={() => exportBeneficiariesToCSV(beneficiaries, `beneficiaries_${dist.purok}_${dist.date}.csv`)}
+                    className={'flex items-center space-x-1 text-xs font-medium px-2 py-1 rounded-lg ' + (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600')}>
+                    <Download className="w-3 h-3" /><span>CSV</span>
+                  </button>
+                  <button onClick={() => exportBeneficiariesToExcel(beneficiaries, `beneficiaries_${dist.purok}_${dist.date}.xlsx`)}
+                    className={'flex items-center space-x-1 text-xs font-medium px-2 py-1 rounded-lg ' + (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600')}>
+                    <Download className="w-3 h-3" /><span>Excel</span>
+                  </button>
+                </div>
+              )}
+            </div>
+            {beneficiaries.length === 0 ? (
+              <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+                {readOnly ? 'No beneficiaries have been added yet.' : 'No beneficiaries added yet — import a file above to get started.'}
+              </p>
+            ) : filteredBeneficiaries.length === 0 ? (
+              <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+                No residents match "{searchQuery}".
+              </p>
+            ) : filteredBeneficiaries.map(b => (
+              <div key={b.id} className={'rounded-xl p-3 border ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className={'text-sm font-semibold truncate ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>{b.name}</p>
+                    <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+                      {b.purok || '—'} · {b.assistanceType === 'Others' && b.assistanceTypeOther ? b.assistanceTypeOther : b.assistanceType}
+                    </p>
+                    {b.remarks && <p className={'text-xs italic mt-0.5 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>{b.remarks}</p>}
+                    {b.dateReceived && <p className={'text-xs mt-0.5 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>📅 {b.dateReceived}</p>}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={'text-xs font-semibold px-2 py-0.5 rounded-full ' + STATUS_CLS[b.status]}>
+                      {BENEFICIARY_STATUS_LABELS[b.status]}
+                    </span>
+                    {!readOnly && (
+                      <button onClick={() => handleRemove(b.id)} className={'p-1 rounded ' + (isDarkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500')}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {!readOnly && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {BENEFICIARY_STATUSES.filter(s => s !== b.status).map(s => (
+                      <button key={s} onClick={() => handleStatus(b.id, s)}
+                        className={'flex items-center space-x-1 text-xs font-medium px-2 py-1 rounded-lg transition ' +
+                          (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-white hover:bg-gray-100 text-gray-600 border border-gray-200')}>
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Mark {BENEFICIARY_STATUS_LABELS[s]}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Distribution Detail Drawer ───────────────────────────────────────────────
+// Resident View redesign: cards are now click-to-expand. This drawer shows the
+// complete post — slide-over from the right on desktop, bottom sheet on mobile —
+// with large, modern action buttons instead of a cluster of tiny ones.
+function DistributionDetailDrawer({
+  dist, isDarkMode, isAdmin, userCoords, expandedPriority, onTogglePriority,
+  onClose, onViewBeneficiaries, onViewRoute,
+}) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  const badge = (() => {
+    if (dist.approvalStatus === 'pending')  return { label: 'Pending Approval', cls: 'bg-orange-500/20 text-orange-300 border border-orange-500/30' }
+    if (dist.approvalStatus === 'rejected') return { label: 'Rejected',         cls: 'bg-red-500/20 text-red-300 border border-red-500/30' }
+    const s = (dist.status || 'scheduled').toLowerCase().replace(/\s+/g, '-')
+    if (s === 'in-progress') return { label: 'In Progress', cls: 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' }
+    if (s === 'completed')   return { label: 'Completed',   cls: 'bg-green-500/20 text-green-300 border border-green-500/30' }
+    return { label: 'Scheduled', cls: 'bg-blue-500/20 text-blue-300 border border-blue-500/30' }
+  })()
+
+  const beneficiaryCount = (dist.beneficiaries || []).length
+  const distKm = userCoords && dist.barangayLat != null && dist.barangayLng != null
+    ? haversineDistance(userCoords.lat, userCoords.lng, dist.barangayLat, dist.barangayLng)
+    : null
+
+  const handleDownload = () => {
+    const lines = [
+      `Community Assistance Distribution`,
+      `================================`,
+      `Assistance Type: ${getAssistanceTypeLabel(dist)}`,
+      `Barangay: ${dist.barangay || BARANGAY_CONFIG.fullBarangayName}`,
+      `Purok: ${dist.purok || '—'}`,
+      `Status: ${badge.label}`,
+      dist.priority ? `Priority Level: ${dist.priority}` : null,
+      dist.priorityReason ? `Priority Reason: ${dist.priorityReason}` : null,
+      `Date: ${dist.date || '—'}`,
+      `Time: ${dist.timeSlot || '—'}`,
+      `Number of Beneficiaries: ${beneficiaryCount}`,
+      `Total Families Target: ${dist.totalFamilies ?? '—'}`,
+      `Delivered Families: ${dist.deliveredFamilies || 0}`,
+      dist.packageType ? `Package Type: ${dist.packageType}` : null,
+      `Created By: ${dist.createdByName || '—'}`,
+      dist.description ? `Description: ${dist.description}` : null,
+      dist.remarks ? `Notes: ${dist.remarks}` : null,
+    ].filter(Boolean).join('\n')
+
+    const blob = new Blob([lines], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `assistance_${(dist.purok || 'details').replace(/\s+/g, '_')}_${dist.date || ''}.txt`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  const panelBase = isDarkMode ? 'bg-gray-900 border-gray-700 text-gray-100' : 'bg-white border-gray-200 text-gray-900'
+  const fieldRow = 'flex items-start justify-between gap-3 py-2.5 border-b last:border-b-0 ' + (isDarkMode ? 'border-gray-800' : 'border-gray-100')
+  const fieldLabel = 'text-xs font-semibold uppercase tracking-wide flex-shrink-0 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')
+  const fieldValue = 'text-sm font-medium text-right ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')
+
+  return (
+    <div className="fixed inset-0 z-[9999]">
+      <div
+        className={'absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ' + (mounted ? 'opacity-100' : 'opacity-0')}
+        onClick={onClose}
+      />
+      {/* Panel: bottom sheet on mobile, right slide-over on desktop */}
+      <div
+        className={
+          'absolute inset-x-0 bottom-0 sm:inset-x-auto sm:right-0 sm:top-0 sm:h-full sm:w-[440px] max-w-full ' +
+          'max-h-[90vh] sm:max-h-none rounded-t-3xl sm:rounded-none border-t sm:border-t-0 sm:border-l shadow-2xl ' +
+          'flex flex-col transition-transform duration-300 ease-out ' +
+          (mounted ? 'translate-y-0 sm:translate-x-0' : 'translate-y-full sm:translate-y-0 sm:translate-x-full') +
+          ' ' + panelBase
+        }
+      >
+        {/* Sticky header */}
+        <div className={'sticky top-0 z-10 flex items-start justify-between gap-3 p-4 sm:p-5 border-b ' + (isDarkMode ? 'border-gray-800 bg-gray-900' : 'border-gray-100 bg-white')}>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className={'text-xs font-semibold px-2 py-0.5 rounded-full ' + badge.cls}>{badge.label}</span>
+              {dist.priority && PRIORITY_STYLES[dist.priority] && (
+                <span className={'text-xs font-semibold px-2 py-0.5 rounded-full ' + PRIORITY_STYLES[dist.priority].cls}>
+                  {PRIORITY_STYLES[dist.priority].emoji} {dist.priority.toUpperCase()}
+                </span>
+              )}
+            </div>
+            <h3 className="font-bold text-lg truncate">{getAssistanceTypeLabel(dist)}</h3>
+            <p className={'text-sm truncate ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+              {dist.barangay ? dist.barangay + ' · ' : ''}{dist.purok || 'Unspecified Purok'}
+            </p>
+          </div>
+          <button onClick={onClose} className={'flex-shrink-0 p-2 rounded-xl ' + (isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500')}>
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+          {dist.description && (
+            <div>
+              <p className={fieldLabel + ' mb-1'}>Description</p>
+              <p className="text-sm leading-relaxed">{dist.description}</p>
+            </div>
+          )}
+
+          <div>
+            <div className={fieldRow}>
+              <span className={fieldLabel}>Schedule</span>
+              <span className={fieldValue}>{dist.date}{dist.timeSlot ? ` · ${dist.timeSlot}` : ''}</span>
+            </div>
+            <div className={fieldRow}>
+              <span className={fieldLabel}>Number of Beneficiaries</span>
+              <span className={fieldValue}>{beneficiaryCount}</span>
+            </div>
+            <div className={fieldRow}>
+              <span className={fieldLabel}>Families Target</span>
+              <span className={fieldValue}>{dist.deliveredFamilies || 0} / {dist.totalFamilies || 0}</span>
+            </div>
+            {dist.packageType && (
+              <div className={fieldRow}>
+                <span className={fieldLabel}>Package Type</span>
+                <span className={fieldValue}>{dist.packageType}</span>
+              </div>
+            )}
+            {distKm != null && (
+              <div className={fieldRow}>
+                <span className={fieldLabel}>Distance</span>
+                <span className={fieldValue}>{distKm.toFixed(1)} km away</span>
+              </div>
+            )}
+            <div className={fieldRow}>
+              <span className={fieldLabel}>Created By</span>
+              <span className={fieldValue}>{dist.createdByName || '—'}</span>
+            </div>
+            {dist.remarks && (
+              <div className={fieldRow}>
+                <span className={fieldLabel}>Notes</span>
+                <span className={fieldValue}>{dist.remarks}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Priority reasoning — same AI explainability panel, now always reachable from the drawer */}
+          {dist.priority && dist.prioritySource && (
+            <div>
+              <button
+                onClick={() => onTogglePriority(dist.id)}
+                className={'flex items-center gap-1.5 text-xs font-semibold ' + (isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700')}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                {expandedPriority[dist.id] ? 'Hide priority details' : 'Why this priority level?'}
+              </button>
+              {expandedPriority[dist.id] && (
+                <div className={'mt-2 rounded-xl border p-3 text-xs space-y-1 ' + (isDarkMode ? 'border-gray-800 bg-gray-800/50 text-gray-300' : 'border-gray-100 bg-gray-50 text-gray-600')}>
+                  <p><span className="font-semibold">Assigned by:</span> {dist.prioritySource}</p>
+                  {dist.suggestedAssistanceTypes?.length > 0 && (
+                    <p><span className="font-semibold">Suggested Assistance:</span> {dist.suggestedAssistanceTypes.join(' / ')}</p>
+                  )}
+                  {dist.priorityReason && <p><span className="font-semibold">Reason:</span> {dist.priorityReason}</p>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Admin operations — kept fully intact, just relocated out of the crowded card */}
+          {isAdmin && (
+            <div className={'rounded-xl border p-3 space-y-2.5 ' + (isDarkMode ? 'border-gray-800 bg-gray-800/40' : 'border-gray-100 bg-gray-50')}>
+              <p className={fieldLabel}>Barangay Official Tools</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-blue-500/15 px-2.5 py-1 text-xs font-semibold text-blue-400">
+                  {WORKFLOW_LABELS[dist.progress?.workflowStatus] || 'Approved'}
+                </span>
+                {dist.assignedVolunteer?.name && (
+                  <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-400">
+                    👤 {dist.assignedVolunteer.name}
+                  </span>
+                )}
+                <FoodAidWorkflowActions dist={dist} />
+              </div>
+              {dist.totalFamilies > 0 && (
+                <div className="pt-1">
+                  <div className={'flex justify-between text-xs mb-1 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+                    <span>Distribution Progress</span>
+                    <span className="font-semibold">{Math.min(100, Math.round(((dist.deliveredFamilies || 0) / dist.totalFamilies) * 100))}%</span>
+                  </div>
+                  <div className={'w-full h-2 rounded-full overflow-hidden ' + (isDarkMode ? 'bg-gray-700' : 'bg-gray-200')}>
+                    <div className="h-2 rounded-full bg-emerald-400 transition-all duration-500"
+                      style={{ width: `${Math.min(100, Math.round(((dist.deliveredFamilies || 0) / dist.totalFamilies) * 100))}%` }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Sticky footer — large, modern action buttons */}
+        <div className={'sticky bottom-0 p-4 sm:p-5 border-t space-y-2.5 ' + (isDarkMode ? 'border-gray-800 bg-gray-900' : 'border-gray-100 bg-white')}>
+          <button onClick={onViewBeneficiaries}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg transition hover:from-emerald-600 hover:to-green-700">
+            <Users className="w-4.5 h-4.5" />
+            <span>View Beneficiary List ({beneficiaryCount})</span>
+          </button>
+          <button onClick={onViewRoute}
+            className={'w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition ' +
+              (isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-100 border border-gray-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200')}>
+            <Calendar className="w-4 h-4" />
+            <span>View Full Schedule &amp; Route</span>
+          </button>
+          <button onClick={handleDownload}
+            className={'w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition ' +
+              (isDarkMode ? 'bg-gray-800/60 hover:bg-gray-800 text-gray-300 border border-gray-800' : 'bg-white hover:bg-gray-50 text-gray-600 border border-gray-200')}>
+            <Download className="w-4 h-4" />
+            <span>Download Details</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────────────────
 const FoodAidPage = () => {
   const { isDarkMode } = useTheme()
@@ -871,7 +1683,12 @@ const FoodAidPage = () => {
   const [showPostModal, setShowPostModal] = useState(false)
   const [routeDist,     setRouteDist]     = useState(null)
   const [expandedPriority, setExpandedPriority] = useState({})
-  
+  const [beneficiaryDistId, setBeneficiaryDistId] = useState(null)
+  const beneficiaryDist = distributions.find(d => d.id === beneficiaryDistId) || null
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [detailDistId, setDetailDistId] = useState(null)
+  const detailDist = distributions.find(d => d.id === detailDistId) || null
+
 
   useEffect(() => {
     detectLocation()
@@ -999,18 +1816,25 @@ const FoodAidPage = () => {
                 GPS-smart route optimization
               </div>
               <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Food Aid Distribution
+                Community Assistance Distribution
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
                 Track deliveries and get AI-optimized routes to every barangay.
               </p>
             </div>
             {isAdmin && (
-              <button onClick={() => setShowPostModal(true)}
-                className="hidden sm:inline-flex items-center gap-2 self-start rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:from-blue-600 hover:to-indigo-700 lg:self-center">
-                <Plus className="h-4 w-4" />
-                <span>Post Distribution</span>
-              </button>
+              <div className="hidden sm:flex items-center gap-2 self-start lg:self-center">
+                <button onClick={() => setShowExportModal(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-white/20">
+                  <Download className="h-4 w-4" />
+                  <span>Export</span>
+                </button>
+                <button onClick={() => setShowPostModal(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:from-blue-600 hover:to-indigo-700">
+                  <Plus className="h-4 w-4" />
+                  <span>Post Distribution</span>
+                </button>
+              </div>
             )}
           </div>
         </section>
@@ -1209,7 +2033,7 @@ const FoodAidPage = () => {
                 <p className="mb-4 text-xs text-white/50">
                   {statusFilter !== 'all'
                     ? 'Try changing the status filter above.'
-                    : 'No food aid distributions have been posted yet. Check back soon.'}
+                    : 'No community assistance distributions have been posted yet. Check back soon.'}
                 </p>
                 {isAdmin && (
                   <>
@@ -1225,9 +2049,14 @@ const FoodAidPage = () => {
                 const badge  = getStatusBadge(d.status, d.approvalStatus)
                 const distKm = d.distanceAway
                 const isNearest = userCoords && idx === 0
+                const beneficiaryCount = (d.beneficiaries || []).length
 
                 return (
-                  <div key={d.id} className={`${card} p-4`}>
+                  <button
+                    key={d.id}
+                    onClick={() => setDetailDistId(d.id)}
+                    className={`${card} w-full p-4 sm:p-5 text-left group cursor-pointer`}
+                  >
                     {isNearest && (
                       <div className="mb-2 flex items-center space-x-1.5 text-xs font-bold text-emerald-300">
                         <Star className="w-3.5 h-3.5" />
@@ -1235,12 +2064,17 @@ const FoodAidPage = () => {
                       </div>
                     )}
 
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-white">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-bold text-white truncate">
+                            {getAssistanceTypeLabel(d)}
+                          </h4>
+                        </div>
+                        <p className="text-sm text-white/70 truncate mt-0.5">
                           {d.barangay ? d.barangay + ' · ' + (d.purok || '') : d.purok}
-                        </h4>
-                        <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-white/60">
+                        </p>
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-white/60">
                           <div className="flex items-center space-x-1">
                             <Clock className="w-3.5 h-3.5" />
                             <span>{d.date}{d.timeSlot ? ' · ' + d.timeSlot : ''}</span>
@@ -1255,14 +2089,26 @@ const FoodAidPage = () => {
                               <span>{distKm.toFixed(1)} km away</span>
                             </div>
                           )}
-                          {d.packageType && (
+                          {beneficiaryCount > 0 && (
                             <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/70">
-                              📦 {d.packageType}
+                              {beneficiaryCount} beneficiar{beneficiaryCount === 1 ? 'y' : 'ies'}
                             </span>
                           )}
                         </div>
+                        {isAdmin && (
+                          <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white/60">
+                              {WORKFLOW_LABELS[d.progress?.workflowStatus] || 'Approved'}
+                            </span>
+                            {d.assignedVolunteer?.name && (
+                              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                                👤 {d.assignedVolunteer.name}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0 ml-2">
+                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                         {d.priority && PRIORITY_STYLES[d.priority] && (
                           <span className={'text-xs font-semibold px-2.5 py-1 rounded-full ' + PRIORITY_STYLES[d.priority].cls}>
                             {PRIORITY_STYLES[d.priority].emoji} {d.priority.toUpperCase()}
@@ -1274,67 +2120,23 @@ const FoodAidPage = () => {
                       </div>
                     </div>
 
-                    {d.priority && d.prioritySource && (
-                      <div className="mb-3">
-                        <button
-                          onClick={() => setExpandedPriority(m => ({ ...m, [d.id]: !m[d.id] }))}
-                          className="flex items-center gap-1 text-xs font-medium text-white/50 hover:text-white/80"
-                        >
-                          <Sparkles className="w-3 h-3 text-emerald-300" />
-                          {expandedPriority[d.id] ? 'Hide priority details' : 'Why this priority?'}
-                        </button>
-                        {expandedPriority[d.id] && (
-                          <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70 space-y-1">
-                            <p><span className="font-semibold text-white/90">Assigned by:</span> {d.prioritySource}</p>
-                            {d.priorityReason && (
-                              <p><span className="font-semibold text-white/90">Reason:</span> {d.priorityReason}</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Workflow stage · assigned volunteer · admin actions */}
-                    {isAdmin && (
-                      <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white/70">
-                          {WORKFLOW_LABELS[d.progress?.workflowStatus] || 'Approved'}
-                        </span>
-                        {d.assignedVolunteer?.name && (
-                          <span className="rounded-full bg-emerald-500/20 px-2.5 py-1 text-xs font-semibold text-emerald-200">
-                            👤 {d.assignedVolunteer.name}
-                          </span>
-                        )}
-                        <FoodAidWorkflowActions dist={d} />
-                      </div>
-                    )}
-
-                    {/* Delivery progress bar */}
+                    {/* Delivery progress bar — kept at a glance since it's the most-checked stat */}
                     {d.totalFamilies > 0 && (
-                      <div className="mb-3 pt-3 border-t border-white/10">
-                        <div className="flex items-center justify-between text-xs mb-1.5 text-white/50">
-                          <span>Distribution Progress</span>
-                          <span className="font-semibold">{d.deliveredFamilies || 0} / {d.totalFamilies} families</span>
-                        </div>
-                        <div className="w-full h-2 rounded-full overflow-hidden bg-white/10">
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
                           <div
-                            className="h-2 rounded-full bg-emerald-400 transition-all duration-500"
+                            className="h-1.5 rounded-full bg-emerald-400 transition-all duration-500"
                             style={{ width: `${Math.min(100, Math.round(((d.deliveredFamilies || 0) / d.totalFamilies) * 100))}%` }}
                           />
                         </div>
-                        <p className="text-xs mt-1 text-right text-white/40">
-                          {Math.min(100, Math.round(((d.deliveredFamilies || 0) / d.totalFamilies) * 100))}% complete
-                        </p>
                       </div>
                     )}
 
-                    {/* AI Route button */}
-                    <button onClick={() => setRouteDist(d)}
-                      className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-medium transition bg-white/10 hover:bg-white/20 text-white/80 hover:text-white">
-                      <Sparkles className="w-4 h-4 text-emerald-300" />
-                      <span>View AI Route from {userCoords ? 'My Location' : 'Hub'}</span>
-                    </button>
-                  </div>
+                    <div className="mt-3 flex items-center justify-between text-xs font-semibold text-white/50 group-hover:text-white/80 transition">
+                      <span>Tap to view details</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </button>
                 )
               })
             )}
@@ -1369,6 +2171,23 @@ const FoodAidPage = () => {
       {routeDist && (
         <RouteModal dist={routeDist} userCoords={userCoords} userBarangay={userBarangay}
           isDarkMode={isDarkMode} onClose={() => setRouteDist(null)} />
+      )}
+      {beneficiaryDist && (
+        <BeneficiaryManagerModal dist={beneficiaryDist} isDarkMode={isDarkMode} readOnly={!isAdmin}
+          onClose={() => setBeneficiaryDistId(null)} />
+      )}
+      {detailDist && (
+        <DistributionDetailDrawer
+          dist={detailDist} isDarkMode={isDarkMode} isAdmin={isAdmin} userCoords={userCoords}
+          expandedPriority={expandedPriority} onTogglePriority={id => setExpandedPriority(m => ({ ...m, [id]: !m[id] }))}
+          onClose={() => setDetailDistId(null)}
+          onViewBeneficiaries={() => setBeneficiaryDistId(detailDist.id)}
+          onViewRoute={() => setRouteDist(detailDist)}
+        />
+      )}
+      {showExportModal && (
+        <ExportBeneficiariesModal distributions={distributions} isDarkMode={isDarkMode}
+          onClose={() => setShowExportModal(false)} />
       )}
     </div>
   )

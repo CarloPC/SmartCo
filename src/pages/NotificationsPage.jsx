@@ -39,7 +39,7 @@ const getNotificationLabel = (notification) => {
       return 'View Health'
     case 'food_aid':
     case 'foodaid':
-      return 'View Food Aid'
+      return 'View Community Assistance'
     case 'emergency':
       return 'View Emergency'
     case 'document':

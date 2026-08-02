@@ -33,6 +33,44 @@ export const WORKFLOW_LABELS = {
   cancelled:            'Cancelled',
 }
 
+// ── Assistance Types (Community Assistance module) ─────────────────────────
+// 'Food Assistance' stays first/default so every existing distribution
+// (created before this field existed) reads correctly as food aid.
+export const ASSISTANCE_TYPES = [
+  'Food Assistance',
+  'Financial Assistance',
+  'Medical Assistance',
+  'Educational Assistance',
+  'Livelihood Assistance',
+  'Disaster Relief',
+  'Senior Citizen Assistance',
+  'PWD Assistance',
+  'Solo Parent Assistance',
+  'Others',
+]
+
+// Resolves the display label for a schedule/distribution's assistance type,
+// falling back to the free-text value when "Others" was selected.
+export function getAssistanceTypeLabel(dist) {
+  if (!dist) return 'Food Assistance'
+  if (dist.assistanceType === 'Others' && dist.assistanceTypeOther) return dist.assistanceTypeOther
+  return dist.assistanceType || 'Food Assistance'
+}
+
+// ── Beneficiary Management ──────────────────────────────────────────────
+// Beneficiaries are stored as a `beneficiaries` array field directly on the
+// foodAid document (per schema requirement) rather than a subcollection, so
+// each distribution stays self-contained and updates through the existing
+// subscribeToFoodAid() real-time listener with no extra queries.
+export const BENEFICIARY_STATUSES = ['pending', 'scheduled', 'received', 'completed']
+
+export const BENEFICIARY_STATUS_LABELS = {
+  pending:   'Pending',
+  scheduled: 'Scheduled',
+  received:  'Received',
+  completed: 'Completed',
+}
+
 /**
  * Back-compat: older docs (created before this workflow existed) won't have a
  * `workflowStatus` field. Derive a reasonable stage from the legacy
@@ -186,7 +224,8 @@ class FoodAidService {
       }
 
       const areaLabel = [purok, barangay].filter(Boolean).join(', ') || 'your area'
-      const message = `🍱 Food Aid Alert: Distribution scheduled at ${areaLabel} on ${distData.date} (${distData.timeSlot || 'Morning'}). ${distData.totalFamilies} families will be served. Open the Food Aid page to view the route and track progress.`
+      const typeLabel = getAssistanceTypeLabel(distData)
+      const message = `🍱 Community Assistance Alert: ${typeLabel} scheduled at ${areaLabel} on ${distData.date} (${distData.timeSlot || 'Morning'}). ${distData.totalFamilies} families will be served. Open the Community Assistance page to view the route and track progress.`
 
       await Promise.all(
         targets.map(u =>
@@ -328,7 +367,7 @@ class FoodAidService {
   // create a pending distribution for it instead of failing. This makes
   // "Apply Recommendation" work the same whether the last post came from the
   // Post Distribution modal or the Analyze & Optimize Route flow.
-  async applyAIPriorityRecommendation(purok, { priority, reason, source = 'AI Decision Support' } = {}) {
+  async applyAIPriorityRecommendation(purok, { priority, reason, source = 'AI Decision Support', suggestedAssistanceTypes = [] } = {}) {
     try {
       const candidates = await this.getFoodAidByPurok(purok)
       const active = candidates
@@ -343,6 +382,7 @@ class FoodAidService {
           prioritySource: source,
           priorityReason: reason,
           priorityAppliedAt: new Date().toISOString(),
+          suggestedAssistanceTypes,
         })
         return { success: true, schedule: result.schedule, created: false }
       }
@@ -355,11 +395,13 @@ class FoodAidService {
         date: new Date().toISOString().split('T')[0],
         totalFamilies: 0,
         packageType: 'Mixed',
+        assistanceType: suggestedAssistanceTypes[0] || 'Food Assistance',
         notes: 'Auto-created from an applied AI Decision Support recommendation. Update the details before distribution day.',
         priority,
         prioritySource: source,
         priorityReason: reason,
         priorityAppliedAt: new Date().toISOString(),
+        suggestedAssistanceTypes,
         aiOptimized: true,
       })
       return { success: true, schedule: result.schedule, created: true }
@@ -539,11 +581,12 @@ class FoodAidService {
       const schedule = this._enrich({ id: updatedDoc.id, ...updatedDoc.data() })
 
       // Notify the assigned volunteer
+      const typeLabel = getAssistanceTypeLabel(schedule)
       await notificationService.createNotification({
         userId:    volunteer.id,
         type:      'info',
         category:  'foodaid',
-        message:   `You've been assigned to a food aid distribution in ${schedule.purok || schedule.barangay} on ${schedule.date}.`,
+        message:   `You've been assigned to a ${typeLabel} distribution in ${schedule.purok || schedule.barangay} on ${schedule.date}.`,
         relatedId: schedule.id,
       })
 
@@ -856,13 +899,14 @@ class FoodAidService {
       const userId = auth.currentUser?.uid
       if (!userId) return
 
+      const typeLabel = getAssistanceTypeLabel(schedule)
       let message = ''
       if (action === 'scheduled') {
-        message = `Food aid scheduled for ${schedule.purok} on ${schedule.date}`
+        message = `${typeLabel} scheduled for ${schedule.purok} on ${schedule.date}`
       } else if (action === 'approved') {
-        message = `Food aid distribution for ${schedule.purok} was approved`
+        message = `${typeLabel} distribution for ${schedule.purok} was approved`
       } else if (action === 'completed') {
-        message = `Food aid distribution completed for ${schedule.purok}`
+        message = `${typeLabel} distribution completed for ${schedule.purok}`
       }
 
       await notificationService.createNotification({
@@ -874,6 +918,177 @@ class FoodAidService {
       })
     } catch (error) {
       console.error('Error creating food aid notification:', error)
+    }
+  }
+
+  // Notifies the acting official (mirrors the self-notification pattern
+  // already used by _createFoodAidNotification above) that a beneficiary
+  // action was recorded. action: 'added' | 'scheduled' | 'received' | 'completed'
+  async _createBeneficiaryNotification(schedule, beneficiary, action) {
+    try {
+      const userId = auth.currentUser?.uid
+      if (!userId) return
+
+      const typeLabel = (beneficiary.assistanceType === 'Others' && beneficiary.assistanceTypeOther)
+        ? beneficiary.assistanceTypeOther
+        : (beneficiary.assistanceType || 'Food Assistance')
+      const area = schedule.purok || schedule.barangay || 'the barangay'
+
+      let message = ''
+      if (action === 'added') {
+        message = `Beneficiary Added: ${beneficiary.name} added under ${typeLabel} for ${area}.`
+      } else if (action === 'scheduled') {
+        message = `${typeLabel} Scheduled for ${beneficiary.name} (${area}).`
+      } else if (action === 'received' || action === 'completed') {
+        message = `${typeLabel} Released to ${beneficiary.name} (${area}).`
+      } else {
+        return
+      }
+
+      await notificationService.createNotification({
+        userId,
+        type: 'info',
+        category: 'foodaid',
+        message,
+        relatedId: schedule.id,
+      })
+    } catch (error) {
+      console.error('Error creating beneficiary notification:', error)
+    }
+  }
+
+  // One summary notification for a bulk import, instead of one per row.
+  async _createBeneficiaryImportNotification(schedule, count) {
+    try {
+      const userId = auth.currentUser?.uid
+      if (!userId || count === 0) return
+      const typeLabel = getAssistanceTypeLabel(schedule)
+      const area = schedule.purok || schedule.barangay || 'the barangay'
+      await notificationService.createNotification({
+        userId,
+        type: 'info',
+        category: 'foodaid',
+        message: `Beneficiary Added: ${count} beneficiaries imported for ${typeLabel} in ${area}.`,
+        relatedId: schedule.id,
+      })
+    } catch (error) {
+      console.error('Error creating beneficiary import notification:', error)
+    }
+  }
+
+  // ── Beneficiary Management ──────────────────────────────────────────────
+
+  async addBeneficiary(scheduleId, beneficiary) {
+    try {
+      const docRef = doc(db, 'foodAid', scheduleId)
+      const snap = await getDoc(docRef)
+      if (!snap.exists()) throw new Error('Distribution not found')
+
+      const newBeneficiary = {
+        id:                  `ben_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name:                beneficiary.name,
+        purok:               beneficiary.purok || '',
+        assistanceType:      beneficiary.assistanceType || 'Food Assistance',
+        assistanceTypeOther: beneficiary.assistanceType === 'Others' ? (beneficiary.assistanceTypeOther || '') : '',
+        status:              'pending',
+        dateReceived:        null,
+        remarks:             beneficiary.remarks || '',
+        addedAt:             new Date().toISOString(),
+      }
+
+      const beneficiaries = [...(snap.data().beneficiaries || []), newBeneficiary]
+      await updateDoc(docRef, { beneficiaries, updatedAt: new Date().toISOString() })
+      this._createBeneficiaryNotification({ ...snap.data(), id: scheduleId }, newBeneficiary, 'added').catch(() => {})
+      return { success: true, beneficiary: newBeneficiary }
+    } catch (error) {
+      console.error('Error adding beneficiary:', error)
+      throw new Error('Failed to add beneficiary')
+    }
+  }
+
+  // Bulk-adds beneficiaries parsed from a CSV/Excel import in a SINGLE
+  // Firestore write (not one write per row — this is exactly the case
+  // large imports need to stay fast and stay under write-rate limits).
+  // `rows`: [{ name, purok, assistanceType, remarks }], from beneficiaryImport.js.
+  // `defaultAssistanceType`: applied to any row whose sheet didn't include
+  // its own Assistance Type column/value.
+  async importBeneficiaries(scheduleId, rows, defaultAssistanceType = 'Food Assistance') {
+    try {
+      if (!rows || rows.length === 0) return { success: true, imported: 0 }
+      const docRef = doc(db, 'foodAid', scheduleId)
+      const snap = await getDoc(docRef)
+      if (!snap.exists()) throw new Error('Distribution not found')
+
+      const now = new Date().toISOString()
+      const imported = rows.map((r, i) => {
+        const rawType = r.assistanceType || defaultAssistanceType
+        const isKnownType = ASSISTANCE_TYPES.includes(rawType)
+        return {
+          id:                  `ben_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+          name:                r.name,
+          purok:               r.purok || '',
+          assistanceType:      isKnownType ? rawType : 'Others',
+          assistanceTypeOther: isKnownType ? '' : rawType,
+          status:              'pending',
+          dateReceived:        null,
+          remarks:             r.remarks || '',
+          addedAt:             now,
+        }
+      })
+
+      const beneficiaries = [...(snap.data().beneficiaries || []), ...imported]
+      await updateDoc(docRef, { beneficiaries, updatedAt: now })
+      this._createBeneficiaryImportNotification({ ...snap.data(), id: scheduleId }, imported.length).catch(() => {})
+      return { success: true, imported: imported.length }
+    } catch (error) {
+      console.error('Error importing beneficiaries:', error)
+      throw new Error('Failed to import beneficiaries')
+    }
+  }
+
+  async removeBeneficiary(scheduleId, beneficiaryId) {
+    try {
+      const docRef = doc(db, 'foodAid', scheduleId)
+      const snap = await getDoc(docRef)
+      if (!snap.exists()) throw new Error('Distribution not found')
+
+      const beneficiaries = (snap.data().beneficiaries || []).filter(b => b.id !== beneficiaryId)
+      await updateDoc(docRef, { beneficiaries, updatedAt: new Date().toISOString() })
+      return { success: true }
+    } catch (error) {
+      console.error('Error removing beneficiary:', error)
+      throw new Error('Failed to remove beneficiary')
+    }
+  }
+
+  // status: 'pending' | 'scheduled' | 'received' | 'completed'
+  async updateBeneficiaryStatus(scheduleId, beneficiaryId, status, extra = {}) {
+    try {
+      const docRef = doc(db, 'foodAid', scheduleId)
+      const snap = await getDoc(docRef)
+      if (!snap.exists()) throw new Error('Distribution not found')
+
+      const beneficiaries = (snap.data().beneficiaries || []).map(b => {
+        if (b.id !== beneficiaryId) return b
+        return {
+          ...b,
+          status,
+          dateReceived: (status === 'received' || status === 'completed')
+            ? (b.dateReceived || new Date().toISOString().split('T')[0])
+            : b.dateReceived,
+          remarks: extra.remarks !== undefined ? extra.remarks : b.remarks,
+        }
+      })
+
+      await updateDoc(docRef, { beneficiaries, updatedAt: new Date().toISOString() })
+      const updatedBeneficiary = beneficiaries.find(b => b.id === beneficiaryId)
+      if (updatedBeneficiary) {
+        this._createBeneficiaryNotification({ ...snap.data(), id: scheduleId }, updatedBeneficiary, status).catch(() => {})
+      }
+      return { success: true }
+    } catch (error) {
+      console.error('Error updating beneficiary status:', error)
+      throw new Error('Failed to update beneficiary status')
     }
   }
 }

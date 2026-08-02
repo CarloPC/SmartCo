@@ -26,8 +26,8 @@ const WelcomePage = () => {
     },
     {
       icon: Package,
-      title: 'Food Aid',
-      description: 'AI-optimized food distribution scheduling across puroks to ensure fair and timely delivery.',
+      title: 'Community Assistance',
+      description: 'AI-optimized assistance scheduling — food, financial, medical and more — across puroks to ensure fair and timely delivery.',
       iconBg: 'bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500',
       iconRing: 'ring-emerald-300/40',
     },

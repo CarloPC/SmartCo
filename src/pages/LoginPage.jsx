@@ -42,7 +42,7 @@ const LoginPage = () => {
 
   const featureItems = [
     { icon: Heart, label: 'Health Monitoring' },
-    { icon: Package, label: 'Food Aid Distribution' },
+    { icon: Package, label: 'Community Assistance' },
     { icon: Calendar, label: 'Barangay Ilihan Events' },
     { icon: Users, label: 'Resident Management' },
   ]

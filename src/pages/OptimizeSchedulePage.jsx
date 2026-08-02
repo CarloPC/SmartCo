@@ -378,7 +378,7 @@ const OptimizeSchedulePage = () => {
         <button onClick={() => navigate('/food-aid')}
           className={'flex items-center space-x-2 transition ' + (isDarkMode ? 'text-blue-300 hover:text-blue-200' : 'text-blue-100 hover:text-white')}>
           <ArrowLeft className="w-5 h-5" />
-          <span className="text-sm font-medium">Back to Food Aid</span>
+          <span className="text-sm font-medium">Back to Community Assistance</span>
         </button>
 
         {/* Header */}

@@ -13,7 +13,7 @@ const PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' }
 const MODULE_TABS = [
   { key: 'all',            label: 'All',       icon: LayoutGrid },
   { key: MODULES.HEALTH,   label: 'Health',    icon: Heart },
-  { key: MODULES.FOOD_AID, label: 'Food Aid',  icon: Package },
+  { key: MODULES.FOOD_AID, label: 'Community Assistance',  icon: Package },
   { key: MODULES.EVENTS,   label: 'Events',    icon: Calendar },
   { key: MODULES.EMERGENCY,label: 'Emergency', icon: AlertTriangle },
   { key: MODULES.DOCUMENT, label: 'Documents', icon: FileText },
@@ -105,14 +105,16 @@ const AIInsightsPage = () => {
     const result = await foodAidService.applyAIPriorityRecommendation(insight.dataAnalyzed.purok, {
       priority: PRIORITY_LABELS[insight.priority] || 'Medium',
       reason: insight.reason,
+      suggestedAssistanceTypes: insight.dataAnalyzed.suggestedAssistanceTypes || [],
     })
     if (result.success) {
       setActionedIds(m => ({
         ...m,
         [insight.id]: {
           status: 'recommendation_applied',
-          appliedTo: 'Food Aid',
+          appliedTo: 'Community Assistance',
           priority: PRIORITY_LABELS[insight.priority] || 'Medium',
+          suggestedAssistanceTypes: insight.dataAnalyzed.suggestedAssistanceTypes || [],
           appliedAt: result.schedule?.priorityAppliedAt || new Date().toISOString(),
         },
       }))

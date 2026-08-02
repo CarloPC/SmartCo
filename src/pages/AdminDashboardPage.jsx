@@ -154,7 +154,7 @@ const AdminDashboardPage = () => {
               />
 
               {/* Food Aid */}
-              <StatGroup icon={Package} title="Food Aid Distribution"
+              <StatGroup icon={Package} title="Community Assistance Distribution"
                 total={stats.totalFoodAid} pending={stats.pendingFoodAid} approved={stats.approvedFoodAid}
                 isDarkMode={isDarkMode}
               />
@@ -170,7 +170,7 @@ const AdminDashboardPage = () => {
             {foodAidAnalytics && (
               <div className={`${card} p-5 lg:p-6`}>
                 <h3 className={`font-semibold flex items-center space-x-2 mb-4 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-                  <Package className="w-5 h-5" /><span>Food Aid Distribution Analytics</span>
+                  <Package className="w-5 h-5" /><span>Community Assistance Distribution Analytics</span>
                 </h3>
 
                 {/* Workflow stage counts */}

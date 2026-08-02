@@ -209,7 +209,7 @@ const HomePage = () => {
   ...(user?.role === 'admin' || user?.role === 'barangay_official'
     ? [{
         label: 'Schedule Aid',
-        description: 'Plan next food aid distribution',
+        description: 'Plan next community assistance distribution',
         path: '/food-aid/optimize',
         icon: Package,
         gradient: 'from-emerald-500/60 via-green-500/40 to-teal-600/25',

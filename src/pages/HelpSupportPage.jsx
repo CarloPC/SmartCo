@@ -13,8 +13,8 @@ const HelpSupportPage = () => {
       answer: 'Click the "Report Emergency" button on the homepage, fill in the details, and submit. Your location and contact information will be automatically included. Emergency responders will be notified immediately.',
     },
     {
-      question: 'How do I check the food aid schedule for my purok?',
-      answer: 'Go to the Food Aid section from the bottom navigation. You\'ll see the AI-optimized distribution schedule for all puroks. Find your purok to see the date and time of your food aid distribution.',
+      question: 'How do I check the community assistance schedule for my purok?',
+      answer: 'Go to the Community Assistance section from the bottom navigation. You\'ll see the AI-optimized distribution schedule for all puroks. Find your purok to see the date and time of your assistance.',
     },
     {
       question: 'Can I edit my profile information?',

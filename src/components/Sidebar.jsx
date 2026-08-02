@@ -28,7 +28,7 @@ const Sidebar = ({ isCollapsed, onToggleCollapse, navBadges = {} }) => {
   const navItems = [
     { icon: Home,          label: 'Home',             path: '/home' },
     { icon: Heart,         label: 'Health',           path: '/health', badgeKey: 'health' },
-    { icon: Package,       label: 'Food Aid',         path: '/food-aid', badgeKey: 'foodAid' },
+    { icon: Package,       label: 'Community Assistance', path: '/food-aid', badgeKey: 'foodAid' },
     { icon: Calendar,      label: 'Events',           path: '/events', badgeKey: 'events' },
     {
       icon: FileText,

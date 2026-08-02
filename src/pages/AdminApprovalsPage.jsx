@@ -421,7 +421,7 @@ const FoodAidCard = ({ schedule, submitter, onApprove, onReject, actionLoading, 
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-0.5">
               <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Food Aid — {schedule.purok || 'Unspecified Purok'}
+                Community Assistance — {schedule.purok || 'Unspecified Purok'}
               </span>
               {schedule.date && (
                 <span className={`flex items-center gap-1 text-xs ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
@@ -733,7 +733,7 @@ const AdminApprovalsPage = () => {
 
   const tabs = [
     { key: 'health',  icon: Activity, label: 'Health',   count: healthRecords.length,    color: 'blue'   },
-    { key: 'foodaid', icon: Package,  label: 'Food Aid', count: foodAidSchedules.length,  color: 'green'  },
+    { key: 'foodaid', icon: Package,  label: 'Community Assistance', count: foodAidSchedules.length,  color: 'green'  },
     { key: 'events',  icon: Calendar, label: 'Events',   count: events.length,            color: 'purple' },
   ]
 
@@ -834,7 +834,7 @@ const AdminApprovalsPage = () => {
                     actionLoading={actionLoading}
                     isDarkMode={isDarkMode}
                   />
-                )) : <EmptyState icon={Package} label="No pending food aid schedules" />}
+                )) : <EmptyState icon={Package} label="No pending community assistance schedules" />}
               </div>
             )}
 

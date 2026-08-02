@@ -16,7 +16,7 @@ const CONFIDENCE_STYLES = {
 
 const MODULE_LABELS = {
   health: 'Health AI',
-  food_aid: 'Food Aid AI',
+  food_aid: 'Community Assistance AI',
   events: 'Event AI',
   emergency: 'Emergency AI',
   document: 'Document AI',
@@ -76,7 +76,28 @@ const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }
 
       {expanded && (
         <div className={`rounded-xl p-3 text-sm space-y-3 ${isDarkMode ? 'bg-gray-800/70 text-gray-300' : 'bg-gray-50 text-gray-600'}`}>
-          <p><span className="font-semibold">Reason: </span>{insight.reason}</p>
+          {insight.dataAnalyzed?.suggestedAssistanceTypes && (
+            <div>
+              <p className="font-semibold mb-1">Suggested Assistance:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {insight.dataAnalyzed.suggestedAssistanceTypes.map(t => (
+                  <span key={t} className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {insight.dataAnalyzed?.reasonBullets ? (
+            <div>
+              <p className="font-semibold mb-1">Reason:</p>
+              <ul className="space-y-0.5 text-xs">
+                {insight.dataAnalyzed.reasonBullets.map((b, i) => <li key={i}>• {b}</li>)}
+              </ul>
+            </div>
+          ) : (
+            <p><span className="font-semibold">Reason: </span>{insight.reason}</p>
+          )}
           <p><span className="font-semibold">Suggested Action: </span>{insight.suggestedAction}</p>
 
           {insight.dataAnalyzed?.rankedPuroks && (
@@ -123,7 +144,7 @@ const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }
             <p className="text-xs opacity-70 break-words">
               <span className="font-semibold">Data analyzed: </span>
               {Object.entries(insight.dataAnalyzed)
-                .filter(([k]) => !['rankedPuroks', 'availableToDistribute'].includes(k))
+                .filter(([k]) => !['rankedPuroks', 'availableToDistribute', 'suggestedAssistanceTypes', 'reasonBullets'].includes(k))
                 .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`).join(' · ')}
             </p>
           )}
@@ -148,6 +169,9 @@ const AIInsightCard = ({ insight, isDarkMode, onAcknowledge, onDismiss, status }
                   <Check className="w-3 h-3" /> Recommendation Applied
                 </p>
                 <p className="opacity-80">Applied to: {status.appliedTo}</p>
+                {status.suggestedAssistanceTypes?.length > 0 && (
+                  <p className="opacity-80">Assistance: {status.suggestedAssistanceTypes.join(' / ')}</p>
+                )}
                 <p className="opacity-80">Priority: {status.priority}</p>
                 <p className="opacity-80">Applied At: {formatTimestamp(status.appliedAt)}</p>
               </div>

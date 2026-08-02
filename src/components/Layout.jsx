@@ -176,7 +176,7 @@ const Layout = ({ children }) => {
           {[
             { to: '/home',     Icon: Home,          label: 'Home',      match: '/home' },
             { to: '/health',   Icon: Heart,         label: 'Health',    match: '/health',   badgeKey: 'health' },
-            { to: '/food-aid', Icon: Package,       label: 'Food Aid',  match: '/food-aid', badgeKey: 'foodAid' },
+            { to: '/food-aid', Icon: Package,       label: 'Community Assistance',  match: '/food-aid', badgeKey: 'foodAid' },
             { to: '/events',   Icon: Calendar,      label: 'Events',    match: '/events',   badgeKey: 'events' },
             { to: adminService.isAdmin(user) ? '/emergency' : '/emergency/report',
                                Icon: AlertTriangle, label: 'Emergency', match: '/emergency', accent: true, badgeKey: 'emergency' },

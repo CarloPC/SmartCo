@@ -133,7 +133,7 @@ const SettingsPage = () => {
                   small
                 />
                 <ToggleItem
-                  label="Food Aid Updates"
+                  label="Community Assistance Updates"
                   checked={settings.notifications.foodAid}
                   onChange={() => handleToggle('notifications', 'foodAid')}
                   small

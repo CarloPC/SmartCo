@@ -164,7 +164,7 @@ const FoodAidMyAssignmentsPage = () => {
             <Truck className="h-3.5 w-3.5 text-yellow-300" />
             Volunteer Portal
           </div>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">My Food Aid Assignments</h2>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">My Community Assistance Assignments</h2>
           <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
             Track the distributions you've been assigned to and update progress in real time.
           </p>
