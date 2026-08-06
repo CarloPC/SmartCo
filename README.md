@@ -292,6 +292,8 @@ Developed as a Bachelor of Science in Information Technology (BSIT) Capstone Pro
 
 Developed by the SmartCo Capstone Team
 
+GROUP 3
+
 Carlo Cañezares
 
 Gia Grace Vansie Aguilos

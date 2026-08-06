@@ -247,7 +247,7 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
         date:                form.date,
         timeSlot:            finalTimeSlot,
         totalFamilies:       parseInt(form.totalFamilies),
-        packageType:         form.packageType,
+        packageType:         form.assistanceType === 'Food Assistance' ? form.packageType : '',
         description:         form.description,
         assistanceType:      form.assistanceType,
         assistanceTypeOther: form.assistanceType === 'Others' ? form.assistanceTypeOther.trim() : '',
@@ -422,13 +422,15 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
               )}
             </div>
 
-            {/* Package Type */}
-            <div>
-              <label className={labelCls}>Package Type</label>
-              <select value={form.packageType} onChange={e => set('packageType', e.target.value)} className={inputCls}>
-                {['Mixed', 'Rice', 'Canned Goods', 'Vegetables', 'Full Pack'].map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
+            {/* Package Type — only relevant for Food Assistance */}
+            {form.assistanceType === 'Food Assistance' && (
+              <div>
+                <label className={labelCls}>Package Type</label>
+                <select value={form.packageType} onChange={e => set('packageType', e.target.value)} className={inputCls}>
+                  {['Mixed', 'Rice', 'Canned Goods', 'Vegetables', 'Full Pack'].map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* ── Step 3: Import Beneficiaries ── */}
@@ -716,122 +718,128 @@ function RouteModal({ dist, userCoords, userBarangay, isDarkMode, onClose }) {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className={
-        'relative w-full max-w-sm rounded-2xl shadow-2xl p-5 ' +
+        'relative w-full sm:max-w-2xl lg:max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl shadow-2xl p-5 sm:p-6 ' +
         (isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white')
       }>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <Sparkles className={'w-5 h-5 ' + (isDarkMode ? 'text-green-400' : 'text-green-600')} />
-            <h3 className={'font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>AI Route Guide</h3>
+            <h3 className={'font-bold text-base sm:text-lg ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>AI Route Guide</h3>
           </div>
           <button onClick={onClose} className={'p-1 rounded-lg ' + (isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500')}>
             <XCircle className="w-5 h-5" />
           </button>
         </div>
 
-        {/* ── Two-Pin Route Map ── */}
-        <div
-          className={'mb-3 rounded-xl overflow-hidden border ' + (isDarkMode ? 'border-gray-700' : 'border-gray-200')}
-          style={{ height: 190 }}
-        >
-          <MapContainer
-            center={[(fromLat + toLat) / 2, (fromLng + toLng) / 2]}
-            zoom={11}
-            style={{ height: '100%', width: '100%' }}
-            zoomControl={false}
-            scrollWheelZoom={false}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; OpenStreetMap'
-            />
-            <MapFitRoute positions={[[fromLat, fromLng], [toLat, toLng]]} />
-            <Marker position={[fromLat, fromLng]} icon={FROM_ICON} />
-            <Marker position={[toLat, toLng]}     icon={TO_ICON}   />
-            <Polyline
-              positions={[[fromLat, fromLng], [toLat, toLng]]}
-              color="#3b82f6"
-              weight={3}
-              dashArray="10, 8"
-              opacity={0.85}
-            />
-          </MapContainer>
-        </div>
-
-        {/* Map pin legend */}
-        <div className={'flex items-center gap-5 mb-4 px-1 text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
-          <div className="flex items-center space-x-1.5">
-            <div className="w-3 h-3 rounded-full bg-blue-500 border border-white shadow flex-shrink-0" />
-            <span><strong>Pin 1 (Origin):</strong> {fromName}</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <div className="w-3 h-3 rounded-full bg-green-500 border border-white shadow flex-shrink-0" />
-            <span><strong>Pin 2 (Dest):</strong> {toName.split('·')[0].trim()}</span>
-          </div>
-        </div>
-
-        {/* From → To */}
-        <div className={'rounded-xl p-3 mb-4 ' + (isDarkMode ? 'bg-gray-800' : 'bg-gray-50')}>
-          <div className="flex items-center space-x-2 mb-1.5">
-            <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" />
-            <span className={'text-sm font-medium ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>
-              {fromName}{userCoords ? ' (Your Location)' : ''}
-            </span>
-          </div>
-          <div className="ml-1.5 h-4 border-l-2 border-dashed border-gray-400" />
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" />
-            <span className={'text-sm font-medium ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>{toName}</span>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className={'rounded-xl p-3 text-center ' + (isDarkMode ? 'bg-gray-800' : 'bg-blue-50')}>
-            <p className={'text-2xl font-bold ' + (isDarkMode ? 'text-blue-400' : 'text-blue-600')}>{distKm.toFixed(1)}</p>
-            <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>Kilometers</p>
-          </div>
-          <div className={'rounded-xl p-3 text-center ' + (isDarkMode ? 'bg-gray-800' : 'bg-green-50')}>
-            <p className={'text-2xl font-bold ' + (isDarkMode ? 'text-green-400' : 'text-green-600')}>{travelTime}</p>
-            <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>Est. Minutes</p>
-          </div>
-        </div>
-
-        {targetB && (
-          <div className={'flex items-center space-x-2 mb-3 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
-            <Truck className="w-4 h-4 flex-shrink-0" />
-            <span className="text-xs capitalize">{targetB.terrain} terrain · {targetB.accessibility} accessibility</span>
-          </div>
-        )}
-
-        <p className={'text-xs leading-relaxed mb-4 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>{routeDesc}</p>
-
-        {/* Distribution details */}
-        <div className={'rounded-xl p-3 mb-4 space-y-1.5 ' + (isDarkMode ? 'bg-gray-800' : 'bg-gray-50')}>
-          <p className={'text-xs font-semibold mb-1 ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>Distribution Details</p>
-          <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>📅 {dist.date} · {dist.timeSlot || 'Morning'}</p>
-          <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>👨‍👩‍👧 {dist.totalFamilies} families</p>
-          {dist.packageType && <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>📦 {dist.packageType}</p>}
-          {dist.isPinpointed && (
-            <p className={'text-xs font-semibold ' + (isDarkMode ? 'text-blue-400' : 'text-blue-600')}>
-              📍 Exact pinpoint location set by official
-            </p>
-          )}
-          {/* Delivery progress */}
-          {dist.totalFamilies > 0 && (
-            <div className="pt-2">
-              <div className={'flex justify-between text-xs mb-1 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
-                <span>Progress</span>
-                <span className="font-semibold">{dist.deliveredFamilies || 0}/{dist.totalFamilies} families</span>
-              </div>
-              <div className={'w-full h-1.5 rounded-full ' + (isDarkMode ? 'bg-gray-700' : 'bg-gray-200')}>
-                <div
-                  className="h-1.5 rounded-full bg-green-500"
-                  style={{ width: `${Math.min(100, Math.round(((dist.deliveredFamilies || 0) / dist.totalFamilies) * 100))}%` }}
+        <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+          {/* ── Left column: map + legend + from/to ── */}
+          <div>
+            <div
+              className={'mb-3 rounded-xl overflow-hidden border ' + (isDarkMode ? 'border-gray-700' : 'border-gray-200')}
+              style={{ height: 240 }}
+            >
+              <MapContainer
+                center={[(fromLat + toLat) / 2, (fromLng + toLng) / 2]}
+                zoom={11}
+                style={{ height: '100%', width: '100%' }}
+                zoomControl={false}
+                scrollWheelZoom={false}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; OpenStreetMap'
                 />
+                <MapFitRoute positions={[[fromLat, fromLng], [toLat, toLng]]} />
+                <Marker position={[fromLat, fromLng]} icon={FROM_ICON} />
+                <Marker position={[toLat, toLng]}     icon={TO_ICON}   />
+                <Polyline
+                  positions={[[fromLat, fromLng], [toLat, toLng]]}
+                  color="#3b82f6"
+                  weight={3}
+                  dashArray="10, 8"
+                  opacity={0.85}
+                />
+              </MapContainer>
+            </div>
+
+            {/* Map pin legend */}
+            <div className={'flex items-center gap-5 mb-4 px-1 text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
+              <div className="flex items-center space-x-1.5">
+                <div className="w-3 h-3 rounded-full bg-blue-500 border border-white shadow flex-shrink-0" />
+                <span><strong>Pin 1 (Origin):</strong> {fromName}</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <div className="w-3 h-3 rounded-full bg-green-500 border border-white shadow flex-shrink-0" />
+                <span><strong>Pin 2 (Dest):</strong> {toName.split('·')[0].trim()}</span>
               </div>
             </div>
-          )}
+
+            {/* From → To */}
+            <div className={'rounded-xl p-3 mb-4 lg:mb-0 ' + (isDarkMode ? 'bg-gray-800' : 'bg-gray-50')}>
+              <div className="flex items-center space-x-2 mb-1.5">
+                <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" />
+                <span className={'text-sm font-medium ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>
+                  {fromName}{userCoords ? ' (Your Location)' : ''}
+                </span>
+              </div>
+              <div className="ml-1.5 h-4 border-l-2 border-dashed border-gray-400" />
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" />
+                <span className={'text-sm font-medium ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')}>{toName}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Right column: stats + terrain + description + distribution details ── */}
+          <div className="mt-4 lg:mt-0">
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className={'rounded-xl p-3 text-center ' + (isDarkMode ? 'bg-gray-800' : 'bg-blue-50')}>
+                <p className={'text-2xl font-bold ' + (isDarkMode ? 'text-blue-400' : 'text-blue-600')}>{distKm.toFixed(1)}</p>
+                <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>Kilometers</p>
+              </div>
+              <div className={'rounded-xl p-3 text-center ' + (isDarkMode ? 'bg-gray-800' : 'bg-green-50')}>
+                <p className={'text-2xl font-bold ' + (isDarkMode ? 'text-green-400' : 'text-green-600')}>{travelTime}</p>
+                <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>Est. Minutes</p>
+              </div>
+            </div>
+
+            {targetB && (
+              <div className={'flex items-center space-x-2 mb-3 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
+                <Truck className="w-4 h-4 flex-shrink-0" />
+                <span className="text-xs capitalize">{targetB.terrain} terrain · {targetB.accessibility} accessibility</span>
+              </div>
+            )}
+
+            <p className={'text-xs leading-relaxed mb-4 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>{routeDesc}</p>
+
+            {/* Distribution details */}
+            <div className={'rounded-xl p-3 mb-4 space-y-1.5 ' + (isDarkMode ? 'bg-gray-800' : 'bg-gray-50')}>
+              <p className={'text-xs font-semibold mb-1 ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>Distribution Details</p>
+              <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>📅 {dist.date} · {dist.timeSlot || 'Morning'}</p>
+              <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>👨‍👩‍👧 {dist.totalFamilies} families</p>
+              {dist.packageType && (dist.assistanceType || 'Food Assistance') === 'Food Assistance' && <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-600')}>📦 {dist.packageType}</p>}
+              {dist.isPinpointed && (
+                <p className={'text-xs font-semibold ' + (isDarkMode ? 'text-blue-400' : 'text-blue-600')}>
+                  📍 Exact pinpoint location set by official
+                </p>
+              )}
+              {/* Delivery progress */}
+              {dist.totalFamilies > 0 && (
+                <div className="pt-2">
+                  <div className={'flex justify-between text-xs mb-1 ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+                    <span>Progress</span>
+                    <span className="font-semibold">{dist.deliveredFamilies || 0}/{dist.totalFamilies} families</span>
+                  </div>
+                  <div className={'w-full h-1.5 rounded-full ' + (isDarkMode ? 'bg-gray-700' : 'bg-gray-200')}>
+                    <div
+                      className="h-1.5 rounded-full bg-green-500"
+                      style={{ width: `${Math.min(100, Math.round(((dist.deliveredFamilies || 0) / dist.totalFamilies) * 100))}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
@@ -1477,7 +1485,7 @@ function DistributionDetailDrawer({
       `Number of Beneficiaries: ${beneficiaryCount}`,
       `Total Families Target: ${dist.totalFamilies ?? '—'}`,
       `Delivered Families: ${dist.deliveredFamilies || 0}`,
-      dist.packageType ? `Package Type: ${dist.packageType}` : null,
+      dist.packageType && (dist.assistanceType || 'Food Assistance') === 'Food Assistance' ? `Package Type: ${dist.packageType}` : null,
       `Created By: ${dist.createdByName || '—'}`,
       dist.description ? `Description: ${dist.description}` : null,
       dist.remarks ? `Notes: ${dist.remarks}` : null,
@@ -1500,23 +1508,25 @@ function DistributionDetailDrawer({
   const fieldValue = 'text-sm font-medium text-right ' + (isDarkMode ? 'text-gray-200' : 'text-gray-800')
 
   return (
-    <div className="fixed inset-0 z-[9999]">
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4">
       <div
         className={'absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ' + (mounted ? 'opacity-100' : 'opacity-0')}
         onClick={onClose}
       />
-      {/* Panel: bottom sheet on mobile, right slide-over on desktop */}
+      {/* Panel: bottom sheet on mobile (slides up), centered dialog on desktop (fades + scales in) */}
       <div
         className={
-          'absolute inset-x-0 bottom-0 sm:inset-x-auto sm:right-0 sm:top-0 sm:h-full sm:w-[440px] max-w-full ' +
-          'max-h-[90vh] sm:max-h-none rounded-t-3xl sm:rounded-none border-t sm:border-t-0 sm:border-l shadow-2xl ' +
-          'flex flex-col transition-transform duration-300 ease-out ' +
-          (mounted ? 'translate-y-0 sm:translate-x-0' : 'translate-y-full sm:translate-y-0 sm:translate-x-full') +
+          'relative w-full sm:max-w-2xl lg:max-w-3xl ' +
+          'max-h-[90vh] rounded-t-3xl sm:rounded-2xl border shadow-2xl ' +
+          'flex flex-col transition-all duration-300 ease-out transform-gpu ' +
+          (mounted
+            ? 'translate-y-0 sm:scale-100 opacity-100'
+            : 'translate-y-full sm:translate-y-0 sm:scale-95 opacity-0') +
           ' ' + panelBase
         }
       >
         {/* Sticky header */}
-        <div className={'sticky top-0 z-10 flex items-start justify-between gap-3 p-4 sm:p-5 border-b ' + (isDarkMode ? 'border-gray-800 bg-gray-900' : 'border-gray-100 bg-white')}>
+        <div className={'sticky top-0 z-10 flex items-start justify-between gap-3 p-4 sm:p-5 border-b rounded-t-3xl sm:rounded-t-2xl ' + (isDarkMode ? 'border-gray-800 bg-gray-900' : 'border-gray-100 bg-white')}>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span className={'text-xs font-semibold px-2 py-0.5 rounded-full ' + badge.cls}>{badge.label}</span>
@@ -1558,7 +1568,7 @@ function DistributionDetailDrawer({
               <span className={fieldLabel}>Families Target</span>
               <span className={fieldValue}>{dist.deliveredFamilies || 0} / {dist.totalFamilies || 0}</span>
             </div>
-            {dist.packageType && (
+            {dist.packageType && (dist.assistanceType || 'Food Assistance') === 'Food Assistance' && (
               <div className={fieldRow}>
                 <span className={fieldLabel}>Package Type</span>
                 <span className={fieldValue}>{dist.packageType}</span>
@@ -1636,7 +1646,7 @@ function DistributionDetailDrawer({
         </div>
 
         {/* Sticky footer — large, modern action buttons */}
-        <div className={'sticky bottom-0 p-4 sm:p-5 border-t space-y-2.5 ' + (isDarkMode ? 'border-gray-800 bg-gray-900' : 'border-gray-100 bg-white')}>
+        <div className={'sticky bottom-0 p-4 sm:p-5 border-t space-y-2.5 rounded-b-3xl sm:rounded-b-2xl ' + (isDarkMode ? 'border-gray-800 bg-gray-900' : 'border-gray-100 bg-white')}>
           <button onClick={onViewBeneficiaries}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg transition hover:from-emerald-600 hover:to-green-700">
             <Users className="w-4.5 h-4.5" />
@@ -1986,7 +1996,7 @@ const FoodAidPage = () => {
                           </p>
                           <p style={{ fontSize: 12 }}>📅 {d.date} · {d.timeSlot || 'Morning'}</p>
                           <p style={{ fontSize: 12 }}>👨‍👩‍👧 {d.totalFamilies} families</p>
-                          {d.packageType && <p style={{ fontSize: 12 }}>📦 {d.packageType}</p>}
+                          {d.packageType && (d.assistanceType || 'Food Assistance') === 'Food Assistance' && <p style={{ fontSize: 12 }}>📦 {d.packageType}</p>}
                           {dist != null && <p style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>📍 {dist.toFixed(1)} km from you</p>}
                           <div style={{ display: 'inline-block', marginTop: 6, padding: '2px 10px', borderRadius: 999, background: color, color: '#fff', fontSize: 11, fontWeight: 700 }}>
                             {badge.label}
@@ -2181,8 +2191,8 @@ const FoodAidPage = () => {
           dist={detailDist} isDarkMode={isDarkMode} isAdmin={isAdmin} userCoords={userCoords}
           expandedPriority={expandedPriority} onTogglePriority={id => setExpandedPriority(m => ({ ...m, [id]: !m[id] }))}
           onClose={() => setDetailDistId(null)}
-          onViewBeneficiaries={() => setBeneficiaryDistId(detailDist.id)}
-          onViewRoute={() => setRouteDist(detailDist)}
+          onViewBeneficiaries={() => { setBeneficiaryDistId(detailDist.id); setDetailDistId(null) }}
+          onViewRoute={() => { setRouteDist(detailDist); setDetailDistId(null) }}
         />
       )}
       {showExportModal && (
