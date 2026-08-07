@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css'
 import {
   Package, MapPin, Navigation, AlertCircle, Clock, Users,
   TrendingUp, Loader2, XCircle, RefreshCw, Plus, Map, List,
-  Sparkles, Truck, Star, AlertTriangle, Shield, UserPlus, Trash2, CheckCircle2, Download, Upload,
+  Sparkles, Truck, Star, AlertTriangle, Shield, UserPlus, Trash2, Download, Upload,
   Search, X, Calendar, ChevronRight
 } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
@@ -14,7 +14,6 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import foodAidService, {
   WORKFLOW_LABELS, ASSISTANCE_TYPES, getAssistanceTypeLabel,
-  BENEFICIARY_STATUSES, BENEFICIARY_STATUS_LABELS,
 } from '../services/foodAidService'
 import { exportBeneficiariesToCSV, exportBeneficiariesToExcel } from '../utils/beneficiaryExport'
 import { readBeneficiaryFile } from '../utils/beneficiaryImport'
@@ -78,6 +77,24 @@ const PRIORITY_STYLES = {
   High:   { emoji: '🔴', cls: 'bg-red-500/15 text-red-300 border border-red-500/30' },
   Medium: { emoji: '🟡', cls: 'bg-amber-500/15 text-amber-300 border border-amber-500/30' },
   Low:    { emoji: '🟢', cls: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' },
+}
+
+// Overall Distribution Status — one status per Community Assistance post, set once
+// by a Barangay Official, instantly visible to every resident. Replaces the old
+// per-beneficiary Pending/Received/Completed workflow, which doesn't scale to
+// distributions with hundreds of beneficiaries.
+const DISTRIBUTION_STATUSES = ['pending', 'ongoing', 'ready_for_claim', 'completed']
+const DISTRIBUTION_STATUS_LABELS = {
+  pending:         'Pending',
+  ongoing:         'Ongoing Distribution',
+  ready_for_claim: 'Ready for Claim',
+  completed:       'Completed',
+}
+const DISTRIBUTION_STATUS_STYLES = {
+  pending:         'bg-gray-500/15 text-gray-300 border border-gray-500/30',
+  ongoing:         'bg-yellow-500/15 text-yellow-300 border border-yellow-500/30',
+  ready_for_claim: 'bg-blue-500/15 text-blue-300 border border-blue-500/30',
+  completed:       'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
 }
 
 
@@ -1143,6 +1160,30 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
     ? beneficiaries.filter(b => (b.name || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))
     : beneficiaries
 
+  // ── Pagination — never render hundreds of rows at once ──
+  const PAGE_SIZE = 30
+  const [page, setPage] = useState(1)
+  useEffect(() => { setPage(1) }, [searchQuery, beneficiaries.length])
+  const totalPages = Math.max(1, Math.ceil(filteredBeneficiaries.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pageStart = (safePage - 1) * PAGE_SIZE
+  const pageItems = filteredBeneficiaries.slice(pageStart, pageStart + PAGE_SIZE)
+
+  // ── Overall Distribution Status — one status for everyone, set once by officials ──
+  const currentDistStatus = dist.distributionStatus || 'pending'
+  const [statusBusy, setStatusBusy] = useState(false)
+  const handleDistributionStatusChange = async (newStatus) => {
+    if (newStatus === currentDistStatus) return
+    try {
+      setStatusBusy(true)
+      await foodAidService.updateFoodAidSchedule(dist.id, { distributionStatus: newStatus })
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setStatusBusy(false)
+    }
+  }
+
   const set = (key, val) => setForm(p => ({ ...p, [key]: val }))
 
   const inputBase = 'w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-green-500'
@@ -1150,13 +1191,6 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
     ? ' bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-500'
     : ' bg-white border-gray-300 text-gray-900 placeholder-gray-400')
   const labelCls  = 'block text-xs font-semibold mb-1 uppercase tracking-wide ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')
-
-  const STATUS_CLS = {
-    pending:   'bg-amber-500/15 text-amber-500 border border-amber-500/30',
-    scheduled: 'bg-blue-500/15 text-blue-500 border border-blue-500/30',
-    received:  'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30',
-    completed: 'bg-gray-500/15 text-gray-400 border border-gray-500/30',
-  }
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
@@ -1210,59 +1244,96 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
     catch (err) { alert('Error: ' + err.message) }
   }
 
-  const handleStatus = async (id, status) => {
-    try { await foodAidService.updateBeneficiaryStatus(dist.id, id, status) }
-    catch (err) { alert('Error: ' + err.message) }
-  }
-
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className={
-        'relative w-full sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl shadow-2xl ' +
+        'relative w-[95vw] sm:w-[90vw] sm:max-w-[1400px] h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden ' +
         (isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white')
       }>
-        {/* Sticky header + search — combined into one sticky block so both stay pinned while scrolling */}
+        {/* Sticky header — Community Assistance details + overall status + search, all pinned while the list scrolls */}
         <div className={
-          'sticky top-0 z-10 border-b rounded-t-3xl sm:rounded-t-2xl ' +
+          'sticky top-0 z-10 border-b flex-shrink-0 ' +
           (isDarkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-100 bg-white')
         }>
-          <div className="flex items-center justify-between p-4 pb-3">
-            <div>
-              <h3 className={'font-bold text-base ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>
-                {readOnly ? 'Beneficiaries' : 'Beneficiary Management'}
+          <div className="flex items-start justify-between gap-3 p-4 sm:p-6 pb-3">
+            <div className="min-w-0">
+              <h3 className={'font-bold text-lg sm:text-xl truncate ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>
+                {getAssistanceTypeLabel(dist)} — Beneficiary List
               </h3>
-              <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                {dist.barangay ? dist.barangay + ' · ' : ''}{dist.purok || 'Unspecified Purok'} · {dist.date}
-              </p>
+              <div className={'flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs sm:text-sm ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+                <span><strong className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Purok:</strong> {dist.purok || '—'}</span>
+                <span><strong className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Date:</strong> {dist.date}{dist.timeSlot ? ` · ${dist.timeSlot}` : ''}</span>
+                {dist.priority && (
+                  <span className="inline-flex items-center gap-1">
+                    <strong className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Priority:</strong>
+                    <span className={'px-1.5 py-0.5 rounded-full text-[11px] font-semibold ' + (PRIORITY_STYLES[dist.priority]?.cls || '')}>
+                      {PRIORITY_STYLES[dist.priority]?.emoji} {dist.priority}
+                    </span>
+                  </span>
+                )}
+              </div>
+              {dist.description && (
+                <p className={'text-xs sm:text-sm mt-1.5 max-w-2xl line-clamp-2 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+                  {dist.description}
+                </p>
+              )}
             </div>
             <button onClick={onClose} className={'p-1.5 rounded-lg flex-shrink-0 ' + (isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500')}>
               <XCircle className="w-5 h-5" />
             </button>
           </div>
-          {beneficiaries.length > 0 && (
-            <div className="px-4 pb-3">
-              <div className={'flex items-center gap-2 px-3 py-2 rounded-xl border ' +
-                (isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
-                <Search className={'w-4 h-4 flex-shrink-0 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search Resident…"
-                  className={'flex-1 bg-transparent text-sm focus:outline-none ' + (isDarkMode ? 'text-gray-200 placeholder-gray-500' : 'text-gray-800 placeholder-gray-400')}
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className={isDarkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}>
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+
+          {/* Overall Distribution Status — the ONE status residents see; officials update it here */}
+          <div className="px-4 sm:px-6 pb-3 flex flex-wrap items-center gap-2">
+            <span className={'text-xs font-semibold uppercase tracking-wide ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
+              Distribution Status:
+            </span>
+            {readOnly ? (
+              <span className={'text-xs font-semibold px-3 py-1 rounded-full ' + DISTRIBUTION_STATUS_STYLES[currentDistStatus]}>
+                {DISTRIBUTION_STATUS_LABELS[currentDistStatus]}
+              </span>
+            ) : (
+              <select
+                value={currentDistStatus}
+                disabled={statusBusy}
+                onChange={e => handleDistributionStatusChange(e.target.value)}
+                className={'text-xs font-semibold px-3 py-1.5 rounded-full border focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 ' +
+                  DISTRIBUTION_STATUS_STYLES[currentDistStatus] + ' ' + (isDarkMode ? 'bg-gray-900' : 'bg-white')}
+              >
+                {DISTRIBUTION_STATUSES.map(s => <option key={s} value={s} className={isDarkMode ? 'bg-gray-900 text-white' : ''}>{DISTRIBUTION_STATUS_LABELS[s]}</option>)}
+              </select>
+            )}
+            {!readOnly && (
+              <span className={'text-xs ' + (isDarkMode ? 'text-gray-600' : 'text-gray-400')}>
+                Updating this instantly changes what every resident sees — no per-person updates needed.
+              </span>
+            )}
+          </div>
+
+          {/* Sticky search bar */}
+          <div className="px-4 sm:px-6 pb-4">
+            <div className={'flex items-center gap-2 px-3 py-2.5 rounded-xl border max-w-md ' +
+              (isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+              <Search className={'w-4 h-4 flex-shrink-0 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="🔍 Search Beneficiary…"
+                className={'flex-1 bg-transparent text-sm focus:outline-none ' + (isDarkMode ? 'text-gray-200 placeholder-gray-500' : 'text-gray-800 placeholder-gray-400')}
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className={isDarkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}>
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
-        <div className="p-4 space-y-4">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
           {!readOnly && (
             <>
               {/* Import from CSV/Excel — primary way to bring in beneficiaries */}
@@ -1273,13 +1344,13 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
                 </p>
                 <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} className="hidden" />
                 <button onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition">
+                  className="w-full sm:w-auto flex items-center justify-center space-x-2 py-2.5 px-5 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition">
                   <Upload className="w-4 h-4" />
                   <span>Choose CSV / Excel File…</span>
                 </button>
 
                 {importPreview && (
-                  <div className={'rounded-xl border p-3 space-y-3 ' + (isDarkMode ? 'border-gray-700 bg-gray-900/60' : 'border-gray-200 bg-white')}>
+                  <div className={'rounded-xl border p-3 space-y-3 max-w-xl ' + (isDarkMode ? 'border-gray-700 bg-gray-900/60' : 'border-gray-200 bg-white')}>
                     <div className="flex items-center justify-between">
                       <p className={'text-xs font-semibold ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>
                         {importPreview.fileName} — {importPreview.rows.length} row{importPreview.rows.length === 1 ? '' : 's'} ready
@@ -1334,7 +1405,7 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
               </button>
 
               {showManualAdd && (
-                <div className={'rounded-2xl p-4 border space-y-3 ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+                <div className={'rounded-2xl p-4 border space-y-3 max-w-xl ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')}>
                   <div>
                     <label className={labelCls}>Resident Name *</label>
                     <input type="text" value={form.name} onChange={e => set('name', e.target.value)} className={inputCls} placeholder="e.g. Juan Dela Cruz" />
@@ -1372,70 +1443,91 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
             </>
           )}
 
-          {/* Beneficiary list — visible to everyone; export/download always available */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className={'text-sm font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>
-                Beneficiaries ({filteredBeneficiaries.length}{searchQuery ? ` of ${beneficiaries.length}` : ''})
-              </p>
-              {beneficiaries.length > 0 && (
-                <div className="flex gap-1.5">
-                  <button onClick={() => exportBeneficiariesToCSV(beneficiaries, `beneficiaries_${dist.purok}_${dist.date}.csv`)}
-                    className={'flex items-center space-x-1 text-xs font-medium px-2 py-1 rounded-lg ' + (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600')}>
-                    <Download className="w-3 h-3" /><span>CSV</span>
-                  </button>
-                  <button onClick={() => exportBeneficiariesToExcel(beneficiaries, `beneficiaries_${dist.purok}_${dist.date}.xlsx`)}
-                    className={'flex items-center space-x-1 text-xs font-medium px-2 py-1 rounded-lg ' + (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600')}>
-                    <Download className="w-3 h-3" /><span>Excel</span>
-                  </button>
-                </div>
+          {/* Beneficiary count + export */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className={'text-base sm:text-lg font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>
+              {beneficiaries.length} Beneficiar{beneficiaries.length === 1 ? 'y' : 'ies'}
+              {searchQuery && (
+                <span className={'text-sm font-medium ml-2 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
+                  ({filteredBeneficiaries.length} match{filteredBeneficiaries.length === 1 ? '' : 'es'})
+                </span>
               )}
-            </div>
-            {beneficiaries.length === 0 ? (
-              <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                {readOnly ? 'No beneficiaries have been added yet.' : 'No beneficiaries added yet — import a file above to get started.'}
-              </p>
-            ) : filteredBeneficiaries.length === 0 ? (
-              <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
-                No residents match "{searchQuery}".
-              </p>
-            ) : filteredBeneficiaries.map(b => (
-              <div key={b.id} className={'rounded-xl p-3 border ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className={'text-sm font-semibold truncate ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>{b.name}</p>
-                    <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
-                      {b.purok || '—'} · {b.assistanceType === 'Others' && b.assistanceTypeOther ? b.assistanceTypeOther : b.assistanceType}
-                    </p>
-                    {b.remarks && <p className={'text-xs italic mt-0.5 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>{b.remarks}</p>}
-                    {b.dateReceived && <p className={'text-xs mt-0.5 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>📅 {b.dateReceived}</p>}
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className={'text-xs font-semibold px-2 py-0.5 rounded-full ' + STATUS_CLS[b.status]}>
-                      {BENEFICIARY_STATUS_LABELS[b.status]}
+            </p>
+            {beneficiaries.length > 0 && (
+              <div className="flex gap-1.5">
+                <button onClick={() => exportBeneficiariesToCSV(beneficiaries, `beneficiaries_${dist.purok}_${dist.date}.csv`)}
+                  className={'flex items-center space-x-1 text-xs font-medium px-2.5 py-1.5 rounded-lg ' + (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600')}>
+                  <Download className="w-3 h-3" /><span>CSV</span>
+                </button>
+                <button onClick={() => exportBeneficiariesToExcel(beneficiaries, `beneficiaries_${dist.purok}_${dist.date}.xlsx`)}
+                  className={'flex items-center space-x-1 text-xs font-medium px-2.5 py-1.5 rounded-lg ' + (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600')}>
+                  <Download className="w-3 h-3" /><span>Excel</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Simplified, scalable rows — name only, no per-row status/actions */}
+          {beneficiaries.length === 0 ? (
+            <p className={'text-sm ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+              {readOnly ? 'No beneficiaries have been added yet.' : 'No beneficiaries added yet — import a file above to get started.'}
+            </p>
+          ) : filteredBeneficiaries.length === 0 ? (
+            <p className={'text-sm ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+              No residents match "{searchQuery}".
+            </p>
+          ) : (
+            <>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {pageItems.map((b, i) => (
+                  <div key={b.id}
+                    className={'flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+                    <span className={'flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ' +
+                      (isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500')}>
+                      {pageStart + i + 1}
+                    </span>
+                    <span className={'text-sm font-medium truncate flex-1 ' + (isDarkMode ? 'text-gray-100' : 'text-gray-800')}>
+                      {b.name}
                     </span>
                     {!readOnly && (
-                      <button onClick={() => handleRemove(b.id)} className={'p-1 rounded ' + (isDarkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500')}>
+                      <button onClick={() => handleRemove(b.id)}
+                        className={'flex-shrink-0 p-1 rounded ' + (isDarkMode ? 'hover:bg-gray-700 text-gray-500' : 'hover:bg-gray-200 text-gray-400')}>
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
-                </div>
-                {!readOnly && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {BENEFICIARY_STATUSES.filter(s => s !== b.status).map(s => (
-                      <button key={s} onClick={() => handleStatus(b.id, s)}
-                        className={'flex items-center space-x-1 text-xs font-medium px-2 py-1 rounded-lg transition ' +
-                          (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-white hover:bg-gray-100 text-gray-600 border border-gray-200')}>
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Mark {BENEFICIARY_STATUS_LABELS[s]}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
+
+              {/* Pagination — never render hundreds of rows at once */}
+              {filteredBeneficiaries.length > PAGE_SIZE && (
+                <div className={'flex items-center justify-between flex-wrap gap-3 pt-2 border-t ' + (isDarkMode ? 'border-gray-800' : 'border-gray-100')}>
+                  <p className={'text-xs ' + (isDarkMode ? 'text-gray-500' : 'text-gray-500')}>
+                    Showing {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filteredBeneficiaries.length)} of {filteredBeneficiaries.length}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={safePage <= 1}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      className={'px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed ' +
+                        (isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700')}>
+                      ← Previous
+                    </button>
+                    <span className={'text-xs font-medium ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
+                      Page {safePage} of {totalPages}
+                    </span>
+                    <button
+                      disabled={safePage >= totalPages}
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      className={'px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed ' +
+                        (isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700')}>
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1478,6 +1570,7 @@ function DistributionDetailDrawer({
       `Barangay: ${dist.barangay || BARANGAY_CONFIG.fullBarangayName}`,
       `Purok: ${dist.purok || '—'}`,
       `Status: ${badge.label}`,
+      `Distribution Status: ${DISTRIBUTION_STATUS_LABELS[dist.distributionStatus || 'pending']}`,
       dist.priority ? `Priority Level: ${dist.priority}` : null,
       dist.priorityReason ? `Priority Reason: ${dist.priorityReason}` : null,
       `Date: ${dist.date || '—'}`,
@@ -1556,6 +1649,12 @@ function DistributionDetailDrawer({
           )}
 
           <div>
+            <div className={fieldRow}>
+              <span className={fieldLabel}>Distribution Status</span>
+              <span className={'text-xs font-semibold px-2.5 py-1 rounded-full ' + DISTRIBUTION_STATUS_STYLES[dist.distributionStatus || 'pending']}>
+                {DISTRIBUTION_STATUS_LABELS[dist.distributionStatus || 'pending']}
+              </span>
+            </div>
             <div className={fieldRow}>
               <span className={fieldLabel}>Schedule</span>
               <span className={fieldValue}>{dist.date}{dist.timeSlot ? ` · ${dist.timeSlot}` : ''}</span>
