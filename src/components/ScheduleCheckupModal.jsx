@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { X, Calendar, Clock, FileText, CheckCircle, Loader2, CalendarCheck, AlertTriangle } from 'lucide-react'
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore'
@@ -12,6 +11,32 @@ const TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00
 // A request only blocks its slot while it's still "in play" — once a BHW
 // rejects it or marks it completed, the slot frees back up for others.
 const ACTIVE_STATUSES = ['pending_review', 'scheduled', 'inreview']
+
+// Local (device) calendar date as 'YYYY-MM-DD'. Deliberately NOT
+// toISOString() — that converts to UTC first, which can shift the date by
+// a day depending on time of day (PH is UTC+8). Residents' devices are
+// expected to be set to Philippine time, so reading local Y/M/D directly
+// keeps "today" correct without any manual UTC+8 math.
+const getLocalDateStr = (d = new Date()) => {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// True if the given 'YYYY-MM-DD' + 'HH:MM' slot is already in the past
+// relative to `now`. Past days are always past; for today, the slot's
+// clock time is compared against the current local time.
+const isSlotInPast = (dateStr, timeStr, now = new Date()) => {
+  if (!dateStr || !timeStr) return false
+  const todayStr = getLocalDateStr(now)
+  if (dateStr < todayStr) return true
+  if (dateStr > todayStr) return false
+  const [hours, minutes] = timeStr.split(':').map(Number)
+  const slotMoment = new Date(now)
+  slotMoment.setHours(hours, minutes, 0, 0)
+  return slotMoment.getTime() <= now.getTime()
+}
 
 // Truncates the checkup notes for the dashboard's vitalsSummary preview.
 // A blind slice(0, n) can land mid-word (e.g. "AI Health Analysis" -> "AI
@@ -43,10 +68,10 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateStr()
   const maxDate = new Date()
   maxDate.setDate(maxDate.getDate() + 30)
-  const maxDateStr = maxDate.toISOString().split('T')[0]
+  const maxDateStr = getLocalDateStr(maxDate)
 
   const [date, setDate]     = useState('')
   const [time, setTime]     = useState('09:00')
@@ -56,6 +81,7 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
   const [error, setError]   = useState('')
   const [bookedSlots, setBookedSlots] = useState({})   // { '2026-07-10': Set(['09:00','14:00']) }
   const [slotsLoading, setSlotsLoading] = useState(true)
+  const [now, setNow] = useState(() => new Date())      // ticks while open so past-time slots update live
 
   // Sync form state every time the modal opens so the latest
   // AI analysis (passed via symptomsSummary) is always shown.
@@ -67,8 +93,18 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
       setDone(false)
       setError('')
       setLoading(false)
+      setNow(new Date())
     }
   }, [isOpen, symptomsSummary])
+
+  // Keep "now" fresh while the modal is open so a past time slot (e.g. an
+  // 8:00 AM slot on the currently-selected today) becomes disabled the
+  // moment it passes, without requiring the user to touch the date field.
+  useEffect(() => {
+    if (!isOpen) return
+    const interval = setInterval(() => setNow(new Date()), 30000)
+    return () => clearInterval(interval)
+  }, [isOpen])
 
   // Real-time availability: listen to every appointment request in the
   // bookable window so residents see slots fill up / free up live, instead
@@ -107,25 +143,43 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
   }, [isOpen, today, maxDateStr])
 
   const takenTimesForDate = date ? (bookedSlots[date] || new Set()) : new Set()
-  const availableTimesForDate = TIME_SLOTS.filter((t) => !takenTimesForDate.has(t))
+  const pastTimesForDate = (t) => isSlotInPast(date, t, now)
+  const availableTimesForDate = TIME_SLOTS.filter((t) => !takenTimesForDate.has(t) && !pastTimesForDate(t))
+  const allSlotsTaken = date ? TIME_SLOTS.every((t) => takenTimesForDate.has(t)) : false
+  const allSlotsPast = date ? TIME_SLOTS.every((t) => pastTimesForDate(t)) : false
   const isDateFullyBooked = Boolean(date) && !slotsLoading && availableTimesForDate.length === 0
+  const isDateAllPast = isDateFullyBooked && allSlotsPast && !allSlotsTaken
 
-  // If the picked time gets taken by someone else live, or the date changes,
-  // snap to the next open time instead of leaving a taken one selected.
+  // If the picked time gets taken by someone else live, becomes past (today's
+  // clock catching up to it), or the date changes, snap to the next open
+  // time instead of leaving an unavailable one selected.
   useEffect(() => {
     if (!date) return
-    if (takenTimesForDate.has(time)) {
+    if (takenTimesForDate.has(time) || pastTimesForDate(time)) {
       setTime(availableTimesForDate[0] || '')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, bookedSlots])
+  }, [date, bookedSlots, now])
 
   if (!isOpen) return null
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!date) { setError('Please select a date.'); return }
-    if (isDateFullyBooked) { setError('This date is fully booked. Please choose another date.'); return }
+    // Final safety net before any Firestore write — catches past dates AND
+    // past times-on-today, even if the UI's disabled state was bypassed.
+    if (isSlotInPast(date, time, new Date())) {
+      setError('Please select a future date and time for your checkup.')
+      return
+    }
+    if (isDateFullyBooked) {
+      setError(
+        isDateAllPast
+          ? 'All time slots for today have already passed. Please choose another date.'
+          : 'This date is fully booked. Please choose another date.'
+      )
+      return
+    }
     if (!time) { setError('Please select an available time.'); return }
     setError('')
     setLoading(true)
@@ -270,6 +324,8 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
                 }`}>
                   {slotsLoading ? (
                     'Checking availability…'
+                  ) : isDateAllPast ? (
+                    <><AlertTriangle className="w-3.5 h-3.5" /> All time slots for today have already passed — please pick another date.</>
                   ) : isDateFullyBooked ? (
                     <><AlertTriangle className="w-3.5 h-3.5" /> Fully booked — please pick another date.</>
                   ) : (
@@ -292,10 +348,11 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
               >
                 {TIME_SLOTS.map(t => {
                   const taken = takenTimesForDate.has(t)
+                  const past = !taken && pastTimesForDate(t)
                   return (
-                    <option key={t} value={t} disabled={taken}>
+                    <option key={t} value={t} disabled={taken || past}>
                       {new Date(`2000-01-01T${t}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                      {taken ? ' — Booked' : ''}
+                      {taken ? ' — Booked' : past ? ' — Past' : ''}
                     </option>
                   )
                 })}
@@ -336,4 +393,3 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
 }
 
 export default ScheduleCheckupModal
-
