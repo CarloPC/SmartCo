@@ -9,6 +9,7 @@ import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import documentRequestService from '../services/documentRequestService'
+import { useLanguage } from '../context/LanguageContext'
 import { PUROKS_ILIHAN } from '../constants/puroks'
 
 const tabs = ['pending', 'approved', 'rejected', 'completed', 'all']
@@ -167,6 +168,7 @@ const RequestRow = ({ request, isDarkMode, onApprove, onReject, onComplete, proc
 const ManageDocumentRequestsPage = () => {
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   const [requests, setRequests] = useState([])
@@ -267,7 +269,7 @@ const ManageDocumentRequestsPage = () => {
         } backdrop-blur-sm rounded-xl p-6 text-white shadow-xl border`}>
           <div className="flex items-center gap-3 mb-1">
             <FileText className="w-6 h-6" />
-            <h2 className="text-xl font-bold">Document Requests</h2>
+            <h2 className="text-xl font-bold">{t('documents.title')}</h2>
             {pendingCount > 0 && (
               <span className="bg-yellow-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{pendingCount}</span>
             )}

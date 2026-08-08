@@ -1,16 +1,12 @@
+
 import { useState, useEffect } from 'react'
 import { X, Calendar, Clock, FileText, CheckCircle, Loader2, CalendarCheck, AlertTriangle } from 'lucide-react'
-import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import healthService from '../services/healthService'
-import { db } from '../config/firebase'
+import appointmentSlotsService from '../services/appointmentSlotsService'
 
 const TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']
-
-// A request only blocks its slot while it's still "in play" — once a BHW
-// rejects it or marks it completed, the slot frees back up for others.
-const ACTIVE_STATUSES = ['pending_review', 'scheduled', 'inreview']
 
 // Local (device) calendar date as 'YYYY-MM-DD'. Deliberately NOT
 // toISOString() — that converts to UTC first, which can shift the date by
@@ -113,31 +109,13 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
     if (!isOpen) return
 
     setSlotsLoading(true)
-    const q = query(
-      collection(db, 'health_requests'),
-      where('preferredAppointmentDate', '>=', today),
-      where('preferredAppointmentDate', '<=', maxDateStr)
-    )
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const map = {}
-        snapshot.docs.forEach((docSnap) => {
-          const req = docSnap.data()
-          if (!req.preferredAppointmentDate || !req.preferredAppointmentTime) return
-          if (!ACTIVE_STATUSES.includes(req.status)) return
-          if (!map[req.preferredAppointmentDate]) map[req.preferredAppointmentDate] = new Set()
-          map[req.preferredAppointmentDate].add(req.preferredAppointmentTime)
-        })
-        setBookedSlots(map)
-        setSlotsLoading(false)
-      },
-      (err) => {
-        console.error('Error listening for appointment availability:', err)
-        setSlotsLoading(false)
-      }
-    )
+    // Reads only the privacy-safe appointmentSlots collection (date/time
+    // only) — never queries health_requests directly, so this modal can
+    // never pull back another resident's symptoms, AI notes, or name.
+    const unsubscribe = appointmentSlotsService.subscribeToBookedRange(today, maxDateStr, (map) => {
+      setBookedSlots(map)
+      setSlotsLoading(false)
+    })
 
     return () => unsubscribe()
   }, [isOpen, today, maxDateStr])
@@ -185,13 +163,9 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
     setLoading(true)
     try {
       // Final real-time safety check right before submitting, in case someone
-      // else grabbed this exact slot in the moment between picking and submitting.
-      const conflictSnap = await getDocs(query(
-        collection(db, 'health_requests'),
-        where('preferredAppointmentDate', '==', date),
-        where('preferredAppointmentTime', '==', time)
-      ))
-      const stillTaken = conflictSnap.docs.some((d) => ACTIVE_STATUSES.includes(d.data().status))
+      // else grabbed this exact slot in the moment between picking and
+      // submitting. Checked against the privacy-safe slots collection only.
+      const stillTaken = await appointmentSlotsService.isTimeBooked(date, time)
       if (stillTaken) {
         setError('Sorry, that slot was just taken. Please pick another time.')
         setLoading(false)
@@ -393,3 +367,4 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
 }
 
 export default ScheduleCheckupModal
+

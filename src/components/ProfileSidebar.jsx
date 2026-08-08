@@ -1,16 +1,19 @@
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, User, Settings, Bell, Shield, LogOut, ChevronRight, Moon, Sun, HelpCircle, Info, Lock } from 'lucide-react'
+import { X, User, Settings, Bell, Shield, LogOut, ChevronRight, Moon, Sun, HelpCircle, Info, Lock, Globe } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import notificationService from '../services/notificationService'
 
 const ProfileSidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate()
   const { isDarkMode, toggleTheme } = useTheme()
   const { user, logout } = useAuth()
+  const { language, setLanguage, t, supportedLanguages } = useLanguage()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false)
 
   useEffect(() => {
     const fetchUnreadCount = async () => {
@@ -43,10 +46,12 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
   const card =
     'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40'
 
+  const currentLanguageLabel = supportedLanguages.find(l => l.code === language)?.label || 'English'
+
   const menuItems = [
     {
       icon: User,
-      label: 'My Profile',
+      label: t('nav.myProfile'),
       description: 'View and edit profile',
       path: '/profile',
       iconBg: 'bg-gradient-to-br from-sky-500 via-blue-500 to-cyan-500',
@@ -54,7 +59,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
     },
    {
       icon: Bell,
-      label: 'Notifications',
+      label: t('nav.notifications'),
       description: 'Manage alerts',
       badge: unreadCount > 0 ? String(unreadCount > 99 ? '99+' : unreadCount) : null,
       path: '/notifications',
@@ -63,7 +68,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
     },
     {
       icon: Settings,
-      label: 'Settings',
+      label: t('nav.settings'),
       description: 'App preferences',
       path: '/settings',
       iconBg: 'bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500',
@@ -71,7 +76,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
     },
     {
       icon: Shield,
-      label: 'Privacy & Security',
+      label: t('nav.privacySecurity'),
       description: 'Control your data',
       path: '/privacy-security',
       iconBg: 'bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500',
@@ -79,16 +84,24 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
     },
     {
       icon: isDarkMode ? Sun : Moon,
-      label: 'Dark Mode',
+      label: t('nav.darkMode'),
       description: isDarkMode ? 'Switch to light mode' : 'Switch to dark mode',
       toggle: true,
       iconBg: 'bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-500',
       iconRing: 'ring-amber-300/40',
     },
+    {
+      icon: Globe,
+      label: t('nav.language'),
+      description: currentLanguageLabel,
+      isLanguage: true,
+      iconBg: 'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500',
+      iconRing: 'ring-blue-300/40',
+    },
     ...(user?.role === 'resident'
       ? [{
           icon: Lock,
-          label: 'Request Role Upgrade',
+          label: t('nav.requestRoleUpgrade'),
           description: 'Ask an admin to become a Barangay Official or BHW',
           path: '/request-role-upgrade',
           iconBg: 'bg-gradient-to-br from-slate-500 via-gray-500 to-zinc-600',
@@ -97,7 +110,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
       : []),
     {
       icon: HelpCircle,
-      label: 'Help & Support',
+      label: t('nav.helpSupport'),
       description: 'Get assistance',
       path: '/help-support',
       iconBg: 'bg-gradient-to-br from-cyan-500 via-teal-500 to-emerald-500',
@@ -105,7 +118,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
     },
     {
       icon: Info,
-      label: 'About SmartCo',
+      label: t('nav.about'),
       description: 'App information',
       path: '/about',
       iconBg: 'bg-gradient-to-br from-indigo-500 via-blue-500 to-violet-500',
@@ -116,6 +129,8 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
   const handleMenuClick = (item) => {
     if (item.toggle) {
       toggleTheme()
+    } else if (item.isLanguage) {
+      setShowLanguageMenu((prev) => !prev)
     } else if (item.path) {
       navigate(item.path)
       onClose()
@@ -164,7 +179,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
           {/* Header */}
           <div className="border-b border-white/10 p-6">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Profile</h2>
+              <h2 className="text-xl font-bold text-white">{t('nav.profile')}</h2>
               <button
                 onClick={onClose}
                 className="rounded-lg border border-white/20 bg-white/10 p-2 text-white transition hover:bg-white/20"
@@ -203,42 +218,69 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
           <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-2.5">
               {menuItems.map((item, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleMenuClick(item)}
-                  className={`group flex w-full items-center justify-between p-4 text-left ${card}`}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-lg ring-2 transition-transform duration-300 group-hover:scale-110 ${item.iconBg} ${item.iconRing}`}
-                    >
-                      <item.icon className="h-4.5 w-4.5 text-white" />
+                <div key={index}>
+                  <button
+                    onClick={() => handleMenuClick(item)}
+                    className={`group flex w-full items-center justify-between p-4 text-left ${card}`}
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div
+                        className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-lg ring-2 transition-transform duration-300 group-hover:scale-110 ${item.iconBg} ${item.iconRing}`}
+                      >
+                        <item.icon className="h-4.5 w-4.5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-white">{item.label}</p>
+                        <p className="text-xs text-white/50">{item.description}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-white">{item.label}</p>
-                      <p className="text-xs text-white/50">{item.description}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {item.badge && (
-                      <span className="rounded-full bg-rose-500 px-2 py-1 text-xs font-bold text-white shadow-md shadow-rose-500/30">
-                        {item.badge}
-                      </span>
-                    )}
-                    {item.toggle ? (
-                      <div className="relative inline-block h-6 w-12">
-                        <input type="checkbox" checked={isDarkMode} readOnly className="peer sr-only" />
-                        <div
-                          className={`h-6 w-12 rounded-full transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all after:content-[''] peer-checked:after:translate-x-6 ${
-                            isDarkMode ? 'bg-blue-500' : 'bg-white/20'
+                    <div className="flex items-center space-x-2">
+                      {item.badge && (
+                        <span className="rounded-full bg-rose-500 px-2 py-1 text-xs font-bold text-white shadow-md shadow-rose-500/30">
+                          {item.badge}
+                        </span>
+                      )}
+                      {item.toggle ? (
+                        <div className="relative inline-block h-6 w-12">
+                          <input type="checkbox" checked={isDarkMode} readOnly className="peer sr-only" />
+                          <div
+                            className={`h-6 w-12 rounded-full transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all after:content-[''] peer-checked:after:translate-x-6 ${
+                              isDarkMode ? 'bg-blue-500' : 'bg-white/20'
+                            }`}
+                          />
+                        </div>
+                      ) : (
+                        <ChevronRight
+                          className={`h-5 w-5 text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white ${
+                            item.isLanguage && showLanguageMenu ? 'rotate-90' : ''
                           }`}
                         />
-                      </div>
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white" />
-                    )}
-                  </div>
-                </button>
+                      )}
+                    </div>
+                  </button>
+
+                  {item.isLanguage && showLanguageMenu && (
+                    <div className="mt-1 ml-14 mb-1 space-y-1 rounded-xl border border-white/10 bg-black/20 p-2 backdrop-blur-xl">
+                      {supportedLanguages.map((lang) => (
+                        <button
+                          key={lang.code}
+                          onClick={() => {
+                            setLanguage(lang.code)
+                            setShowLanguageMenu(false)
+                          }}
+                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
+                            language === lang.code
+                              ? 'bg-blue-500/30 text-white font-semibold'
+                              : 'text-white/70 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <span>{lang.flagLabel}</span>
+                          {language === lang.code && <span className="text-xs">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -250,7 +292,7 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
               className="flex w-full items-center justify-center space-x-2 rounded-xl border border-rose-400/30 bg-rose-500/15 py-3 font-semibold text-rose-200 backdrop-blur-sm transition hover:bg-rose-500/25"
             >
               <LogOut className="h-5 w-5" />
-              <span>Logout</span>
+              <span>{t('nav.logout')}</span>
             </button>
             <p className="mt-3 text-center text-xs text-white/40">
               SmartCo v1.0.0 © 2026

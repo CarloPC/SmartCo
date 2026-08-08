@@ -12,6 +12,7 @@ import announcementsService from '../services/announcementsService'
 import aiInsightsService, { MODULES } from '../services/aiInsightsService'
 import PostCard from '../components/PostCard'
 import CreatePostModal from '../components/CreatePostModal'
+import { useLanguage } from '../context/LanguageContext'
 
 // Glass badge colors per AI priority level — kept in sync with the frosted
 // aesthetic used across the rest of this page (no solid/opaque badges).
@@ -24,6 +25,7 @@ const PRIORITY_GLASS = {
 const EventsPage = () => {
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const isOfficial = adminService.isAdmin(user)
 
@@ -151,7 +153,7 @@ const EventsPage = () => {
                 AI-powered event scheduling
               </div>
               <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Community Board
+                {t('events.title')}
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
                 Events &amp; announcements from your barangay, all in one feed.

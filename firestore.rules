@@ -73,16 +73,45 @@ service cloud.firestore {
     }
 
     // ─── Health Requests (Groq AI Summaries & Scheduling) ───────────────────
+    // health_requests documents carry sensitive content (symptoms, AI chat
+    // history, health assessments), so `allow read` here — with no separate
+    // `allow list` override — governs BOTH get and list. A resident can only
+    // list this collection with a query Firestore can prove returns solely
+    // their own docs (i.e. filtered by `where('userId','==', uid)`); any
+    // broader query (no filter, or a date-range filter) is rejected outright
+    // for residents. BHW/Admin/Barangay Official keep unrestricted list/read,
+    // since isBHW() doesn't depend on the returned document's data.
+    //
+    // 🔒 PRIVACY FIX: this previously had a blanket
+    // `allow list: if isAuthenticated();` so ScheduleCheckupModal's "check
+    // available slots" query could work — but that also meant ANY
+    // authenticated resident could list the ENTIRE collection (or any date
+    // range) and receive every other resident's symptoms, AI conversation,
+    // name, and email in that same read. Availability checking has been
+    // moved to the separate, privacy-safe `appointmentSlots` collection
+    // below (date/time only, no PII), so this wide-open list is no longer
+    // needed and has been removed.
     match /health_requests/{requestId} {
       allow read: if isAuthenticated() && (
         resource.data.userId == request.auth.uid || isBHW()
       );
-      // ✅ FIXED: residents need list access to see booked slots when
-      // scheduling a checkup (ScheduleCheckupModal queries this collection).
-      allow list: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update: if isBHW();
       allow delete: if isSuperAdmin();
+    }
+
+    // ─── Appointment Slots (privacy-safe booking availability) ─────────────
+    // appointmentSlots/{date} stores ONLY which time slots are booked on a
+    // given date (e.g. { times: { '09:00': true } }) — never a resident's
+    // name, symptoms, or any other health_requests field. This is what
+    // ScheduleCheckupModal reads to show/disable booked times, so residents
+    // never need list access to health_requests itself. Same "no PII, so
+    // open write is low-risk without a backend" reasoning as purokStats
+    // above — worst case of a bad write is a wrong slot count, not a
+    // data leak.
+    match /appointmentSlots/{dateId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
     // ─── Food Aid ────────────────────────────────────────────────────────────

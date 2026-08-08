@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Edit2, Save, X, Trash2, User, Mail, Phone, MapPin, Briefcase, Loader, Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import authService from '../services/authService'
 import storageService from '../services/storageService'
 import roleUpgradeService from '../services/roleUpgradeService'
 import { PUROKS_ILIHAN } from '../constants/puroks'
+import ChangeEmailModal from '../components/ChangeEmailModal'
 
 const SYSTEM_ROLE_LABELS = {
   admin: 'Administrator',
@@ -19,8 +21,10 @@ const SYSTEM_ROLE_LABELS = {
 const MyProfilePage = () => {
   const navigate = useNavigate()
   const { user, updateUser, logout } = useAuth()
+  const { t } = useLanguage()
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showChangeEmail, setShowChangeEmail] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -227,15 +231,23 @@ const MyProfilePage = () => {
             )}
           </div>
 
-          {/* Email (Read-only) */}
+          {/* Email — changing it is a sensitive Firebase Auth operation, so
+              it's handled through ChangeEmailModal (reauthentication +
+              email verification) rather than the inline edit fields above. */}
           <div>
             <label className="mb-1.5 flex items-center space-x-2 text-sm font-medium text-white/70">
               <Mail className="h-4 w-4" />
               <span>Email Address</span>
             </label>
-            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-medium text-white/60">
-              <span>{userData.email}</span>
-              <span className="text-xs opacity-60">Cannot be changed</span>
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-medium text-white">
+              <span className="truncate">{userData.email}</span>
+              <button
+                type="button"
+                onClick={() => setShowChangeEmail(true)}
+                className="flex-shrink-0 rounded-lg border border-blue-400/30 bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-200 transition hover:bg-blue-500/25"
+              >
+                {t('changeEmail.changeButton', 'Change Email')}
+              </button>
             </div>
           </div>
 
@@ -376,6 +388,13 @@ const MyProfilePage = () => {
           )}
         </div>
       </div>
+
+      {/* Change Email Modal (Step 9 — Account Recovery & Email Change) */}
+      <ChangeEmailModal
+        isOpen={showChangeEmail}
+        onClose={() => setShowChangeEmail(false)}
+        currentEmail={userData.email}
+      />
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (

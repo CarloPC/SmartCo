@@ -26,9 +26,15 @@ const HomePage = () => {
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
   const purokLabel = getShortPurokName(user?.purok)
+  // BHW/Admin/Barangay Official keep the existing purok-wide aggregate view
+  // (privacy-safe counts only, no individual records). Residents get a
+  // personal view built from only their own healthRecords — see Step 5.
+  const isHealthStaff = ['bhw', 'admin', 'barangay_official'].includes(user?.role)
 
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ healthRecords: 0, aidDistributed: 0, upcomingEvents: 0, activeUsers: 0 })
+  // Purok-wide aggregate for BHW/Admin/Barangay Official, or the resident's
+  // own stats for everyone else (see isHealthStaff above) — same shape either way.
   const [purokHealthStats, setPurokHealthStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, monthly: {} })
   const [foodAidStats, setFoodAidStats] = useState({ totalFamilies: 0, familiesServed: 0, pendingDeliveries: 0, completedDeliveries: 0, progress: 0 })
   const [healthTrendsData, setHealthTrendsData] = useState([])
@@ -42,8 +48,12 @@ const HomePage = () => {
     try {
       setLoading(true)
       const purok = user?.purok
+      // Residents see only their own checkup stats; BHW/Admin/Barangay
+      // Official keep the existing purok-wide aggregate (both share the
+      // same { total, pending, approved, rejected, monthly } shape, so
+      // nothing downstream needs to change based on which was fetched).
       const [healthStats, foodAidItems, events, notifications] = await Promise.all([
-        purokStatsService.getHealthStats(purok),
+        isHealthStaff ? purokStatsService.getHealthStats(purok) : healthService.getMyHealthStats(),
         foodAidService.getFoodAidByPurok(purok),
         eventsService.getEvents(),
         notificationService.getNotifications(),
@@ -160,7 +170,7 @@ const HomePage = () => {
   const statCards = [
   {
     icon: Heart,
-    label: 'Health Records',
+    label: isHealthStaff ? 'Health Records' : 'My Health Records',
     value: stats.healthRecords,
     iconBg:
       'bg-gradient-to-br from-rose-500 via-pink-500 to-red-500',
@@ -365,8 +375,12 @@ const HomePage = () => {
               <Activity className="h-4 w-4 text-sky-200" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-white/50">{purokLabel} health trend</p>
-              <p className="text-base font-semibold text-white">Monthly checkup trend</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-white/50">
+                {isHealthStaff ? `${purokLabel} health trend` : 'My health trend'}
+              </p>
+              <p className="text-base font-semibold text-white">
+                {isHealthStaff ? 'Monthly checkup trend' : 'My monthly checkup trend'}
+              </p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>

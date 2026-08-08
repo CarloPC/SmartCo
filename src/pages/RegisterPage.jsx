@@ -5,17 +5,21 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, Loader2, CheckCircle, Shield, Zap, Bell } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import BARANGAY_CONFIG from '../config/barangayConfig'
 import { PUROKS_ILIHAN } from '../constants/puroks'
+import TermsModal from '../components/TermsModal'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
   const { register } = useAuth()
+  const { t } = useLanguage()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -38,6 +42,13 @@ const RegisterPage = () => {
       setError('Password must be at least 6 characters long')
       return
     }
+    // Terms & Conditions must be explicitly accepted BEFORE any Firebase
+    // account or Firestore profile is created — see authService.register()
+    // for the defense-in-depth check on this same flag.
+    if (!formData.acceptTerms) {
+      setError(t('terms.mustAgree', 'Please agree to the Terms & Conditions before creating your account.'))
+      return
+    }
     setLoading(true)
     try {
       const result = await register({
@@ -46,7 +57,9 @@ const RegisterPage = () => {
         phone: formData.phone,
         role: 'resident', // enforced again in authService.register as defense-in-depth
         purok: formData.purok,
-        password: formData.password
+        password: formData.password,
+        termsAccepted: formData.acceptTerms,
+        termsVersion: '1.0'
       })
       if (result.success) {
         setSuccess(true)
@@ -324,22 +337,29 @@ const RegisterPage = () => {
                   </div>
                 </div>
 
-                {/* Terms */}
-                <div className="flex items-start space-x-2">
-                  <input
-                    type="checkbox"
-                    name="acceptTerms"
-                    checked={formData.acceptTerms}
-                    onChange={handleChange}
-                    className="w-4 h-4 mt-0.5 rounded border-white/20 bg-white/10 text-blue-500 focus:ring-blue-400 flex-shrink-0"
-                    required
-                  />
-                  <label className="text-sm text-white/60">
-                    I agree to the{' '}
-                    <span className="text-blue-300 font-medium cursor-pointer hover:underline">Terms and Conditions</span>
-                    {' '}and{' '}
-                    <span className="text-blue-300 font-medium cursor-pointer hover:underline">Privacy Policy</span>
-                  </label>
+                {/* Terms & Conditions */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3.5 space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowTermsModal(true)}
+                    className="text-sm text-blue-300 font-medium hover:text-blue-200 hover:underline"
+                  >
+                    {t('terms.viewButton', 'View Terms & Conditions')}
+                  </button>
+                  <div className="flex items-start space-x-2">
+                    <input
+                      id="acceptTerms"
+                      type="checkbox"
+                      name="acceptTerms"
+                      checked={formData.acceptTerms}
+                      onChange={handleChange}
+                      className="w-4 h-4 mt-0.5 rounded border-white/20 bg-white/10 text-blue-500 focus:ring-blue-400 flex-shrink-0"
+                      aria-required="true"
+                    />
+                    <label htmlFor="acceptTerms" className="text-sm text-white/60">
+                      {t('terms.agreeLabel', 'I have read and agree to the SmartCo Terms & Conditions and Privacy Notice.')}
+                    </label>
+                  </div>
                 </div>
 
                 {/* Submit */}
@@ -370,6 +390,8 @@ const RegisterPage = () => {
           </div>
         </div>
       </div>
+
+      <TermsModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
     </div>
   )
 }

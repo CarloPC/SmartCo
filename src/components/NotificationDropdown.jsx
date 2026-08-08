@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { X, AlertCircle, Bell, Loader2, Calendar, Heart, Package, AlertTriangle, FileText, ChevronRight } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import notificationService from '../services/notificationService'
 
 const isOfficial = (user) => user?.role === 'admin' || user?.role === 'barangay_official'
@@ -56,6 +57,7 @@ const NotificationDropdown = ({ onClose, onNotificationRead }) => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { isDarkMode } = useTheme()
+  const { t } = useLanguage()
   const [notifications, setNotifications] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -133,7 +135,7 @@ const NotificationDropdown = ({ onClose, onNotificationRead }) => {
 
       <div className="relative z-10 p-4 space-y-2">
         <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/10">
-          <h3 className="font-semibold text-white">Notifications</h3>
+          <h3 className="font-semibold text-white">{t('nav.notifications')}</h3>
           <button
             onClick={onClose}
             className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-all duration-200"
@@ -149,7 +151,7 @@ const NotificationDropdown = ({ onClose, onNotificationRead }) => {
         ) : notifications.length === 0 ? (
           <div className="text-center py-8">
             <Bell className="w-12 h-12 mx-auto mb-2 text-white/20" />
-            <p className="text-sm text-white/50">No notifications</p>
+            <p className="text-sm text-white/50">{t('notifications.noNotifications')}</p>
           </div>
         ) : (
           <>

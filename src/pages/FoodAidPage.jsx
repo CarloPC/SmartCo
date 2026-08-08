@@ -21,6 +21,7 @@ import adminService from '../services/adminService'
 import LocationPicker from '../components/LocationPicker'
 import BARANGAY_CONFIG from '../config/barangayConfig'
 import { ilihanBoundary, ILIHAN_BOUNDS_LATLNG, ILIHAN_CENTER_LATLNG } from '../data/ilihanBoundary'
+import { useLanguage } from '../context/LanguageContext'
 import {
   TOLEDO_BARANGAYS, PUROKS_LIST, PUROK_COORDS,
   getPositionAsync, detectNearestBarangay,
@@ -388,7 +389,7 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
 
             {/* Barangay – fixed to Barangay Ilihan (single-barangay deployment) */}
             <div>
-              <label className={labelCls}>Barangay</label>
+              <label className={labelCls}>{t('foodAid.barangay')}</label>
               <div className={
                 'w-full px-3 py-2.5 rounded-xl border text-sm flex items-center space-x-2 ' +
                 (isDarkMode ? 'bg-gray-800/60 border-gray-700 text-gray-300' : 'bg-gray-100 border-gray-200 text-gray-600')
@@ -402,7 +403,7 @@ function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
             {/* Purok with custom toggle */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className={labelCls + ' mb-0'}>Purok / Zone *</label>
+                <label className={labelCls + ' mb-0'}>{t('foodAid.purokZone')} *</label>
                 <button
                   type="button"
                   onClick={() => { setCustomPurokMode(m => !m); set('purok', '') }}
@@ -1773,6 +1774,7 @@ function DistributionDetailDrawer({
 const FoodAidPage = () => {
   const { isDarkMode } = useTheme()
   const { user }       = useAuth()
+  const { t }          = useLanguage()
   const navigate       = useNavigate()
   const isAdmin        = user?.role === 'admin' || user?.role === 'barangay_official'
 
@@ -1925,7 +1927,7 @@ const FoodAidPage = () => {
                 GPS-smart route optimization
               </div>
               <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Community Assistance Distribution
+                {t('foodAid.title')}
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
                 Track deliveries and get AI-optimized routes to every barangay.

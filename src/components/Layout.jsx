@@ -6,6 +6,7 @@ import Topbar from './Topbar'
 import ProfileSidebar from './ProfileSidebar'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import adminService from '../services/adminService'
 import notificationService from '../services/notificationService'
 import documentRequestService from '../services/documentRequestService'
@@ -20,6 +21,7 @@ const Layout = ({ children }) => {
   const location = useLocation()
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const isOfficial = adminService.isAdmin(user) || user?.role === 'barangay_official'
 
   // Health / Food Aid / Events keep the original "unread notification" badge
@@ -174,12 +176,12 @@ const Layout = ({ children }) => {
       >
         <div className={`flex items-center ${adminService.isAdmin(user) ? 'justify-between' : 'justify-around'} h-full px-2`}>
           {[
-            { to: '/home',     Icon: Home,          label: 'Home',      match: '/home' },
-            { to: '/health',   Icon: Heart,         label: 'Health',    match: '/health',   badgeKey: 'health' },
-            { to: '/food-aid', Icon: Package,       label: 'Community Assistance',  match: '/food-aid', badgeKey: 'foodAid' },
-            { to: '/events',   Icon: Calendar,      label: 'Events',    match: '/events',   badgeKey: 'events' },
+            { to: '/home',     Icon: Home,          label: t('nav.home'),      match: '/home' },
+            { to: '/health',   Icon: Heart,         label: t('nav.health'),    match: '/health',   badgeKey: 'health' },
+            { to: '/food-aid', Icon: Package,       label: t('nav.communityAssistance'),  match: '/food-aid', badgeKey: 'foodAid' },
+            { to: '/events',   Icon: Calendar,      label: t('nav.events'),    match: '/events',   badgeKey: 'events' },
             { to: adminService.isAdmin(user) ? '/emergency' : '/emergency/report',
-                               Icon: AlertTriangle, label: 'Emergency', match: '/emergency', accent: true, badgeKey: 'emergency' },
+                               Icon: AlertTriangle, label: t('emergency.title'), match: '/emergency', accent: true, badgeKey: 'emergency' },
           ].map(({ to, Icon, label, match, accent, badgeKey }) => {
             const active = location.pathname.startsWith(match)
             const badgeCount = badgeKey ? (navBadges[badgeKey] || 0) : 0
@@ -225,7 +227,7 @@ const Layout = ({ children }) => {
               }`}
             >
               <Shield className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Admin</span>
+              <span className="text-[10px] font-medium">{t('nav.admin')}</span>
             </Link>
           )}
         </div>

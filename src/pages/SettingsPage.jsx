@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bell, Globe, Lock, Eye, Volume2, Smartphone, Save } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
+import { useLanguage } from '../context/LanguageContext'
 
 const SettingsPage = () => {
   const navigate = useNavigate()
   const { isDarkMode } = useTheme()
-  
+  const { language, setLanguage, t, supportedLanguages } = useLanguage()
+
   const [settings, setSettings] = useState({
     notifications: {
       push: true,
@@ -19,6 +21,10 @@ const SettingsPage = () => {
       foodAid: false
     },
     preferences: {
+      // Language display/selection is driven by LanguageContext (below) —
+      // this local field is kept only so the rest of the mock "preferences"
+      // form (theme/sound/vibration, which are not yet wired to real state)
+      // continues to work unchanged.
       language: 'en',
       theme: 'light',
       soundEffects: true,
@@ -80,7 +86,7 @@ const SettingsPage = () => {
           >
             <ArrowLeft className="w-6 h-6 text-white" />
           </button>
-          <h1 className="text-xl font-bold text-white">Settings</h1>
+          <h1 className="text-xl font-bold text-white">{t('nav.settings')}</h1>
           <div className="w-10" />
         </div>
 
@@ -147,20 +153,20 @@ const SettingsPage = () => {
         <div className={`backdrop-blur-lg rounded-xl shadow-xl p-4 ${isDarkMode ? 'bg-gray-800/95 border border-gray-700/50' : 'bg-white/95 border border-white/30'}`}>
           <div className="flex items-center space-x-3 mb-4">
             <Globe className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h3 className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Preferences</h3>
+            <h3 className={`font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{t('profile.preferences')}</h3>
           </div>
           
           <div className="space-y-4">
             <div>
-              <label className={`text-sm font-medium mb-2 block ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Language</label>
+              <label className={`text-sm font-medium mb-2 block ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{t('profile.language')}</label>
               <select
-                value={settings.preferences.language}
-                onChange={(e) => handleSelect('preferences', 'language', e.target.value)}
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               >
-                <option value="en">English</option>
-                <option value="tl">Tagalog</option>
-                <option value="ceb">Cebuano</option>
+                {supportedLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>{lang.label}</option>
+                ))}
               </select>
             </div>
 
@@ -237,7 +243,7 @@ const SettingsPage = () => {
             className={`w-full backdrop-blur-sm text-white font-semibold py-4 rounded-xl flex items-center justify-center space-x-2 transition shadow-xl ${isDarkMode ? 'bg-blue-600/90 hover:bg-blue-700 border border-blue-500/30' : 'bg-blue-500/90 hover:bg-blue-600 border border-white/20'}`}
           >
             <Save className="w-5 h-5" />
-            <span>Save Changes</span>
+            <span>{t('common.save')}</span>
           </button>
         )}
       </div>

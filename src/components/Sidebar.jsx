@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Home, Heart, Package, Calendar, Shield, ChevronLeft, ChevronRight, AlertTriangle, UserCheck, Stethoscope, Truck, Brain, FileText } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import adminService from '../services/adminService'
 import foodAidService from '../services/foodAidService'
 
@@ -10,6 +11,7 @@ const Sidebar = ({ isCollapsed, onToggleCollapse, navBadges = {} }) => {
   const location = useLocation()
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const isAdmin = adminService.isAdmin(user)
   const [assignmentCount, setAssignmentCount] = useState(0)
 
@@ -26,19 +28,19 @@ const Sidebar = ({ isCollapsed, onToggleCollapse, navBadges = {} }) => {
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/')
 
   const navItems = [
-    { icon: Home,          label: 'Home',             path: '/home' },
-    { icon: Heart,         label: 'Health',           path: '/health', badgeKey: 'health' },
-    { icon: Package,       label: 'Community Assistance', path: '/food-aid', badgeKey: 'foodAid' },
-    { icon: Calendar,      label: 'Events',           path: '/events', badgeKey: 'events' },
+    { icon: Home,          label: t('nav.home'),             path: '/home' },
+    { icon: Heart,         label: t('nav.health'),           path: '/health', badgeKey: 'health' },
+    { icon: Package,       label: t('nav.communityAssistance'), path: '/food-aid', badgeKey: 'foodAid' },
+    { icon: Calendar,      label: t('nav.events'),           path: '/events', badgeKey: 'events' },
     {
       icon: FileText,
-      label: 'Document Requests',
+      label: t('nav.documentRequests'),
       path: (user?.role === 'admin' || user?.role === 'barangay_official') ? '/documents/manage' : '/documents',
       badgeKey: 'document',
     },
     {
       icon: AlertTriangle,
-      label: isAdmin ? 'Emergencies' : 'Report Emergency',
+      label: isAdmin ? t('nav.emergencies') : t('nav.reportEmergency'),
       path: isAdmin ? '/emergency' : '/emergency/report',
       accent: true,
       badgeKey: 'emergency',
@@ -46,13 +48,13 @@ const Sidebar = ({ isCollapsed, onToggleCollapse, navBadges = {} }) => {
   ]
 
   if (assignmentCount > 0) {
-    navItems.splice(3, 0, { icon: Truck, label: 'My Assignments', path: '/food-aid/my-assignments' })
+    navItems.splice(3, 0, { icon: Truck, label: t('nav.myAssignments'), path: '/food-aid/my-assignments' })
   }
 
-  if (user?.role === 'bhw') navItems.splice(1, 0, { icon: Stethoscope, label: 'BHW', path: '/bhw' })
-  if (isAdmin) navItems.push({ icon: Brain, label: 'AI Decision Support', path: '/ai-insights', accent: true })
-  if (isAdmin) navItems.push({ icon: Shield, label: 'Admin', path: '/admin' })
-  if (user?.role === 'admin') navItems.push({ icon: UserCheck, label: 'Role Upgrade Requests', path: '/admin/role-requests' })
+  if (user?.role === 'bhw') navItems.splice(1, 0, { icon: Stethoscope, label: t('nav.bhw'), path: '/bhw' })
+  if (isAdmin) navItems.push({ icon: Brain, label: t('nav.aiDecisionSupport'), path: '/ai-insights', accent: true })
+  if (isAdmin) navItems.push({ icon: Shield, label: t('nav.admin'), path: '/admin' })
+  if (user?.role === 'admin') navItems.push({ icon: UserCheck, label: t('nav.roleUpgradeRequests'), path: '/admin/role-requests' })
 
   return (
     <aside  
@@ -206,7 +208,7 @@ blur-[140px]
           ) : (
             <div className="flex items-center gap-2 text-sm font-medium">
               <ChevronLeft className="w-5 h-5" />
-              <span>Collapse</span>
+              <span>{t('nav.collapse')}</span>
             </div>
           )}
         </button>

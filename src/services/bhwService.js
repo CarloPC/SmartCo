@@ -3,6 +3,7 @@ import { collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'fi
 import { db } from '../config/firebase'
 import notificationService from './notificationService'
 import purokStatsService from './purokStatsService'
+import appointmentSlotsService, { ACTIVE_STATUSES } from './appointmentSlotsService'
 
 const HEALTH_REQUESTS_COLLECTION = 'health_requests'
 
@@ -103,10 +104,27 @@ export const subscribeToHealthRequestAnalytics = (callback) => {
 
 export const updateHealthRequestStatus = async (requestId, updates) => {
   const requestRef = doc(db, HEALTH_REQUESTS_COLLECTION, requestId)
+
+  // Snapshot the status BEFORE updating, so we know whether this status
+  // change is entering/leaving the "active" window and needs to free up
+  // (or re-claim) its slot in the privacy-safe appointmentSlots collection.
+  const beforeSnap = await getDoc(requestRef)
+  const beforeData = beforeSnap.data() || {}
+
   await updateDoc(requestRef, updates)
 
   const requestSnap = await getDoc(requestRef)
   const requestData = requestSnap.data() || {}
+
+  if (requestData.preferredAppointmentDate && requestData.preferredAppointmentTime) {
+    const wasActive = ACTIVE_STATUSES.includes(beforeData.status)
+    const isActiveNow = ACTIVE_STATUSES.includes(requestData.status)
+    if (wasActive && !isActiveNow) {
+      appointmentSlotsService.removeBooking(requestData.preferredAppointmentDate, requestData.preferredAppointmentTime)
+    } else if (!wasActive && isActiveNow) {
+      appointmentSlotsService.addBooking(requestData.preferredAppointmentDate, requestData.preferredAppointmentTime)
+    }
+  }
 
   if (requestData.sourceRecordId) {
     const healthRecordRef = doc(db, 'healthRecords', requestData.sourceRecordId)

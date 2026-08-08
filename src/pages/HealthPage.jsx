@@ -10,9 +10,11 @@ import healthService from '../services/healthService'
 import HealthAIChat from '../components/HealthAIChat'
 import HealthRecordModal from '../components/HealthRecordModal'
 import { db, auth } from '../config/firebase'
+import { useLanguage } from '../context/LanguageContext'
 
 const HealthPage = () => {
   const { isDarkMode } = useTheme()
+  const { t } = useLanguage()
 
   const [healthStats, setHealthStats]   = useState({ total: 0, today: 0, thisWeek: 0, emergencies: 0 })
   const [healthAlerts, setHealthAlerts] = useState([])
@@ -210,7 +212,7 @@ const HealthPage = () => {
                 AI-powered health monitoring
               </div>
               <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Health Management
+                {t('health.title')}
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
                 Monitor Barangay Ilihan health and chat with AI for guidance.
@@ -275,7 +277,7 @@ const HealthPage = () => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-base font-bold text-white">AI Health Assistant</span>
+                      <span className="text-base font-bold text-white">{t('health.aiHealthAssistant')}</span>
                       <span className="flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs font-semibold text-white/80">
                         <Sparkles className="h-2.5 w-2.5" /> Powered by Groq
                       </span>
@@ -293,7 +295,7 @@ const HealthPage = () => {
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <Heart className="h-4 w-4 text-emerald-300" />
-                  <span className="text-sm font-semibold text-white">AI Health Assistant</span>
+                  <span className="text-sm font-semibold text-white">{t('health.aiHealthAssistant')}</span>
                   <span className="flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs text-white/70">
                     <Sparkles className="h-2.5 w-2.5" /> Groq AI
                   </span>

@@ -2,6 +2,7 @@ import { collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, query, 
 import { db, auth } from '../config/firebase'
 import notificationService from './notificationService'
 import purokStatsService from './purokStatsService'
+import appointmentSlotsService from './appointmentSlotsService'
 
 class HealthService {
   async getHealthRecords() {
@@ -116,6 +117,13 @@ class HealthService {
         updatedAt: newRecord.updatedAt,
       })
 
+      // Mark this date/time as booked in the privacy-safe availability
+      // collection so the schedule modal never has to query health_requests
+      // (which holds symptoms/AI notes/etc.) just to check open slots.
+      if (recordData.preferredAppointmentDate && recordData.preferredAppointmentTime) {
+        appointmentSlotsService.addBooking(recordData.preferredAppointmentDate, recordData.preferredAppointmentTime)
+      }
+
       // Notify the resident about their own submission
       await this._createHealthNotification(record)
 
@@ -206,6 +214,45 @@ class HealthService {
     } catch (error) {
       console.error('Error fetching health stats:', error)
       return { total: 0, today: 0, thisWeek: 0, emergencies: 0 }
+    }
+  }
+
+  // Personal (resident-only) equivalent of purokStatsService.getHealthStats —
+  // same { total, pending, approved, rejected, monthly } shape, but computed
+  // from ONLY the signed-in resident's own healthRecords (the Firestore rule
+  // only lets this query return docs where userId == the caller's uid, so
+  // this can never include another resident's data). Used by HomePage's
+  // dashboard for resident accounts, in place of the purok-wide aggregate
+  // that BHW/Admin/Barangay Official accounts still see.
+  async getMyHealthStats() {
+    const empty = { total: 0, pending: 0, approved: 0, rejected: 0, monthly: {} }
+    try {
+      const userId = auth.currentUser?.uid
+      if (!userId) return empty
+
+      const snapshot = await getDocs(
+        query(collection(db, 'healthRecords'), where('userId', '==', userId))
+      )
+      const records = snapshot.docs.map((d) => d.data())
+
+      const monthly = {}
+      records.forEach((r) => {
+        if (!r.createdAt) return
+        const d = new Date(r.createdAt)
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        monthly[key] = (monthly[key] || 0) + 1
+      })
+
+      return {
+        total: records.length,
+        pending: records.filter((r) => r.approvalStatus === 'pending').length,
+        approved: records.filter((r) => r.approvalStatus === 'approved').length,
+        rejected: records.filter((r) => r.approvalStatus === 'rejected').length,
+        monthly,
+      }
+    } catch (error) {
+      console.error('Error fetching personal health stats:', error)
+      return empty
     }
   }
 

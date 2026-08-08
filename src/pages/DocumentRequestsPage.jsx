@@ -8,6 +8,7 @@ import {
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import documentRequestService from '../services/documentRequestService'
+import { useLanguage } from '../context/LanguageContext'
 
 const card =
   'rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 via-white/10 to-white/5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 transition-all duration-300 hover:border-white/40 hover:shadow-blue-500/10'
@@ -94,6 +95,7 @@ const RequestCard = ({ request }) => {
 
 const DocumentRequestsPage = () => {
   const { isDarkMode } = useTheme()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
@@ -131,7 +133,7 @@ const DocumentRequestsPage = () => {
         <section className={`${card} overflow-hidden bg-gradient-to-r from-indigo-500/30 via-blue-500/20 to-sky-500/30`}>
           <div className="flex flex-col gap-5 p-5 sm:p-7 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">My Document Requests</h2>
+              <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{t('documents.title')}</h2>
               <p className="mt-1 text-sm text-white/70">Track the status of documents you've requested from the barangay.</p>
             </div>
             <button

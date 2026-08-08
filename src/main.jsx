@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.jsx'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
+import { LanguageProvider } from './context/LanguageContext'
 import { initializeDemoData } from './services/initializeDemoData'
 
 // Initialize demo data on first load (runs once)
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
       <ThemeProvider>
-        <App />
+        <LanguageProvider>
+          <App />
+        </LanguageProvider>
       </ThemeProvider>
     </AuthProvider>
   </StrictMode>,

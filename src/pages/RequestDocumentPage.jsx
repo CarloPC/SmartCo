@@ -9,6 +9,7 @@ import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import documentRequestService from '../services/documentRequestService'
+import { useLanguage } from '../context/LanguageContext'
 
 const DOCUMENT_TYPES = [
   'Barangay Certificate',
@@ -49,6 +50,7 @@ const PageBackground = ({ isDarkMode }) => (
 const RequestDocumentPage = () => {
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   const [submitted, setSubmitted] = useState(false)
@@ -157,7 +159,7 @@ const RequestDocumentPage = () => {
                 Barangay document requests
               </div>
               <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Request Documents
+                {t('documents.requestDocument')}
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
                 Request official barangay documents online — no need to line up at the Barangay Hall.

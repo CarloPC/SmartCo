@@ -16,6 +16,8 @@ import ProofPreviewModal from '../components/ProofPreviewModal'
 import { PUROKS_ILIHAN } from '../constants/puroks'
 import { ilihanBoundary, ILIHAN_BOUNDS_LATLNG, ILIHAN_CENTER_LATLNG } from '../data/ilihanBoundary'
 import { isPointInIlihan } from '../utils/locationUtils'
+import { useLanguage } from '../context/LanguageContext'
+import EmergencyCallCard from '../components/EmergencyCallCard'
 
 const PROOF_MAX_SIZE = 5 * 1024 * 1024 // 5MB
 const PROOF_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -196,6 +198,7 @@ const OverrideConfirmDialog = ({ onCancel, onContinue }) => (
 const ReportEmergencyPage = () => {
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   const [suspension, setSuspension] = useState(null)
@@ -411,6 +414,13 @@ const ReportEmergencyPage = () => {
             <p className="mb-8 text-xs font-medium text-red-300">
               Please ensure this is a real emergency. Filing false reports may result in account suspension.
             </p>
+
+            {/* Additional action — the user must tap a number themselves;
+                submitting the report above never triggers a call on its own. */}
+            <div className="mb-8 text-left">
+              <EmergencyCallCard compact />
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleReset}
@@ -460,7 +470,7 @@ const ReportEmergencyPage = () => {
                 Live emergency reporting
               </div>
               <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Report Emergency
+                {t('emergency.reportEmergency')}
               </h2>
               <p className="mt-2 text-sm leading-6 text-white/70 sm:text-base">
                 Notify barangay officials immediately  every second counts.
@@ -517,6 +527,11 @@ const ReportEmergencyPage = () => {
             </p>
           </div>
         </section>
+
+        {/* Direct emergency calling — separate from, and does not replace,
+            the report-submission workflow below. The user must tap a
+            number themselves; nothing here is triggered automatically. */}
+        <EmergencyCallCard />
 
         {error && (
           <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200">

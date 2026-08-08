@@ -10,6 +10,7 @@ import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import emergencyService from '../services/emergencyService'
 import ProofPreviewModal from '../components/ProofPreviewModal'
+import { useLanguage } from '../context/LanguageContext'
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -576,6 +577,7 @@ const EmergencyCard = ({ emergency, isDarkMode, onRefresh }) => {
 
 const EmergencyManagementPage = () => {
   const { isDarkMode } = useTheme()
+  const { t } = useLanguage()
   const [emergencies, setEmergencies] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState('all')
@@ -612,7 +614,7 @@ const EmergencyManagementPage = () => {
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl lg:text-2xl font-bold">Barangay Ilihan Emergency Management</h2>
+                <h2 className="text-xl lg:text-2xl font-bold">Barangay Ilihan {t('emergency.title')} Management</h2>
                 <p className="text-red-100 text-sm">Respond, dispatch assistance, and manage false reports</p>
               </div>
             </div>
