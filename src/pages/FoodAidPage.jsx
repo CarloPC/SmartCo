@@ -15,8 +15,8 @@ import { useAuth } from '../context/AuthContext'
 import foodAidService, {
   WORKFLOW_LABELS, ASSISTANCE_TYPES, getAssistanceTypeLabel,
 } from '../services/foodAidService'
-import { exportBeneficiariesToCSV, exportBeneficiariesToExcel } from '../utils/beneficiaryExport'
-import { readBeneficiaryFile } from '../utils/beneficiaryImport'
+import { exportBeneficiariesToCSV, exportBeneficiariesToExcel, downloadBeneficiaryImportTemplate } from '../utils/beneficiaryExport'
+import { readBeneficiaryFile, validateBeneficiaryRows } from '../utils/beneficiaryImport'
 import adminService from '../services/adminService'
 import LocationPicker from '../components/LocationPicker'
 import BARANGAY_CONFIG from '../config/barangayConfig'
@@ -121,6 +121,7 @@ function MapFitRoute({ positions }) {
 // ── Post Distribution Modal ──────────────────────────────────────────
 // Single-barangay deployment: Barangay Ilihan is fixed, not selectable.
 function PostDistributionModal({ isDarkMode, user, onClose, onSuccess }) {
+  const { t } = useLanguage()
   const [form, setForm] = useState({
     purok: '', date: '',
     timeSlot: 'Morning (8AM-10AM)', scheduleMode: 'preset',
@@ -1055,6 +1056,7 @@ function FoodAidWorkflowActions({ dist }) {
 // Scope is computed from the already-subscribed `distributions` list, so no
 // extra Firestore reads are needed for "All" / "Per Purok" / "Per Schedule".
 function ExportBeneficiariesModal({ distributions, isDarkMode, onClose }) {
+  const { t } = useLanguage()
   const [scope, setScope] = useState('all')       // all | purok | schedule
   const [purok, setPurok]   = useState(PUROKS_LIST[0] || '')
   const [scheduleId, setScheduleId] = useState(distributions[0]?.id || '')
@@ -1082,9 +1084,9 @@ function ExportBeneficiariesModal({ distributions, isDarkMode, onClose }) {
 
   const handleExport = (format) => {
     const beneficiaries = getBeneficiaries()
-    if (beneficiaries.length === 0) { alert('No beneficiaries found for this scope.'); return }
-    if (format === 'csv') exportBeneficiariesToCSV(beneficiaries, `beneficiaries_${filenameSuffix}.csv`)
-    else exportBeneficiariesToExcel(beneficiaries, `beneficiaries_${filenameSuffix}.xlsx`)
+    if (beneficiaries.length === 0) { alert(t('foodAid.exportEmptyWarning', 'No beneficiaries found for this scope.')); return }
+    if (format === 'csv') exportBeneficiariesToCSV(beneficiaries, `Community_Assistance_Beneficiaries_${filenameSuffix}.csv`)
+    else exportBeneficiariesToExcel(beneficiaries, `Community_Assistance_Beneficiaries_${filenameSuffix}.xlsx`)
   }
 
   return (
@@ -1093,24 +1095,24 @@ function ExportBeneficiariesModal({ distributions, isDarkMode, onClose }) {
       <div className={'relative w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl p-4 space-y-4 ' +
         (isDarkMode ? 'bg-gray-900 border border-gray-700' : 'bg-white')}>
         <div className="flex items-center justify-between">
-          <h3 className={'font-bold text-base ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Export Beneficiaries</h3>
+          <h3 className={'font-bold text-base ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>{t('foodAid.exportBeneficiariesTitle', 'Export Beneficiaries')}</h3>
           <button onClick={onClose} className={'p-1.5 rounded-lg ' + (isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500')}>
             <XCircle className="w-5 h-5" />
           </button>
         </div>
 
         <div>
-          <label className={labelCls}>Scope</label>
+          <label className={labelCls}>{t('foodAid.exportScopeLabel', 'Scope')}</label>
           <select value={scope} onChange={e => setScope(e.target.value)} className={inputCls}>
-            <option value="all">All Beneficiaries</option>
-            <option value="purok">Per Purok</option>
-            <option value="schedule">Per Assistance Schedule</option>
+            <option value="all">{t('foodAid.exportScopeAll', 'All Beneficiaries')}</option>
+            <option value="purok">{t('foodAid.exportScopePurok', 'Per Purok')}</option>
+            <option value="schedule">{t('foodAid.exportScopeSchedule', 'Per Assistance Schedule')}</option>
           </select>
         </div>
 
         {scope === 'purok' && (
           <div>
-            <label className={labelCls}>Purok</label>
+            <label className={labelCls}>{t('foodAid.purokZone', 'Purok / Zone')}</label>
             <select value={purok} onChange={e => setPurok(e.target.value)} className={inputCls}>
               {PUROKS_LIST.map(p => <option key={p}>{p}</option>)}
             </select>
@@ -1119,7 +1121,7 @@ function ExportBeneficiariesModal({ distributions, isDarkMode, onClose }) {
 
         {scope === 'schedule' && (
           <div>
-            <label className={labelCls}>Schedule</label>
+            <label className={labelCls}>{t('foodAid.distribution', 'Distribution')}</label>
             <select value={scheduleId} onChange={e => setScheduleId(e.target.value)} className={inputCls}>
               {distributions.map(d => (
                 <option key={d.id} value={d.id}>{d.purok} · {d.date} · {getAssistanceTypeLabel(d)}</option>
@@ -1131,11 +1133,11 @@ function ExportBeneficiariesModal({ distributions, isDarkMode, onClose }) {
         <div className="flex gap-2 pt-1">
           <button onClick={() => handleExport('csv')}
             className="flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-600 transition">
-            <Download className="w-4 h-4" /><span>CSV</span>
+            <Download className="w-4 h-4" /><span>{t('foodAid.exportCsvButton', 'Export CSV')}</span>
           </button>
           <button onClick={() => handleExport('excel')}
             className="flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition">
-            <Download className="w-4 h-4" /><span>Excel</span>
+            <Download className="w-4 h-4" /><span>{t('foodAid.exportExcelButton', 'Export Excel')}</span>
           </button>
         </div>
       </div>
@@ -1147,10 +1149,11 @@ function ExportBeneficiariesModal({ distributions, isDarkMode, onClose }) {
 // `dist` is passed in live from the parent's subscribeToFoodAid() list, so
 // this modal re-renders automatically as beneficiaries are added/updated.
 function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
+  const { t } = useLanguage()
   const [form, setForm] = useState({ name: '', purok: dist.purok || '', assistanceType: dist.assistanceType || 'Food Assistance', assistanceTypeOther: '', remarks: '' })
   const [busy, setBusy] = useState(false)
   const [showManualAdd, setShowManualAdd] = useState(false)
-  const [importPreview, setImportPreview] = useState(null) // { rows, fileName, skipped }
+  const [importPreview, setImportPreview] = useState(null) // { fileName, validated, counts, importable }
   const [importDefaultType, setImportDefaultType] = useState(dist.assistanceType || 'Food Assistance')
   const [importDefaultOther, setImportDefaultOther] = useState('')
   const [importBusy, setImportBusy] = useState(false)
@@ -1198,9 +1201,10 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
     e.target.value = '' // lets the same file be re-selected later if needed
     if (!file) return
     try {
-      const { rows, skipped } = await readBeneficiaryFile(file)
-      if (rows.length === 0) { alert('No beneficiary rows were found. Make sure the file has a "Name" column.'); return }
-      setImportPreview({ rows, fileName: file.name, skipped })
+      const { allRows } = await readBeneficiaryFile(file)
+      if (allRows.length === 0) { alert(t('foodAid.importErrorEmptyFile', 'No beneficiary rows were found. Make sure the file has a "Name" column.')); return }
+      const { validated, counts, importable } = validateBeneficiaryRows(allRows, { existingBeneficiaries: beneficiaries })
+      setImportPreview({ fileName: file.name, validated, counts, importable })
     } catch (err) {
       alert(err.message)
     }
@@ -1211,11 +1215,16 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
     if (importDefaultType === 'Others' && !importDefaultOther.trim()) {
       alert('Please specify the default assistance type.'); return
     }
+    if (importPreview.importable.length === 0) {
+      alert(t('foodAid.importNoValidRows', 'No valid rows to import — please fix the errors above and try again.'))
+      return
+    }
     try {
       setImportBusy(true)
       const resolvedDefault = importDefaultType === 'Others' ? importDefaultOther.trim() : importDefaultType
-      await foodAidService.importBeneficiaries(dist.id, importPreview.rows, resolvedDefault)
+      const result = await foodAidService.importBeneficiaries(dist.id, importPreview.importable, resolvedDefault)
       setImportPreview(null)
+      alert(`${result.imported} ${t('foodAid.importSuccessMessage', 'beneficiaries imported successfully.')}`)
     } catch (err) {
       alert('Error: ' + err.message)
     } finally {
@@ -1339,50 +1348,92 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
             <>
               {/* Import from CSV/Excel — primary way to bring in beneficiaries */}
               <div className={'rounded-2xl p-4 border space-y-3 ' + (isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-200')}>
-                <p className={'text-sm font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>Import Beneficiaries</p>
+                <p className={'text-sm font-bold ' + (isDarkMode ? 'text-white' : 'text-gray-900')}>{t('foodAid.importSectionTitle', 'Import Beneficiaries')}</p>
                 <p className={'text-xs ' + (isDarkMode ? 'text-gray-400' : 'text-gray-500')}>
-                  Upload a CSV or Excel file with a <strong>Name</strong> column (Purok, Assistance Type, and Remarks columns are optional).
+                  {t('foodAid.importSectionDescription', 'Upload a CSV or Excel file with a Name column (Purok, Assistance Type, and Remarks columns are optional).')}
                 </p>
                 <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} className="hidden" />
-                <button onClick={() => fileInputRef.current?.click()}
-                  className="w-full sm:w-auto flex items-center justify-center space-x-2 py-2.5 px-5 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition">
-                  <Upload className="w-4 h-4" />
-                  <span>Choose CSV / Excel File…</span>
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button onClick={() => fileInputRef.current?.click()}
+                    className="w-full sm:w-auto flex items-center justify-center space-x-2 py-2.5 px-5 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition">
+                    <Upload className="w-4 h-4" />
+                    <span>{t('foodAid.chooseFileButton', 'Choose CSV / Excel File…')}</span>
+                  </button>
+                  <button onClick={() => downloadBeneficiaryImportTemplate()}
+                    className={'w-full sm:w-auto flex items-center justify-center space-x-2 py-2.5 px-5 rounded-xl text-sm font-semibold transition ' +
+                      (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300')}>
+                    <Download className="w-4 h-4" />
+                    <span>{t('foodAid.downloadTemplateButton', 'Download Template')}</span>
+                  </button>
+                </div>
 
                 {importPreview && (
                   <div className={'rounded-xl border p-3 space-y-3 max-w-xl ' + (isDarkMode ? 'border-gray-700 bg-gray-900/60' : 'border-gray-200 bg-white')}>
                     <div className="flex items-center justify-between">
                       <p className={'text-xs font-semibold ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>
-                        {importPreview.fileName} — {importPreview.rows.length} row{importPreview.rows.length === 1 ? '' : 's'} ready
-                        {importPreview.skipped > 0 && ` (${importPreview.skipped} skipped — missing name)`}
+                        {importPreview.fileName}
                       </p>
                       <button onClick={() => setImportPreview(null)} className={isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}>
                         <XCircle className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="max-h-40 overflow-y-auto rounded-lg border divide-y text-xs "
+                    {/* Preview summary — Step 10 (Rows detected / Valid / Warnings / Errors) */}
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>
+                        {t('foodAid.rowsDetected', 'Rows detected')}: <strong className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{importPreview.counts.total}</strong>
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
+                        {t('foodAid.validLabel', 'Valid')}: {importPreview.counts.valid}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full font-semibold bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                        {t('foodAid.warningsLabel', 'Warnings')}: {importPreview.counts.warning}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full font-semibold bg-red-500/15 text-red-500 border border-red-500/30">
+                        {t('foodAid.errorsLabel', 'Errors')}: {importPreview.counts.error}
+                      </span>
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto rounded-lg border divide-y text-xs "
                       style={{ borderColor: isDarkMode ? '#374151' : '#e5e7eb' }}>
-                      {importPreview.rows.slice(0, 50).map((r, i) => (
-                        <div key={i} className={'px-2 py-1.5 flex justify-between gap-2 ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>
-                          <span className="truncate">{r.name}</span>
+                      {importPreview.validated.slice(0, 200).map((r, i) => (
+                        <div key={i} className={'px-2 py-1.5 flex items-start justify-between gap-2 ' + (isDarkMode ? 'text-gray-300' : 'text-gray-700')}>
+                          <div className="min-w-0">
+                            <p className="truncate">
+                              <span className={'inline-block w-14 flex-shrink-0 font-mono ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>#{r.rowNumber}</span>
+                              {r.name || <em className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>—</em>}
+                            </p>
+                            {r.issues.length > 0 && (
+                              <p className={'mt-0.5 pl-14 ' + (r.severity === 'error' ? 'text-red-400' : 'text-amber-500')}>
+                                {r.issues.map(iss =>
+                                  iss.code === 'missingName' ? t('foodAid.missingNameIssue', 'Missing Name')
+                                  : iss.code === 'duplicate' ? t('foodAid.duplicateIssue', 'Duplicate — already exists')
+                                  : iss.code === 'invalidPurok' ? t('foodAid.invalidPurokIssue', 'Unrecognized Purok/Zone')
+                                  : iss.message
+                                ).join(' · ')}
+                              </p>
+                            )}
+                          </div>
                           <span className={'flex-shrink-0 ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
                             {r.purok || '—'} {r.assistanceType ? `· ${r.assistanceType}` : ''}
                           </span>
                         </div>
                       ))}
-                      {importPreview.rows.length > 50 && (
+                      {importPreview.validated.length > 200 && (
                         <p className={'px-2 py-1.5 italic ' + (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
-                          + {importPreview.rows.length - 50} more…
+                          + {importPreview.validated.length - 200} more…
                         </p>
                       )}
                     </div>
 
+                    {importPreview.counts.error > 0 && (
+                      <p className="text-xs text-red-400">{t('foodAid.excludedFromImportNote', 'Rows with errors will not be imported.')}</p>
+                    )}
+
                     <div>
-                      <label className={labelCls}>Default Assistance Type <span className="normal-case font-normal">(used for rows without their own type)</span></label>
+                      <label className={labelCls}>{t('foodAid.defaultAssistanceTypeLabel', 'Default Assistance Type')} <span className="normal-case font-normal">({t('foodAid.defaultAssistanceTypeHint', 'used for rows without their own type')})</span></label>
                       <select value={importDefaultType} onChange={e => setImportDefaultType(e.target.value)} className={inputCls}>
-                        {ASSISTANCE_TYPES.map(t => <option key={t}>{t}</option>)}
+                        {ASSISTANCE_TYPES.map(at => <option key={at}>{at}</option>)}
                       </select>
                       {importDefaultType === 'Others' && (
                         <input type="text" placeholder="Specify assistance type…" value={importDefaultOther}
@@ -1390,10 +1441,10 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
                       )}
                     </div>
 
-                    <button disabled={importBusy} onClick={handleConfirmImport}
+                    <button disabled={importBusy || importPreview.importable.length === 0} onClick={handleConfirmImport}
                       className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-green-500 hover:bg-green-600 transition disabled:opacity-50">
                       {importBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                      <span>Import {importPreview.rows.length} Beneficiar{importPreview.rows.length === 1 ? 'y' : 'ies'}</span>
+                      <span>{t('foodAid.importButton', 'Import')} {importPreview.importable.length} {t('foodAid.beneficiaries', 'Beneficiaries')}</span>
                     </button>
                   </div>
                 )}
@@ -1454,7 +1505,11 @@ function BeneficiaryManagerModal({ dist, isDarkMode, onClose, readOnly }) {
                 </span>
               )}
             </p>
-            {beneficiaries.length > 0 && (
+            {/* Export controls — Admin/Official only (Step 10 §1, §15). Residents
+                get read-only view access; the underlying beneficiary data is
+                already visible to them in the list below (barangay
+                transparency), but the bulk export shortcut stays admin-only. */}
+            {beneficiaries.length > 0 && !readOnly && (
               <div className="flex gap-1.5">
                 <button onClick={() => exportBeneficiariesToCSV(beneficiaries, `beneficiaries_${dist.purok}_${dist.date}.csv`)}
                   className={'flex items-center space-x-1 text-xs font-medium px-2.5 py-1.5 rounded-lg ' + (isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600')}>

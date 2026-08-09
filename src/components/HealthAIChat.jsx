@@ -332,6 +332,7 @@ const HealthAIChat = ({ onClose }) => {
         onClose={() => setScheduleModal(false)}
         symptomsSummary={symptomsForSchedule}
         conversation={messages}
+        aiAnalysisUsed={true}
       />
 
       {/* Bounce keyframes */}

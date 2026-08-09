@@ -616,6 +616,13 @@ active:scale-[.98]
                     </div>
                     <div className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur-sm">
                       {selectedRequest.preferredAppointmentDate && (
+                        <span className={`mb-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          selectedRequest.aiAnalysisUsed ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/10 text-white/60'
+                        }`}>
+                          {selectedRequest.aiAnalysisUsed ? '🤖 AI-Assisted' : '📅 Direct Schedule'}
+                        </span>
+                      )}
+                      {selectedRequest.preferredAppointmentDate && (
                         <p className="text-sm text-white/60">
                           Preferred appointment requested: {selectedRequest.preferredAppointmentDate}{selectedRequest.preferredAppointmentTime ? ` at ${selectedRequest.preferredAppointmentTime}` : ''}
                         </p>
@@ -1095,7 +1102,16 @@ Continue Review →
 
             <div className="space-y-4">
               <div className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur-sm">
-                <p className="text-sm font-semibold text-white">Resident's symptoms / request</p>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-white">Resident's symptoms / request</p>
+                  {selectedHistoryRequest.preferredAppointmentDate && (
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      selectedHistoryRequest.aiAnalysisUsed ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/10 text-white/60'
+                    }`}>
+                      {selectedHistoryRequest.aiAnalysisUsed ? '🤖 AI-Assisted' : '📅 Direct Schedule'}
+                    </span>
+                  )}
+                </div>
                 <p className="mt-2 text-sm leading-6 text-white/70">
                   {selectedHistoryRequest.symptoms || 'No details provided.'}
                 </p>

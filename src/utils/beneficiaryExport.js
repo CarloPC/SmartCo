@@ -57,3 +57,20 @@ export function exportBeneficiariesToExcel(beneficiaries, filename = 'beneficiar
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Beneficiaries')
   XLSX.writeFile(workbook, filename)
 }
+
+// ── Import Template (Step 10) ────────────────────────────────────────────
+// Columns match exactly what beneficiaryImport.js's HEADER_ALIASES actually
+// recognizes on the way back in (Name, Purok, Assistance Type, Remarks) —
+// no invented fields. One example row shows the expected format; Assistance
+// Type is left blank in the example since it's optional (falls back to the
+// distribution's own default type when omitted).
+const TEMPLATE_COLUMNS = ['Name', 'Purok', 'Assistance Type', 'Remarks']
+const TEMPLATE_EXAMPLE_ROW = ['Juan Dela Cruz', 'Sitio Proper Ilihan', '', 'e.g. senior citizen']
+
+export function downloadBeneficiaryImportTemplate(filename = 'Community_Assistance_Beneficiary_Template.xlsx') {
+  const worksheet = XLSX.utils.aoa_to_sheet([TEMPLATE_COLUMNS, TEMPLATE_EXAMPLE_ROW])
+  worksheet['!cols'] = TEMPLATE_COLUMNS.map(() => ({ wch: 24 }))
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Template')
+  XLSX.writeFile(workbook, filename)
+}

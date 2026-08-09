@@ -79,6 +79,11 @@ class HealthService {
         userName: residentName,
         userPurok: residentPurok,
         userId,
+        // ✅ Optional-AI checkup flow: distinguishes an AI-assisted checkup
+        // from one scheduled directly (or a BHW-recorded checkup, which is
+        // neither). Defaults to false — only ScheduleCheckupModal's AI path
+        // explicitly passes true — so nothing gets mislabeled as AI-assisted.
+        aiAnalysisUsed: recordData.aiAnalysisUsed === true,
         approvalStatus: 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -104,6 +109,7 @@ class HealthService {
         status: 'pending_review',
         source: 'health_record',
         sourceRecordId: docRef.id,
+        aiAnalysisUsed: recordData.aiAnalysisUsed === true,
         healthAssessment: recordData.healthAssessment || null,
         preferredAppointmentDate: recordData.preferredAppointmentDate || null,
         preferredAppointmentTime: recordData.preferredAppointmentTime || null,

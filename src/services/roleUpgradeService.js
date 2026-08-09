@@ -59,6 +59,13 @@ class RoleUpgradeService {
         return { success: false, error: 'You already have a pending role upgrade request.' }
       }
 
+      // Step 11 — Resubmission: a fresh request created right after a
+      // rejected one is flagged so Admin can tell it apart from a
+      // first-time application, without needing a separate history system.
+      // The previous (rejected) document is left untouched in Firestore —
+      // that's the rejection-reason history the resident just corrected.
+      const isResubmission = existing?.status === 'rejected'
+
       const docRef = await addDoc(collection(db, 'adminRequests'), {
         userId,
         requestedRole: data.requestedRole,
@@ -77,7 +84,9 @@ class RoleUpgradeService {
         createdAt: new Date().toISOString(),
         reviewedAt: null,
         reviewedBy: null,
-        remarks: ''
+        remarks: '',
+        isResubmission,
+        previousRequestId: isResubmission ? existing.id : null,
       })
 
       await this.notifyAdmins(data)
@@ -203,8 +212,13 @@ class RoleUpgradeService {
     }
   }
 
-  // Reject a request
+  // Reject a request. `remarks` (the rejection reason) is REQUIRED — Step 11
+  // requires the applicant to always receive an explanation, never a bare
+  // rejection. Enforced here too (not just in the UI) as defense in depth.
   async rejectRequest(requestId, remarks = '') {
+    if (!remarks || !remarks.trim()) {
+      throw new Error('Please provide a reason for rejecting this application.')
+    }
     try {
       const reviewerId = auth.currentUser?.uid
       if (!reviewerId) throw new Error('Not authenticated')

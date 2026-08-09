@@ -24,6 +24,8 @@ const getNotificationPath = (notification, user) => {
       return canManageEmergencies(user) ? '/emergency' : '/emergency/report'
     case 'document':
       return isOfficial(user) ? '/documents/manage' : '/documents'
+    case 'role_upgrade':
+      return isOfficial(user) ? '/admin/role-requests' : '/request-role-upgrade'
     case 'community':
     default:
       return '/home'
@@ -44,6 +46,8 @@ const getNotificationLabel = (notification) => {
       return 'View Emergency'
     case 'document':
       return 'View Document Requests'
+    case 'role_upgrade':
+      return 'View Application Status'
     case 'community':
       return 'View Community'
     default:

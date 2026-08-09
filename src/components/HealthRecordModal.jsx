@@ -1,5 +1,5 @@
 
-import { X, CalendarCheck, Clock, CheckCircle, XCircle, AlertCircle, FileText, User, Stethoscope, Sparkles, Activity } from 'lucide-react'
+import { X, CalendarCheck, Clock, CheckCircle, XCircle, AlertCircle, FileText, User, Stethoscope, Sparkles, Activity, Bot } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 
 /* Status badge helper */
@@ -130,6 +130,17 @@ const HealthRecordModal = ({ record, isOpen, onClose }) => {
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${isDarkMode ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
                 <CalendarCheck className="w-3 h-3" /> Scheduled
               </span>
+            )}
+            {isScheduled && (
+              record.aiAnalysisUsed ? (
+                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${isDarkMode ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                  <Bot className="w-3 h-3" /> AI-Assisted
+                </span>
+              ) : (
+                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                  <CalendarCheck className="w-3 h-3" /> Direct Schedule
+                </span>
+              )
             )}
           </div>
 

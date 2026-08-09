@@ -3,35 +3,37 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Shield, Send, CheckCircle, Clock, XCircle,
-  ArrowLeft, Loader2, Lock, AlertCircle, Upload, FileText, Eye
+  ArrowLeft, Loader2, Lock, AlertCircle, Upload, FileText, Eye, RefreshCw
 } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import roleUpgradeService, { REQUESTABLE_ROLES, getRoleLabel } from '../services/roleUpgradeService'
 import storageService from '../services/storageService'
 import ProofPreviewModal from '../components/ProofPreviewModal'
 
 const StatusBadge = ({ status, isDarkMode }) => {
+  const { t } = useLanguage()
   if (status === 'pending') return (
     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${
       isDarkMode ? 'bg-yellow-900/40 text-yellow-300' : 'bg-yellow-100 text-yellow-700'
     }`}>
-      <Clock className="w-3.5 h-3.5" /> Pending Review
+      <Clock className="w-3.5 h-3.5" /> {t('roleUpgrade.statusPending', 'Pending Review')}
     </span>
   )
   if (status === 'approved') return (
     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${
       isDarkMode ? 'bg-green-900/40 text-green-300' : 'bg-green-100 text-green-700'
     }`}>
-      <CheckCircle className="w-3.5 h-3.5" /> Approved
+      <CheckCircle className="w-3.5 h-3.5" /> {t('roleUpgrade.statusApproved', 'Approved')}
     </span>
   )
   return (
     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${
       isDarkMode ? 'bg-red-900/40 text-red-300' : 'bg-red-100 text-red-700'
     }`}>
-      <XCircle className="w-3.5 h-3.5" /> Rejected
+      <XCircle className="w-3.5 h-3.5" /> {t('roleUpgrade.statusRejected', 'Rejected')}
     </span>
   )
 }
@@ -40,11 +42,19 @@ const RequestRoleUpgradePage = () => {
   const navigate = useNavigate()
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
+  const { t } = useLanguage()
 
   const [existingRequest, setExistingRequest] = useState(null)
   const [loadingRequest, setLoadingRequest] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  // Step 11 — Resubmission: true while showing the (pre-filled) form again
+  // for a previously REJECTED request. `justSubmittedType` drives a one-time
+  // success banner ('new' vs 'resubmit') shown once we're back on the
+  // status card, since the status card is what actually renders right
+  // after a successful submit (see the render logic below).
+  const [resubmitMode, setResubmitMode] = useState(false)
+  const [justSubmittedType, setJustSubmittedType] = useState(null) // 'new' | 'resubmit' | null
   const [error, setError] = useState('')
 
   const [requestedRole, setRequestedRole] = useState('')
@@ -91,6 +101,23 @@ const RequestRoleUpgradePage = () => {
     setProofPreviewUrl(URL.createObjectURL(file))
   }
 
+  // Step 11 — Resubmission: reopen the same request form, pre-filled from
+  // the rejected application, so the resident only has to fix what the
+  // rejection reason pointed out (not retype everything from scratch).
+  // The proof file itself is intentionally left blank — Firestore stores a
+  // URL, not a File object, so a fresh upload is required; the previously
+  // submitted document stays viewable for reference via the button below.
+  const openResubmit = () => {
+    setRequestedRole(existingRequest.requestedRole || '')
+    setPosition(existingRequest.position || '')
+    setReason(existingRequest.reason || '')
+    setNotes(existingRequest.notes || '')
+    setProofFile(null)
+    if (proofPreviewUrl) { URL.revokeObjectURL(proofPreviewUrl); setProofPreviewUrl(null) }
+    setError('')
+    setResubmitMode(true)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!requestedRole) {
@@ -109,6 +136,8 @@ const RequestRoleUpgradePage = () => {
       setError('Please upload a supporting document (Employee ID, Barangay Certification, or Appointment Letter).')
       return
     }
+
+    const wasResubmission = existingRequest?.status === 'rejected'
 
     setError('')
     setSubmitting(true)
@@ -130,6 +159,8 @@ const RequestRoleUpgradePage = () => {
       })
       if (result.success) {
         setSubmitted(true)
+        setResubmitMode(false)
+        setJustSubmittedType(wasResubmission ? 'resubmit' : 'new')
         setExistingRequest({
           status: 'pending',
           requestedRole,
@@ -138,7 +169,8 @@ const RequestRoleUpgradePage = () => {
           notes: notes.trim(),
           proofFileUrl,
           proofFileName,
-          submittedAt: new Date().toISOString()
+          submittedAt: new Date().toISOString(),
+          isResubmission: wasResubmission
         })
       } else {
         setError(result.error || 'Failed to submit request.')
@@ -201,9 +233,22 @@ const RequestRoleUpgradePage = () => {
               <Loader2 className={`w-8 h-8 animate-spin ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
               <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Checking your request status…</p>
             </div>
-          ) : existingRequest ? (
+          ) : existingRequest && !resubmitMode ? (
             /* Existing request status */
             <div className={`${card} p-6 space-y-4`}>
+              {justSubmittedType && existingRequest.status === 'pending' && (
+                <div className={`flex items-start gap-2 p-3 rounded-xl ${
+                  isDarkMode ? 'bg-emerald-900/20 border border-emerald-800/40' : 'bg-emerald-50 border border-emerald-200'
+                }`}>
+                  <CheckCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                  <p className={`text-xs ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                    {justSubmittedType === 'resubmit'
+                      ? t('roleUpgrade.resubmitSuccessMessage', 'Your corrected request has been resubmitted for review.')
+                      : t('roleUpgrade.submitSuccessMessage', 'Your role upgrade request has been sent for review.')}
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <h2 className={`font-bold text-lg ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                   Your Request
@@ -258,7 +303,7 @@ const RequestRoleUpgradePage = () => {
                 }`}>
                   <Clock className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />
                   <p className={`text-xs ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
-                    Your request is under review. You will be notified once an administrator responds.
+                    {t('roleUpgrade.pendingNotice', 'Your request is under review. You will be notified once an administrator responds.')}
                   </p>
                 </div>
               )}
@@ -269,26 +314,47 @@ const RequestRoleUpgradePage = () => {
                 }`}>
                   <CheckCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                   <p className={`text-xs ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>
-                    Your role has been upgraded to {getRoleLabel(existingRequest.requestedRole)}! Please log out and log back in for changes to take effect.
+                    {t('roleUpgrade.approvedNoticePrefix', 'Your role has been upgraded to')} {getRoleLabel(existingRequest.requestedRole)}{t('roleUpgrade.approvedNoticeSuffix', '! Please log out and log back in for changes to take effect.')}
                   </p>
                 </div>
               )}
 
               {existingRequest.status === 'rejected' && (
-                <div className={`flex items-start gap-2 p-3 rounded-xl ${
+                <div className={`flex flex-col gap-3 p-4 rounded-xl ${
                   isDarkMode ? 'bg-red-900/20 border border-red-800/40' : 'bg-red-50 border border-red-200'
                 }`}>
-                  <XCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
-                  <div>
-                    <p className={`text-xs ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
-                      Your request was not approved.
-                    </p>
-                    {existingRequest.remarks && (
-                      <p className={`text-xs mt-1 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                        Reason: {existingRequest.remarks}
+                  <div className="flex items-start gap-2">
+                    <XCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
+                    <div className="min-w-0">
+                      <p className={`text-xs font-semibold ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
+                        {t('roleUpgrade.rejectedNotice', 'Your application was rejected.')}
                       </p>
-                    )}
+                      {existingRequest.remarks && (
+                        <>
+                          <p className={`text-xs font-medium mt-2 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                            {t('roleUpgrade.reasonLabel', 'Reason')}
+                          </p>
+                          <p className={`text-xs mt-0.5 break-words whitespace-pre-wrap ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
+                            {existingRequest.remarks}
+                          </p>
+                        </>
+                      )}
+                      <p className={`text-xs font-medium mt-2 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                        {t('roleUpgrade.nextStepLabel', 'Next Step')}
+                      </p>
+                      <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
+                        {t('roleUpgrade.nextStepText', 'Please correct the issue and resubmit your application.')}
+                      </p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={openResubmit}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition shadow-lg"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>{t('roleUpgrade.reviewResubmitButton', 'Review & Resubmit')}</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -314,14 +380,42 @@ const RequestRoleUpgradePage = () => {
               </button>
             </div>
           ) : (
-            /* Request Form */
+            /* Request Form — shared by first-time submission AND
+               resubmission after a rejection (resubmitMode) */
             <div className={`${card} p-6`}>
-              <h2 className={`font-bold text-lg mb-1 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-                Submit a Request
-              </h2>
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <h2 className={`font-bold text-lg ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                  {resubmitMode ? t('roleUpgrade.resubmitFormTitle', 'Resubmit Your Request') : 'Submit a Request'}
+                </h2>
+                {resubmitMode && (
+                  <button
+                    type="button"
+                    onClick={() => { setResubmitMode(false); setError('') }}
+                    className={`text-xs font-semibold flex-shrink-0 ${isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    {t('roleUpgrade.cancelResubmitButton', 'Cancel')}
+                  </button>
+                )}
+              </div>
               <p className={`text-sm mb-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Tell an administrator which role you need and why.
+                {resubmitMode
+                  ? t('roleUpgrade.resubmitFormDescription', 'Correct the issue below and, if needed, upload updated documentation before resubmitting.')
+                  : 'Tell an administrator which role you need and why.'}
               </p>
+
+              {resubmitMode && existingRequest?.proofFileUrl && (
+                <button
+                  type="button"
+                  onClick={() => setPreviewModal({ url: existingRequest.proofFileUrl, fileName: existingRequest.proofFileName })}
+                  className={`mb-4 flex items-center gap-3 p-3 rounded-xl text-sm font-medium transition w-full text-left ${
+                    isDarkMode ? 'bg-gray-800 text-blue-300 hover:bg-gray-700' : 'bg-gray-50 text-blue-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <FileText className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate flex-1">{t('roleUpgrade.previousDocumentLabel', 'Previously submitted document')}: {existingRequest.proofFileName || 'view'}</span>
+                  <Eye className="w-4 h-4 flex-shrink-0" />
+                </button>
+              )}
 
               {error && (
                 <div className={`mb-4 flex items-start gap-2 p-3 rounded-xl ${

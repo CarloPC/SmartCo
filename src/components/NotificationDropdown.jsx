@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, AlertCircle, Bell, Loader2, Calendar, Heart, Package, AlertTriangle, FileText, ChevronRight } from 'lucide-react'
+import { X, AlertCircle, Bell, Loader2, Calendar, Heart, Package, AlertTriangle, FileText, ChevronRight, Shield } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -27,6 +27,12 @@ const getNotificationPath = (notification, user) => {
       return canManageEmergencies(user) ? '/emergency' : '/emergency/report'
     case 'document':
       return isOfficial(user) ? '/documents/manage' : '/documents'
+    // Step 11 — Role Upgrade Requests: an Admin/Official reviewer gets sent
+    // to the review queue; the applicant (resident, or an already-reviewed
+    // official) gets sent to their own request's status page, where a
+    // rejection reason (if any) and the resubmit action live.
+    case 'role_upgrade':
+      return isOfficial(user) ? '/admin/role-requests' : '/request-role-upgrade'
     case 'community':
     default:
       return '/home'
@@ -48,6 +54,8 @@ const getCategoryIcon = (category, type) => {
       return <AlertTriangle className={`${cls} text-red-400 animate-pulse`} />
     case 'document':
       return <FileText className={`${cls} text-blue-500`} />
+    case 'role_upgrade':
+      return <Shield className={`${cls} text-purple-500`} />
     default:
       return <AlertCircle className={`${cls} text-gray-400`} />
   }

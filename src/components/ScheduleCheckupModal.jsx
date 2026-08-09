@@ -60,7 +60,7 @@ const truncateForSummary = (text, maxLen = 140) => {
   return `${safeCut.trim()}...`
 }
 
-const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversation = [] }) => {
+const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversation = [], aiAnalysisUsed = true }) => {
   const { isDarkMode } = useTheme()
   const { user } = useAuth()
 
@@ -98,7 +98,7 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
   // moment it passes, without requiring the user to touch the date field.
   useEffect(() => {
     if (!isOpen) return
-    const interval = setInterval(() => setNow(new Date()), 30000)
+    const interval = setInterval(() => setNow(new Date()), 10000)
     return () => clearInterval(interval)
   }, [isOpen])
 
@@ -159,6 +159,12 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
       return
     }
     if (!time) { setError('Please select an available time.'); return }
+    // Direct path has no AI conversation to pre-fill notes, so require a
+    // reason here — the AI path already arrives with notes pre-filled.
+    if (!aiAnalysisUsed && !notes.trim()) {
+      setError('Please provide a reason for your checkup.')
+      return
+    }
     setError('')
     setLoading(true)
     try {
@@ -183,15 +189,23 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
         preferredAppointmentDate: date,
         preferredAppointmentTime: time,
         aiSymptomsNotes: notes,
-        // Full AI chat history so the BHW can review it in Patient History Logs
-        aiConversation: conversation.map(m => ({
-          role: m.role,
-          content: m.content,
-          timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp
-        })),
-        message: `AI-recommended barangay checkup on ${date} at ${time}`,
+        // ✅ Optional-AI checkup: only attach AI conversation history when
+        // this modal was actually opened from the AI path. The direct path
+        // opens this same modal with an empty conversation, so this is
+        // already empty there — no fake/placeholder AI data is created.
+        aiConversation: aiAnalysisUsed
+          ? conversation.map(m => ({
+              role: m.role,
+              content: m.content,
+              timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp
+            }))
+          : [],
+        aiAnalysisUsed,
+        message: aiAnalysisUsed
+          ? `AI-recommended barangay checkup on ${date} at ${time}`
+          : `Directly scheduled barangay checkup on ${date} at ${time}`,
         healthAssessment: {
-          vitalsSummary: `Scheduled checkup: ${truncateForSummary(notes)}`,
+          vitalsSummary: `Scheduled checkup: ${truncateForSummary(notes) || 'No additional notes provided.'}`,
           overallStatus: 'scheduled',
           urgencyLevel: 'routine'
         }
@@ -231,7 +245,7 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
                 Schedule Barangay Checkup
               </h3>
               <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Set a date for your health consultation
+                {aiAnalysisUsed ? 'Set a date for your health consultation' : 'Direct schedule — no AI conversation required'}
               </p>
             </div>
           </div>
@@ -320,13 +334,14 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
                 className={inputCls}
                 disabled={isDateFullyBooked}
               >
-                {TIME_SLOTS.map(t => {
+                {TIME_SLOTS
+                  .filter(t => !pastTimesForDate(t)) // ✅ past times are removed outright, not just disabled
+                  .map(t => {
                   const taken = takenTimesForDate.has(t)
-                  const past = !taken && pastTimesForDate(t)
                   return (
-                    <option key={t} value={t} disabled={taken || past}>
+                    <option key={t} value={t} disabled={taken}>
                       {new Date(`2000-01-01T${t}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                      {taken ? ' — Booked' : past ? ' — Past' : ''}
+                      {taken ? ' — Booked' : ''}
                     </option>
                   )
                 })}
@@ -336,16 +351,18 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
             {/* Notes from AI */}
             <div>
               <label className={`flex items-center gap-1.5 text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                <FileText className="w-3.5 h-3.5" /> Symptoms &amp; AI Analysis
+                <FileText className="w-3.5 h-3.5" /> {aiAnalysisUsed ? 'Symptoms & AI Analysis' : 'Reason for Checkup'}
+                {!aiAnalysisUsed && <span className="text-red-500">*</span>}
               </label>
               <textarea
                 value={notes}
-                onChange={e => setNotes(e.target.value)}
+                onChange={e => { setNotes(e.target.value); if (error) setError('') }}
                 rows={6}
-                placeholder="Describe your symptoms for the health worker"
+                placeholder={aiAnalysisUsed ? 'Describe your symptoms for the health worker' : "What's the checkup for? (e.g. fever, follow-up, general check-up)"}
+                required={!aiAnalysisUsed}
                 className={`${inputCls} resize-y`}
               />
-              {symptomsSummary && (
+              {aiAnalysisUsed && symptomsSummary && (
                 <p className={`text-xs mt-1 flex items-center gap-1 ${isDarkMode ? 'text-green-500' : 'text-green-600'}`}>
                   <span></span> Pre-filled from your AI health conversation
                 </p>
@@ -354,7 +371,7 @@ const ScheduleCheckupModal = ({ isOpen, onClose, symptomsSummary = '', conversat
 
             <button
               type="submit"
-              disabled={loading || isDateFullyBooked}
+              disabled={loading || isDateFullyBooked || (!aiAnalysisUsed && !notes.trim())}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Scheduling</span></> : <><CalendarCheck className="w-4 h-4" /><span>Confirm Schedule</span></>}

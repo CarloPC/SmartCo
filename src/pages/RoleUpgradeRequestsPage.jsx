@@ -2,11 +2,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   Shield, Clock, CheckCircle, XCircle, Loader2, Users2, ChevronDown, ChevronUp,
-  Search, ArrowUpDown, FileText, ExternalLink
+  Search, ArrowUpDown, FileText, ExternalLink, RefreshCw, AlertCircle
 } from 'lucide-react'
 import toledoImage from '../assets/Toledo.jpg'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import roleUpgradeService, { REQUESTABLE_ROLES, getRoleLabel } from '../services/roleUpgradeService'
 import ProofPreviewModal from '../components/ProofPreviewModal'
 
@@ -27,8 +28,19 @@ const StatusBadge = ({ status, isDarkMode }) => {
 }
 
 const RequestCard = ({ request, isDarkMode, onApprove, onReject, processing, canReview, onPreview }) => {
+  const { t } = useLanguage()
   const [expanded, setExpanded] = useState(false)
   const [remarks, setRemarks] = useState('')
+  const [rejectError, setRejectError] = useState('')
+
+  const handleRejectClick = () => {
+    if (!remarks.trim()) {
+      setRejectError(t('roleUpgrade.rejectReasonRequired', 'Please provide a reason for rejecting this application.'))
+      return
+    }
+    setRejectError('')
+    onReject(request.id, remarks.trim())
+  }
 
   const formatDate = (d) => d
     ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -52,6 +64,13 @@ const RequestCard = ({ request, isDarkMode, onApprove, onReject, processing, can
             <p className={`text-xs truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{request.email}</p>
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
               <StatusBadge status={request.status} isDarkMode={isDarkMode} />
+              {request.isResubmission && (
+                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold ${
+                  isDarkMode ? 'bg-purple-900/40 text-purple-300' : 'bg-purple-100 text-purple-700'
+                }`}>
+                  <RefreshCw className="w-3 h-3" /> {t('roleUpgrade.resubmittedBadge', 'Resubmitted')}
+                </span>
+              )}
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                 isDarkMode ? 'bg-indigo-900/40 text-indigo-300' : 'bg-indigo-100 text-indigo-700'
               }`}>
@@ -141,17 +160,24 @@ const RequestCard = ({ request, isDarkMode, onApprove, onReject, processing, can
               a notice instead of buttons that would just fail. */}
           {request.status === 'pending' && canReview && (
             <div className="space-y-2">
-              <textarea
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                rows={2}
-                placeholder="Optional remarks to the requester…"
-                className={`w-full px-3 py-2 rounded-xl border text-sm resize-none ${
-                  isDarkMode
-                    ? 'bg-gray-800 border-gray-700 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border-gray-300 text-gray-800 placeholder-gray-400'
-                } focus:outline-none focus:ring-2 focus:ring-purple-500 transition`}
-              />
+              <div>
+                <textarea
+                  value={remarks}
+                  onChange={(e) => { setRemarks(e.target.value); if (rejectError) setRejectError('') }}
+                  rows={2}
+                  placeholder="Remarks — required if rejecting…"
+                  className={`w-full px-3 py-2 rounded-xl border text-sm resize-none ${
+                    isDarkMode
+                      ? 'bg-gray-800 border-gray-700 text-gray-100 placeholder-gray-500'
+                      : 'bg-white border-gray-300 text-gray-800 placeholder-gray-400'
+                  } focus:outline-none focus:ring-2 focus:ring-purple-500 transition`}
+                />
+                {rejectError && (
+                  <p className={`mt-1 flex items-center gap-1.5 text-xs ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" /> {rejectError}
+                  </p>
+                )}
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => onApprove(request.id, remarks)}
@@ -170,7 +196,7 @@ const RequestCard = ({ request, isDarkMode, onApprove, onReject, processing, can
                   Approve
                 </button>
                 <button
-                  onClick={() => onReject(request.id, remarks)}
+                  onClick={handleRejectClick}
                   disabled={processing === request.id}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-semibold text-sm transition ${
                     isDarkMode

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import {
   AlertCircle, Activity, Loader2, RefreshCw,
-  CheckCircle, Clock, XCircle, Sparkles, ChevronDown, ChevronUp, Heart, Eye
+  CheckCircle, Clock, XCircle, Sparkles, ChevronUp, Heart, Eye,
+  Bot, CalendarCheck, ArrowRight
 } from 'lucide-react'
 import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import toledoImage from '../assets/Toledo.jpg'
@@ -9,6 +10,7 @@ import { useTheme } from '../context/ThemeContext'
 import healthService from '../services/healthService'
 import HealthAIChat from '../components/HealthAIChat'
 import HealthRecordModal from '../components/HealthRecordModal'
+import ScheduleCheckupModal from '../components/ScheduleCheckupModal'
 import { db, auth } from '../config/firebase'
 import { useLanguage } from '../context/LanguageContext'
 
@@ -21,6 +23,7 @@ const HealthPage = () => {
   const [isLoading, setIsLoading]       = useState(true)
   const [refreshing, setRefreshing]     = useState(false)
   const [chatOpen, setChatOpen]         = useState(false)
+  const [directScheduleOpen, setDirectScheduleOpen] = useState(false) // ✅ Path B: skip AI, schedule directly
   const [viewRecord, setViewRecord]     = useState(null)
   const [viewLoading, setViewLoading]   = useState(null) // holds the id being loaded
 
@@ -231,6 +234,12 @@ const HealthPage = () => {
                 >
                   <Heart className="h-4 w-4" /> Chat with AI
                 </button>
+                <button
+                  onClick={() => setDirectScheduleOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 hover:bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition"
+                >
+                  <CalendarCheck className="h-4 w-4" /> {t('health.scheduleWithoutAi')}
+                </button>
               </div>
             </div>
 
@@ -263,33 +272,63 @@ const HealthPage = () => {
           </div>
         </section>
 
-        {/* ── AI Health Assistant banner / chat ── */}
+        {/* ── Health Checkup: AI-assisted or Direct — both are legitimate paths ── */}
         <div>
           {!chatOpen ? (
-            <button
-              onClick={() => setChatOpen(true)}
-              className={`${card} w-full text-left p-5 group`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 shadow-lg shadow-emerald-500/30">
-                    <Heart className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-bold text-white">{t('health.aiHealthAssistant')}</span>
-                      <span className="flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs font-semibold text-white/80">
-                        <Sparkles className="h-2.5 w-2.5" /> Powered by Groq
-                      </span>
+            <div className={`${card} p-5 lg:p-6`}>
+              <p className="mb-4 text-sm font-semibold text-white/80">{t('health.howToProceed')}</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Path A — AI Assisted */}
+                <button
+                  onClick={() => setChatOpen(true)}
+                  className="group flex flex-col rounded-2xl border border-white/20 bg-gradient-to-br from-emerald-500/10 via-white/5 to-transparent p-5 text-left transition-all duration-300 hover:border-emerald-400/40 hover:bg-white/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 shadow-lg shadow-emerald-500/30">
+                      <Bot className="h-6 w-6 text-white" />
                     </div>
-                    <p className="mt-0.5 text-sm text-white/60">
-                      Describe your symptoms and get AI-powered health guidance &amp; checkup scheduling
-                    </p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-white">{t('health.startAiAnalysis')}</span>
+                        <span className="flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs font-semibold text-white/80">
+                          <Sparkles className="h-2.5 w-2.5" /> Groq AI
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <ChevronDown className="h-5 w-5 flex-shrink-0 text-white/50 transition group-hover:translate-y-0.5 group-hover:text-white" />
+                  <p className="mt-3 flex-1 text-sm leading-6 text-white/60">
+                    {t('health.aiAnalysisDesc')}
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-1.5 self-start rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-xs font-bold text-white shadow-md transition group-hover:shadow-lg">
+                    {t('health.startAiAnalysis')} <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </button>
+
+                {/* Path B — Direct Scheduling (skip AI) */}
+                <button
+                  onClick={() => setDirectScheduleOpen(true)}
+                  className="group flex flex-col rounded-2xl border border-white/20 bg-gradient-to-br from-blue-500/10 via-white/5 to-transparent p-5 text-left transition-all duration-300 hover:border-blue-400/40 hover:bg-white/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500 shadow-lg shadow-blue-500/30">
+                      <CalendarCheck className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-base font-bold text-white">{t('health.scheduleDirectlyTitle')}</span>
+                    </div>
+                  </div>
+                  <p className="mt-3 flex-1 text-sm leading-6 text-white/60">
+                    {t('health.scheduleDirectlyDesc')}
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-1.5 self-start rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md transition group-hover:shadow-lg">
+                    {t('health.scheduleWithoutAi')} <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </button>
               </div>
-            </button>
+              <p className="mt-4 text-center text-xs text-white/40">
+                {t('health.aiDisclaimer')}
+              </p>
+            </div>
           ) : (
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
@@ -399,6 +438,15 @@ const HealthPage = () => {
         record={viewRecord}
         isOpen={!!viewRecord}
         onClose={() => setViewRecord(null)}
+      />
+
+      {/* ── Path B: Direct Checkup Scheduling (skip AI) — same shared scheduler as the AI path ── */}
+      <ScheduleCheckupModal
+        isOpen={directScheduleOpen}
+        onClose={() => setDirectScheduleOpen(false)}
+        symptomsSummary=""
+        conversation={[]}
+        aiAnalysisUsed={false}
       />
     </div>
   )
