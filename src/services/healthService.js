@@ -130,9 +130,6 @@ class HealthService {
         appointmentSlotsService.addBooking(recordData.preferredAppointmentDate, recordData.preferredAppointmentTime)
       }
 
-      // Notify the resident about their own submission
-      await this._createHealthNotification(record)
-
       // Notify BHW staff so it shows up on their dashboard bell
       await this._notifyBHWStaff({
         residentName,
@@ -370,7 +367,7 @@ class HealthService {
         notificationService.createNotification({
           userId: d.id,
           type: 'info',
-          category: 'health',
+          category: 'bhw',
           message,
           relatedId,
           relatedType: 'healthRequest',

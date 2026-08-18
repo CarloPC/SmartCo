@@ -51,7 +51,7 @@ const Sidebar = ({ isCollapsed, onToggleCollapse, navBadges = {} }) => {
     navItems.splice(3, 0, { icon: Truck, label: t('nav.myAssignments'), path: '/food-aid/my-assignments' })
   }
 
-  if (user?.role === 'bhw') navItems.splice(1, 0, { icon: Stethoscope, label: t('nav.bhw'), path: '/bhw' })
+  if (user?.role === 'bhw') navItems.splice(1, 0, { icon: Stethoscope, label: t('nav.bhw'), path: '/bhw', badgeKey: 'bhw' })
   if (isAdmin) navItems.push({ icon: Brain, label: t('nav.aiDecisionSupport'), path: '/ai-insights', accent: true })
   if (isAdmin) navItems.push({ icon: Shield, label: t('nav.admin'), path: '/admin' })
   if (user?.role === 'admin') navItems.push({ icon: UserCheck, label: t('nav.roleUpgradeRequests'), path: '/admin/role-requests' })

@@ -15,7 +15,7 @@
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
+const MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']
 
 const SYSTEM_PROMPT = `You are HealthBot, a compassionate and professional AI health assistant embedded in SmartCo, the Smart Barangay Management System for Barangay Ilihan, Toledo City, Cebu, Philippines.
 

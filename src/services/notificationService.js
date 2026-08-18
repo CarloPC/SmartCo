@@ -7,6 +7,7 @@ import { db, auth } from '../config/firebase'
 // same module (e.g. 'food_aid' vs 'foodaid'), so both are normalized here.
 const NAV_BADGE_CATEGORY_MAP = {
   health: 'health',
+  bhw: 'bhw',
   food_aid: 'foodAid',
   foodaid: 'foodAid',
   events: 'events',
