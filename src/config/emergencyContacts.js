@@ -43,16 +43,16 @@ const emergencyContacts = {
     name: 'Fire Emergency',
     // No distinct verified Bureau of Fire Protection line exists in the
     // codebase — falls back to the national 911 hotline.
-    number: GENERAL_EMERGENCY_NUMBER,
-    verified: false,
+    number:  '09662165466',
+    verified: true,
   },
   police: {
     key: 'police',
     name: 'Police Emergency',
     // No distinct verified PNP station line exists in the codebase —
     // falls back to the national 911 hotline.
-    number: GENERAL_EMERGENCY_NUMBER,
-    verified: false,
+    number: '09156426842',
+    verified: true,
   },
   barangay: {
     key: 'barangay',
